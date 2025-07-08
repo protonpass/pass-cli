@@ -1,0 +1,2 @@
+[registries.proton]
+    index = "sparse+https://rust.gitlab-pages.protontech.ch/shared/registry/index/"

@@ -1,0 +1,16 @@
+[package]
+name = "pass-domain"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow.workspace = true
+protobuf.workspace = true
+serde.workspace = true
+
+aes-gcm = "0.10.3"
+rand = "0.9.1"
+
+[build-dependencies]
+protobuf-codegen.workspace = true
+protoc-bin-vendored = "3.1.0"

@@ -1,0 +1,23 @@
+[package]
+name = "pass"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+doctest = false
+
+[dependencies]
+pass-domain = { path = "../pass-domain" }
+muon.workspace = true
+proton-pass-common.workspace = true
+
+anyhow.workspace = true
+async-trait.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+
+async-lock = "3.4.0"
+base64 = "0.22.1"
+bytes = "1.10.1"

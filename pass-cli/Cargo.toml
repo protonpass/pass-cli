@@ -1,0 +1,24 @@
+[package]
+name = "pass-cli"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+pass = { path = "../pass" }
+pass-domain = { path = "../pass-domain" }
+
+chrono = "0.4.40"
+clap = { version = "4.5", features = ["derive"] }
+rpassword = "7.3.1"
+tokio = { version = "1.44", features = ["full"] }
+tracing-subscriber = { version = "0.3", features = ["default"] }
+
+anyhow.workspace = true
+async-trait.workspace = true
+bytes.workspace = true
+muon.workspace = true
+proton-crypto.workspace = true
+proton-crypto-account.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true

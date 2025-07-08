@@ -1,0 +1,22 @@
+[workspace]
+members = [
+    "pass-cli",
+    "pass-domain",
+    "pass"
+]
+resolver = "2"
+
+[workspace.dependencies]
+proton-crypto = { git = "ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git" }
+proton-crypto-account = { git = "ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git" }
+muon = { version = "1.5.0", registry = "proton", features = ["unsealed", "util"] }
+proton-pass-common = {  git = "ssh://git@gitlab.protontech.ch/proton/clients/pass/proton-pass-common.git" }
+
+anyhow = "1.0"
+async-trait = "0.1"
+bytes = "1.10.1"
+protobuf = "3.7.2"
+protobuf-codegen = "3.7.2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"
