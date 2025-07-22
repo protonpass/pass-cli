@@ -3,6 +3,7 @@ mod score;
 
 use anyhow::Result;
 use clap::{Subcommand, ValueEnum};
+use crate::commands::OutputFormat;
 
 #[derive(ValueEnum, Clone, Debug)]
 pub enum PasswordFormat {
@@ -21,12 +22,14 @@ pub enum PasswordCommands {
     Score {
         #[arg(help = "Password to score")]
         password: String,
+        #[arg(long, default_value = "human")]
+        output: OutputFormat,
     },
 }
 
 pub async fn run(command: &PasswordCommands) -> Result<()> {
     match command {
         PasswordCommands::Generate { command } => generate::run(command).await,
-        PasswordCommands::Score { password } => score::score(password),
+        PasswordCommands::Score { password , output} => score::score(password, output),
     }
 }
