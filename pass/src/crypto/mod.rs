@@ -1,5 +1,6 @@
 use anyhow::Result;
 
+pub(crate) mod encrypt_invite_keys;
 pub(crate) mod open_invite_key;
 pub(crate) mod share_key;
 

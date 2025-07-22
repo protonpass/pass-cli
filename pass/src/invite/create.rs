@@ -1,8 +1,9 @@
+use crate::crypto::encrypt_invite_keys::{EncryptInviteKeysFlow, InviteKeyToPrepare};
 use crate::item::item_keys::OpenedItemKeys;
 use crate::share::ShareKeys;
 use crate::{PassClient, PublicKey};
 use anyhow::{Context, Result};
-use pass_domain::{Address, ItemId, ShareId, ShareRole, ShareType, TargetType};
+use pass_domain::{Address, ItemId, ShareContent, ShareId, ShareRole, ShareType, TargetType};
 
 pub(crate) enum InviteRequest {
     ExistingUser(CreateInvitesRequest),
@@ -47,6 +48,8 @@ pub(crate) struct CreateInviteRequest {
     target_type: u8,
     #[serde(rename = "ShareRoleID")]
     share_role_id: String,
+    #[serde(rename = "Data")]
+    data: Option<String>,
     #[serde(rename = "ItemID")]
     item_id: Option<String>,
     #[serde(rename = "ExpirationTime")]
@@ -69,6 +72,7 @@ enum InviteUserMode {
 enum InviteTarget {
     Vault {
         share_keys: ShareKeys,
+        content: ShareContent,
     },
     Item {
         item_id: ItemId,
@@ -122,10 +126,20 @@ impl PassClient {
             .context("Error getting share keys")?;
 
         let invite_target = match item_id {
-            None => match &share.share_type {
+            None => match share.share_type {
                 ShareType::Vault { .. } => {
                     // User with vault access is sharing vault access
-                    InviteTarget::Vault { share_keys }
+                    match share.content {
+                        Some(content) => InviteTarget::Vault {
+                            share_keys,
+                            content,
+                        },
+                        None => {
+                            return Err(anyhow::anyhow!(
+                                "Trying to invite to vault but can't access ShareContent"
+                            ));
+                        }
+                    }
                 }
                 ShareType::Item { .. } => {
                     // User with item access is trying to share a vault
@@ -134,7 +148,7 @@ impl PassClient {
                     ));
                 }
             },
-            Some(id) => match &share.share_type {
+            Some(id) => match share.share_type {
                 ShareType::Vault { .. } => {
                     // User with vault access is sharing a single item
                     let keys = self
@@ -154,7 +168,7 @@ impl PassClient {
                 }
                 ShareType::Item { item_id, .. } => {
                     // User with item access is sharing a single item
-                    if !id.eq(item_id) {
+                    if !id.eq(&item_id) {
                         return Err(anyhow::anyhow!(
                             "Trying to share an item with a share that does not grant access to that item"
                         ));
@@ -196,26 +210,25 @@ impl PassClient {
         address: &str,
         role: &ShareRole,
         invite_target: InviteTarget,
-        keys: Vec<PublicKey>,
+        invited_keys: Vec<PublicKey>,
     ) -> Result<InviteRequest> {
-        unimplemented!()
-        /*
+        let target_type = invite_target.target_type().value();
+        let item_id = invite_target.item_id().map(|i| i.value().to_string());
         let encrypted_keys = self
-            .encrypt_share_keys_for_user(user_address, share_keys, keys, invite_target)
+            .encrypt_share_keys_for_user(user_address, invite_target, invited_keys)
             .await
             .context("Error encrypting share keys for invited user")?;
         Ok(InviteRequest::ExistingUser(CreateInvitesRequest {
             invites: vec![CreateInviteRequest {
                 keys: encrypted_keys,
                 email: address.to_string(),
-                target_type: invite_target.target_type().value(),
                 share_role_id: role.value(),
-                item_id: invite_target.item_id().map(|i| i.value().to_string()),
                 expiration_time: None,
+                data: None,
+                item_id,
+                target_type,
             }],
         }))
-
-         */
     }
 
     async fn create_new_user_invite(
@@ -225,27 +238,28 @@ impl PassClient {
         role: &ShareRole,
         invite_target: InviteTarget,
     ) -> Result<InviteRequest> {
-        unimplemented!()
-
-        /*
+        let target_type = invite_target.target_type().value();
+        let item_id = invite_target.item_id().map(|i| i.value().to_string());
         let key_to_encrypt = match invite_target {
-            InviteTarget::Vault { share_keys } => {
+            InviteTarget::Vault { share_keys, .. } => {
                 let latest = share_keys.latest_or_err()?;
                 let latest_opened = self
                     .open_share_key(latest.clone())
                     .await
                     .context("Error opening share key")?;
                 latest_opened.value()
-            },
-            InviteTarget::Item {item_key, ..} => {
-                item_key
+            }
+            InviteTarget::Item { item_keys, .. } => {
+                let latest = item_keys
+                    .latest_or_err()
+                    .context("Error getting latest item key")?;
+                latest.key.clone().value()
             }
         };
 
-
         let signature_body = proton_pass_common::invite::create_signature_body(
             address_to_invite,
-            latest_opened.value(),
+            key_to_encrypt.clone(),
         );
         let address_keys = self
             .open_address_keys(user_address.keys)
@@ -263,15 +277,13 @@ impl PassClient {
         Ok(InviteRequest::NewUser(NewUserInvitesRequest {
             invites: vec![NewUserInviteRequest {
                 email: address_to_invite.to_string(),
-                target_type: invite_target.target_type().value(),
                 signature: crate::utils::b64_encode(signed_data),
                 share_role_id: role.value(),
-                item_id: invite_target.item_id().map(|i| i.value().to_string()),
                 expiration_time: None,
+                target_type,
+                item_id,
             }],
         }))
-
-         */
     }
 
     async fn get_invite_user_mode(&self, address: &str) -> Result<InviteUserMode> {
@@ -289,46 +301,66 @@ impl PassClient {
     async fn encrypt_share_keys_for_user(
         &self,
         user_address: Address,
-        share_keys: ShareKeys,
+        invite_target: InviteTarget,
         invited_keys: Vec<PublicKey>,
     ) -> Result<Vec<CreateInviteKey>> {
         let user_address_keys = self
             .open_address_keys(user_address.keys)
             .await
             .context("Error opening address keys")?;
-        let user_address_key = user_address_keys
-            .first_or_err()
-            .context("Error getting primary address key")?;
-
-        let address_key = match invited_keys.first() {
-            Some(k) => k.clone(),
-            None => return Err(anyhow::anyhow!("Empty invited keys list")),
-        };
 
         let crypto = self.client_features.get_pgp_crypto().await;
-        let mut res = Vec::new();
-        for share_key in share_keys.keys {
-            let key_rotation = share_key.key_rotation;
-            let decrypted = self
-                .open_share_key(share_key)
-                .await
-                .context("Error opening share key")?;
 
-            let encrypted = crypto
-                .encrypt_and_sign(
-                    decrypted.value(),
-                    address_key.clone(),
-                    user_address_key.private_key.clone(),
-                )
-                .await
-                .context("failed to encrypt share key")?;
+        let flow = EncryptInviteKeysFlow::new(crypto, user_address_keys, invited_keys);
 
-            res.push(CreateInviteKey {
-                key: crate::utils::b64_encode(encrypted),
-                key_rotation,
-            });
+        let invite_keys = self
+            .prepare_keys_to_invite(invite_target)
+            .await
+            .context("Error preparing keys to invite")?;
+        let encrypted_keys = flow
+            .encrypt(invite_keys)
+            .await
+            .context("Error encrypting invite keys")?;
+
+        let keys = encrypted_keys
+            .into_iter()
+            .map(|k| CreateInviteKey {
+                key: crate::utils::b64_encode(k.key),
+                key_rotation: k.key_rotation,
+            })
+            .collect();
+
+        Ok(keys)
+    }
+
+    async fn prepare_keys_to_invite(
+        &self,
+        invite_target: InviteTarget,
+    ) -> Result<Vec<InviteKeyToPrepare>> {
+        match invite_target {
+            InviteTarget::Vault { share_keys, .. } => {
+                let mut res = Vec::with_capacity(share_keys.keys.len());
+                for key in share_keys.keys {
+                    let rotation = key.key_rotation;
+                    let opened = self
+                        .open_share_key(key)
+                        .await
+                        .context("Error opening share key")?;
+                    res.push(InviteKeyToPrepare {
+                        decrypted_key: opened.value(),
+                        key_rotation: rotation,
+                    });
+                }
+                Ok(res)
+            }
+            InviteTarget::Item { item_keys, .. } => Ok(item_keys
+                .keys
+                .into_iter()
+                .map(|k| InviteKeyToPrepare {
+                    decrypted_key: k.key.value(),
+                    key_rotation: k.key_rotation,
+                })
+                .collect()),
         }
-
-        Ok(res)
     }
 }

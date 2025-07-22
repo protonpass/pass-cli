@@ -1,7 +1,16 @@
 use crate::PassClient;
-use crate::invite::create::InviteRequest;
-use anyhow::{Context, Result};
-use pass_domain::{InviteId, ShareId, ShareRole};
+use crate::invite::create::{CreateInvitesRequest, InviteRequest, NewUserInvitesRequest};
+use anyhow::{Context, Result, anyhow};
+use muon::POST;
+use pass_domain::{ShareId, ShareRole};
+
+const SUCCESS_CODE: u32 = 1000;
+
+#[derive(Debug, serde::Deserialize)]
+struct CreateInvitesResponse {
+    #[serde(rename = "Code")]
+    code: u32,
+}
 
 impl PassClient {
     pub async fn share_vault(
@@ -9,21 +18,71 @@ impl PassClient {
         share_id: &ShareId,
         email: &str,
         role: &ShareRole,
-    ) -> Result<InviteId> {
+    ) -> Result<()> {
         let request = self
             .create_invites_request(share_id, email, role, None)
             .await
             .context("Error creating invite to vault request")?;
 
         match request {
-            InviteRequest::ExistingUser(req) => {
-                debug!("Creating existing user invite");
-            }
-            InviteRequest::NewUser(req) => {
-                debug!("Creating new user invite");
-            }
+            InviteRequest::ExistingUser(req) => self
+                .send_existing_user_invites(share_id, req)
+                .await
+                .context("Error sending existing user invite")?,
+            InviteRequest::NewUser(req) => self
+                .send_new_user_invites(share_id, req)
+                .await
+                .context("Error sending new user invite")?,
+        };
+
+        Ok(())
+    }
+
+    async fn send_existing_user_invites(
+        &self,
+        share_id: &ShareId,
+        req: CreateInvitesRequest,
+    ) -> Result<()> {
+        let req = POST!("/pass/v1/share/{share_id}/invite/batch")
+            .body_json(req)
+            .context("Error creating invites request")?;
+
+        let res = self
+            .client
+            .send(req)
+            .await
+            .context("Error sending invite request")?;
+
+        let response: CreateInvitesResponse = assert_response!(res);
+
+        if response.code != SUCCESS_CODE {
+            return Err(anyhow!(format!("Received invalid code {}", response.code)));
         }
 
-        unimplemented!()
+        Ok(())
+    }
+
+    async fn send_new_user_invites(
+        &self,
+        share_id: &ShareId,
+        req: NewUserInvitesRequest,
+    ) -> Result<()> {
+        let req = POST!("/pass/v1/share/{share_id}/invite/new_user/batch")
+            .body_json(req)
+            .context("Error creating new user invites request")?;
+
+        let res = self
+            .client
+            .send(req)
+            .await
+            .context("Error sending new user invite request")?;
+
+        let response: CreateInvitesResponse = assert_response!(res);
+
+        if response.code != SUCCESS_CODE {
+            return Err(anyhow!(format!("Received invalid code {}", response.code)));
+        }
+
+        Ok(())
     }
 }

@@ -93,6 +93,11 @@ impl OpenedItemKeys {
     pub fn latest(&self) -> Option<&OpenedItemKey> {
         self.keys.iter().max_by_key(|key| key.key_rotation)
     }
+
+    pub fn latest_or_err(&self) -> Result<&OpenedItemKey> {
+        self.latest()
+            .ok_or(anyhow!("Could not get latest item key"))
+    }
 }
 
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
