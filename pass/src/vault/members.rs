@@ -2,7 +2,7 @@ use crate::PassClient;
 use crate::pagination::SincePagination;
 use anyhow::{Context, Result};
 use muon::GET;
-use pass_domain::{ShareId, ShareMember, ShareRole};
+use pass_domain::{ShareId, ShareMember, ShareRole, TargetType};
 
 #[derive(Debug, serde::Deserialize)]
 struct ShareMembersResponse {
@@ -24,21 +24,18 @@ struct ShareMemberResponse {
     pub owner: bool,
     #[serde(rename = "TargetType")]
     pub target_type: u8,
-    #[serde(rename = "TargetID")]
-    pub target_id: String,
     #[serde(rename = "Permission")]
     pub permission: u16,
     #[serde(rename = "ShareRoleID")]
     pub share_role_id: String,
-    #[serde(rename = "CreateTime")]
-    pub create_time: u64,
     #[serde(rename = "IsGroupShare")]
     pub is_group_share: bool,
 }
 
-impl From<ShareMemberResponse> for ShareMember {
-    fn from(share_response: ShareMemberResponse) -> Self {
-        Self {
+impl TryFrom<ShareMemberResponse> for ShareMember {
+    type Error = anyhow::Error;
+    fn try_from(share_response: ShareMemberResponse) -> Result<Self> {
+        Ok(Self {
             share_id: ShareId::new(share_response.share_id),
             email: share_response.user_email,
             name: share_response.user_name,
@@ -48,7 +45,9 @@ impl From<ShareMemberResponse> for ShareMember {
                 share_response.owner,
                 share_response.permission,
             ),
-        }
+            target_type: TargetType::from_value(share_response.target_type)
+                .context("Invalid target type")?,
+        })
     }
 }
 
@@ -61,7 +60,10 @@ impl PassClient {
 
         let mut res = Vec::with_capacity(members.len());
         for member in members {
-            res.push(ShareMember::from(member));
+            res.push(
+                ShareMember::try_from(member)
+                    .context("Error converting ShareMemberResponse to ShareMember")?,
+            );
         }
 
         Ok(res)

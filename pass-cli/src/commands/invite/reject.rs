@@ -1,10 +1,11 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use pass::PassClient;
+use pass_domain::InviteId;
 
-pub async fn run(_client: PassClient, invite_id: String) -> Result<()> {
-    println!("TODO: Implement invite reject command for invite: {invite_id}");
-    // TODO: Implement invite rejection
-    // client.reject_invite(&invite_id).await?;
-    // println!("Invite {} rejected successfully", invite_id);
+pub async fn run(client: PassClient, invite_id: InviteId) -> Result<()> {
+    client
+        .reject_invite(&invite_id)
+        .await
+        .context("Error rejecting invite")?;
     Ok(())
 }

@@ -108,7 +108,7 @@ impl PassClient {
         let pgp_crypto = self.client_features.get_pgp_crypto().await;
 
         let encrypted_vault_key = pgp_crypto
-            .encrypt_and_sign(vault_key, public, private)
+            .encrypt_and_sign(vault_key, public, private, None)
             .await
             .context("Error encrypting and signing vault key")?;
 

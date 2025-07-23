@@ -1,3 +1,4 @@
+use crate::TargetType;
 use crate::models::share::ShareId;
 use crate::models::share::role::ShareRole;
 
@@ -8,4 +9,5 @@ pub struct ShareMember {
     pub name: String,
     pub is_group_share: bool,
     pub role: ShareRole,
+    pub target_type: TargetType,
 }

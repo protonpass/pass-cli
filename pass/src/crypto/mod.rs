@@ -1,7 +1,9 @@
 use anyhow::Result;
 
+mod constants;
 pub(crate) mod encrypt_invite_keys;
 pub(crate) mod open_invite_key;
+pub(crate) mod reencrypt_invite_keys;
 pub(crate) mod share_key;
 
 #[derive(Debug)]
@@ -51,6 +53,7 @@ pub trait PgpCrypto {
         data: Vec<u8>,
         encryption_key: PublicKey,
         signing_key: PrivateKey,
+        signing_context: Option<String>,
     ) -> Result<Vec<u8>>;
 
     async fn sign(&self, data: Vec<u8>, signing_key: PrivateKey) -> Result<Vec<u8>>;
@@ -61,6 +64,7 @@ pub trait PgpCrypto {
         data: Vec<u8>,
         decryption_keys: Vec<PrivateKey>,
         verification_keys: Vec<PublicKey>,
+        verification_context: Option<String>,
     ) -> Result<Vec<u8>>;
     async fn unarmor(&self, armored: String) -> Result<Vec<u8>>;
 }

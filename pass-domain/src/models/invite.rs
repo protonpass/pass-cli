@@ -1,6 +1,6 @@
 use crate::{TargetType, VaultData};
 
-#[derive(Clone, Debug, serde::Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
 pub struct InviteId(pub(crate) String);
 display_for_basic!(InviteId);
 

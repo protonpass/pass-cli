@@ -8,6 +8,7 @@ mod account;
 mod cache;
 mod client;
 mod client_features;
+mod common;
 mod constants;
 mod crypto;
 mod info;

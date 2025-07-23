@@ -1,12 +1,15 @@
 use crate::commands::OutputFormat;
 use anyhow::{Context, Result};
 use pass::PassClient;
+use pass_domain::Invite;
 
 pub async fn run(client: PassClient, output: OutputFormat) -> Result<()> {
     let invites = client
         .list_user_invites()
         .await
         .context("Error listing invites")?;
+
+    let invites: Vec<Invite> = invites.into_iter().map(|i| i.invite).collect();
     match output {
         OutputFormat::Human => {
             for invite in invites {

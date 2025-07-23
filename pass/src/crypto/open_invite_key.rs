@@ -40,6 +40,7 @@ impl OpenInviteKeyFlow {
                     invite_key.key.0,
                     private_keys.clone(),
                     self.inviter_keys.clone(),
+                    None,
                 )
                 .await
                 .context("Error decrypting invite key")?;

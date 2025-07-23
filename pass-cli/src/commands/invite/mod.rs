@@ -2,6 +2,7 @@ use crate::commands::OutputFormat;
 use anyhow::Result;
 use clap::Subcommand;
 use pass::PassClient;
+use pass_domain::InviteId;
 
 pub mod accept;
 pub mod list;
@@ -29,7 +30,7 @@ pub enum InviteCommands {
 pub async fn run(subcommand: InviteCommands, client: PassClient) -> Result<()> {
     match subcommand {
         InviteCommands::List { output } => list::run(client, output).await,
-        InviteCommands::Accept { invite_id } => accept::run(client, invite_id).await,
-        InviteCommands::Reject { invite_id } => reject::run(client, invite_id).await,
+        InviteCommands::Accept { invite_id } => accept::run(client, InviteId::new(invite_id)).await,
+        InviteCommands::Reject { invite_id } => reject::run(client, InviteId::new(invite_id)).await,
     }
 }

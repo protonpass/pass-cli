@@ -1,8 +1,8 @@
 use anyhow::{Context, anyhow};
 use pass::{PrivateKey, PublicKey};
 use proton_crypto::crypto::{
-    ArmorerSync, DataEncoding, Decryptor, DecryptorSync, Encryptor, EncryptorSync, PGPProviderSync,
-    Signer, SignerSync,
+    ArmorerSync, DataEncoding, Decryptor, DecryptorSync, Encryptor, EncryptorSync, PGPProvider,
+    PGPProviderSync, Signer, SignerSync, UnixTimestamp,
 };
 
 pub struct NativePgpCrypto;
@@ -45,6 +45,7 @@ impl pass::PgpCrypto for NativePgpCrypto {
         data: Vec<u8>,
         encryption_key: PublicKey,
         signing_key: PrivateKey,
+        signing_context: Option<String>,
     ) -> anyhow::Result<Vec<u8>> {
         let provider = proton_crypto::new_pgp_provider();
 
@@ -54,10 +55,20 @@ impl pass::PgpCrypto for NativePgpCrypto {
         let private_key = provider
             .private_key_import_unlocked(&signing_key.content, DataEncoding::Bytes)
             .context("Could not import key")?;
-        let res = provider
+        let encryptor = provider
             .new_encryptor()
             .with_encryption_key(&public_key)
-            .with_signing_key(&private_key)
+            .with_signing_key(&private_key);
+
+        let signing_context =
+            signing_context.map(|context| provider.new_signing_context(context, true));
+
+        let encryptor = match signing_context {
+            Some(ref ctx) => encryptor.with_signing_context(ctx),
+            None => encryptor,
+        };
+
+        let res = encryptor
             .encrypt(data)
             .context("Could not encrypt and sign data")?
             .as_ref()
@@ -94,6 +105,7 @@ impl pass::PgpCrypto for NativePgpCrypto {
         data: Vec<u8>,
         decryption_keys: Vec<PrivateKey>,
         verification_keys: Vec<PublicKey>,
+        verification_context: Option<String>,
     ) -> anyhow::Result<Vec<u8>> {
         let provider = proton_crypto::new_pgp_provider();
 
@@ -115,10 +127,20 @@ impl pass::PgpCrypto for NativePgpCrypto {
             );
         }
 
-        let res = provider
+        let decryptor = provider
             .new_decryptor()
             .with_decryption_keys(&private_keys)
-            .with_verification_keys(&public_keys)
+            .with_verification_keys(&public_keys);
+
+        let signing_context = verification_context
+            .map(|context| provider.new_verification_context(context, true, UnixTimestamp::zero()));
+
+        let decryptor = match signing_context {
+            Some(ref ctx) => decryptor.with_verification_context(ctx),
+            None => decryptor,
+        };
+
+        let res = decryptor
             .decrypt(data, DataEncoding::Bytes)
             .context("Could not decrypt data")?
             .as_ref()

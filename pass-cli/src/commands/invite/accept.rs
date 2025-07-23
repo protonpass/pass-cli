@@ -1,10 +1,11 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use pass::PassClient;
+use pass_domain::InviteId;
 
-pub async fn run(_client: PassClient, invite_id: String) -> Result<()> {
-    println!("TODO: Implement invite accept command for invite: {invite_id}");
-    // TODO: Implement invite acceptance
-    // client.accept_invite(&invite_id).await?;
-    // println!("Invite {} accepted successfully", invite_id);
+pub async fn run(client: PassClient, invite_id: InviteId) -> Result<()> {
+    client
+        .accept_invite(&invite_id)
+        .await
+        .context("Error accepting invite")?;
     Ok(())
 }

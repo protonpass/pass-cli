@@ -3,7 +3,7 @@ use crate::item::item_keys::OpenedItemKeys;
 use crate::share::ShareKeys;
 use crate::{PassClient, PublicKey};
 use anyhow::{Context, Result};
-use pass_domain::{Address, ItemId, ShareContent, ShareId, ShareRole, ShareType, TargetType};
+use pass_domain::{Address, ItemId, ShareId, ShareRole, ShareType, TargetType};
 
 pub(crate) enum InviteRequest {
     ExistingUser(CreateInvitesRequest),
@@ -72,7 +72,6 @@ enum InviteUserMode {
 enum InviteTarget {
     Vault {
         share_keys: ShareKeys,
-        content: ShareContent,
     },
     Item {
         item_id: ItemId,
@@ -129,17 +128,7 @@ impl PassClient {
             None => match share.share_type {
                 ShareType::Vault { .. } => {
                     // User with vault access is sharing vault access
-                    match share.content {
-                        Some(content) => InviteTarget::Vault {
-                            share_keys,
-                            content,
-                        },
-                        None => {
-                            return Err(anyhow::anyhow!(
-                                "Trying to invite to vault but can't access ShareContent"
-                            ));
-                        }
-                    }
+                    InviteTarget::Vault { share_keys }
                 }
                 ShareType::Item { .. } => {
                     // User with item access is trying to share a vault

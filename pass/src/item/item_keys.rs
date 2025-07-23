@@ -20,12 +20,6 @@ impl ItemKeys {
 #[derive(Clone, Debug)]
 pub(crate) struct EncryptedItemKey(pub(crate) Vec<u8>);
 
-impl EncryptedItemKey {
-    pub fn value(self) -> Vec<u8> {
-        self.0
-    }
-}
-
 impl AsRef<[u8]> for EncryptedItemKey {
     fn as_ref(&self) -> &[u8] {
         &self.0
@@ -84,10 +78,6 @@ pub(crate) struct OpenedItemKeys {
 impl OpenedItemKeys {
     pub fn new(keys: Vec<OpenedItemKey>) -> Self {
         Self { keys }
-    }
-
-    pub fn find_by_rotation(&self, rotation: u8) -> Option<&OpenedItemKey> {
-        self.keys.iter().find(|key| key.key_rotation == rotation)
     }
 
     pub fn latest(&self) -> Option<&OpenedItemKey> {
@@ -150,13 +140,10 @@ impl PassClient {
                 for key in response.keys.keys {
                     let decoded =
                         crate::utils::b64_decode(&key.key).context("Error decoding item key")?;
-                    res.push(ItemKey {
-                        key: EncryptedItemKey(decoded),
-                        key_rotation: key.key_rotation,
-                    });
+                    res.push(ItemKey::new(decoded, key.key_rotation));
                 }
 
-                Ok(ItemKeys { keys: res })
+                Ok(ItemKeys::new(res))
             }
 
             // If share is of type item, share keys are directly user keys
@@ -168,13 +155,10 @@ impl PassClient {
 
                 let mut res = Vec::new();
                 for key in share_keys.keys {
-                    res.push(ItemKey {
-                        key: EncryptedItemKey(key.key.0),
-                        key_rotation: key.key_rotation,
-                    });
+                    res.push(ItemKey::new(key.key.value(), key.key_rotation));
                 }
 
-                Ok(ItemKeys { keys: res })
+                Ok(ItemKeys::new(res))
             }
         }
     }

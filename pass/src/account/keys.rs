@@ -1,3 +1,4 @@
+use crate::common::CodeResponse;
 use crate::{PassClient, PublicKey};
 use anyhow::{Context, Result};
 use muon::GET;
@@ -6,25 +7,9 @@ const UNPROCESSABLE_ENTITY_CODE: u16 = 422;
 const ADDRESS_NOT_EXISTS_CODE: u32 = 33102;
 
 #[derive(Debug, serde::Deserialize)]
-struct CodeResponse {
-    #[serde(rename = "Code")]
-    code: u32,
-}
-
-#[derive(Debug, serde::Deserialize)]
 struct ActivePublicKeysResponse {
     #[serde(rename = "Address")]
     address: AddressDataResponse,
-    #[serde(rename = "CatchAll")]
-    catch_all: Option<AddressDataResponse>,
-    #[serde(rename = "Unverified")]
-    unverified: Option<AddressDataResponse>,
-    #[serde(rename = "Warnings")]
-    warnings: Vec<String>,
-    #[serde(rename = "ProtonMX")]
-    proton_mx: bool,
-    #[serde(rename = "IsProton")]
-    is_proton: u8,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -35,12 +20,8 @@ struct AddressDataResponse {
 
 #[derive(Debug, serde::Deserialize)]
 struct PublicAddressKeyResponse {
-    #[serde(rename = "Flags")]
-    flags: u32,
     #[serde(rename = "PublicKey")]
     public_key: String,
-    #[serde(rename = "Source")]
-    source: Option<u8>,
 }
 
 impl PassClient {

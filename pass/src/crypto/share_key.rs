@@ -26,7 +26,7 @@ impl OpenShareKeyFlow {
             });
         }
         self.crypto
-            .decrypt_and_verify(vault_key.key.0, private_keys, public_keys)
+            .decrypt_and_verify(vault_key.key.0, private_keys, public_keys, None)
             .await
     }
 }

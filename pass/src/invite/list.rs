@@ -28,8 +28,6 @@ struct PendingInvite {
     pub keys: Vec<InviteKeyResponse>,
     #[serde(rename = "VaultData")]
     pub vault_data: Option<PendingInviteVaultData>,
-    #[serde(rename = "CreateTime")]
-    pub create_time: i64,
 }
 
 #[derive(Clone, Debug, serde::Deserialize)]
@@ -38,8 +36,6 @@ struct PendingInviteVaultData {
     pub content: String,
     #[serde(rename = "ContentKeyRotation")]
     pub content_key_rotation: u8,
-    #[serde(rename = "ContentFormatVersion")]
-    pub content_format_version: u8,
     #[serde(rename = "MemberCount")]
     pub member_count: u32,
     #[serde(rename = "ItemCount")]
@@ -47,7 +43,7 @@ struct PendingInviteVaultData {
 }
 
 #[derive(Clone, Debug, serde::Deserialize)]
-struct InviteKeyResponse {
+pub(crate) struct InviteKeyResponse {
     #[serde(rename = "Key")]
     pub key: String,
     #[serde(rename = "KeyRotation")]
@@ -78,8 +74,14 @@ pub(crate) struct OpenedInviteKey {
     pub key_rotation: u8,
 }
 
+#[derive(Clone, Debug)]
+pub struct InviteWithKeys {
+    pub invite: Invite,
+    pub keys: Vec<InviteKey>,
+}
+
 impl PassClient {
-    pub async fn list_user_invites(&self) -> Result<Vec<Invite>> {
+    pub async fn list_user_invites(&self) -> Result<Vec<InviteWithKeys>> {
         let res = self
             .client
             .send(GET!("/pass/v1/invite"))
@@ -99,7 +101,7 @@ impl PassClient {
         Ok(result)
     }
 
-    async fn invite_response_to_invite(&self, invite: PendingInvite) -> Result<Invite> {
+    async fn invite_response_to_invite(&self, invite: PendingInvite) -> Result<InviteWithKeys> {
         let vault_data = match invite.vault_data {
             None => None,
             Some(data) => {
@@ -107,7 +109,7 @@ impl PassClient {
                     .open_vault_data(
                         &invite.invited_email,
                         &invite.inviter_email,
-                        invite.keys,
+                        invite.keys.clone(),
                         &data,
                     )
                     .await
@@ -120,15 +122,28 @@ impl PassClient {
             }
         };
 
-        Ok(Invite {
-            id: InviteId::new(invite.invite_token.to_string()),
-            token: invite.invite_token,
-            target_type: TargetType::from_value(invite.target_type)?,
-            target_id: invite.target_id,
-            reminders: invite.reminders_sent,
-            inviter_email: invite.inviter_email,
-            invited_email: invite.invited_email,
-            vault_data,
+        let mut keys = Vec::with_capacity(invite.keys.len());
+        for key in invite.keys {
+            let decoded =
+                crate::utils::b64_decode(&key.key).context("Error decoding invite key")?;
+            keys.push(InviteKey {
+                key: EncryptedInviteKey(decoded),
+                key_rotation: key.key_rotation,
+            });
+        }
+
+        Ok(InviteWithKeys {
+            invite: Invite {
+                id: InviteId::new(invite.invite_token.to_string()),
+                token: invite.invite_token,
+                target_type: TargetType::from_value(invite.target_type)?,
+                target_id: invite.target_id,
+                reminders: invite.reminders_sent,
+                inviter_email: invite.inviter_email,
+                invited_email: invite.invited_email,
+                vault_data,
+            },
+            keys,
         })
     }
 
