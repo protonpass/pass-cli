@@ -2,7 +2,7 @@ use crate::PassClient;
 use anyhow::{Context, Result, anyhow};
 use muon::GET;
 use pass_domain::{
-    AddressId, ItemId, Permission, Share, ShareContent, ShareId, ShareType, VaultId,
+    AddressId, ItemId, Permission, Share, ShareContent, ShareId, ShareRole, ShareType, VaultId,
 };
 
 const TARGET_TYPE_VAULT: u8 = 1;
@@ -72,6 +72,7 @@ impl TryFrom<ShareResponse> for Share {
                 value.owner,
                 value.permission,
             ),
+            share_role: ShareRole::from_value(&value.share_role_id, value.owner, value.permission),
             content: share_content,
             share_type: match value.target_type {
                 TARGET_TYPE_VAULT => ShareType::Vault {

@@ -122,6 +122,12 @@ pub enum ShareRole {
     },
 }
 
+impl std::fmt::Display for ShareRole {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
+
 impl ShareRole {
     pub fn from_value(value: &str, is_owner: bool, permission: u16) -> Self {
         if is_owner {
