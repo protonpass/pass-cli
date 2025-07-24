@@ -9,6 +9,7 @@ pub mod logout;
 pub mod password;
 pub mod share;
 pub mod test;
+pub mod user;
 pub mod vault;
 
 #[derive(ValueEnum, Clone, Debug)]
