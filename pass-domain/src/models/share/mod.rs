@@ -34,6 +34,12 @@ pub enum TargetType {
     Item,
 }
 
+impl std::fmt::Display for TargetType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
+
 impl TargetType {
     pub fn value(&self) -> u8 {
         match self {
@@ -66,6 +72,7 @@ pub struct Share {
     pub vault_id: VaultId,
     pub permission: Permission,
     pub content: Option<ShareContent>,
+    pub share_role: ShareRole,
 }
 
 impl Share {

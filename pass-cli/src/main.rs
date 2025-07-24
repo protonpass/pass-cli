@@ -1,7 +1,9 @@
 #[macro_use]
 extern crate tracing;
 
+use crate::features::CliClientFeatures;
 use anyhow::{Context, Result, anyhow};
+use clap::{Parser, Subcommand};
 use pass::PassClient;
 use std::sync::Arc;
 
@@ -12,9 +14,6 @@ mod logs;
 mod storage;
 mod store;
 mod utils;
-
-use crate::features::CliClientFeatures;
-use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(name = "pass")]
@@ -58,6 +57,11 @@ enum Commands {
         #[command(subcommand)]
         command: commands::password::PasswordCommands,
     },
+    #[command(about = "Share operations")]
+    Share {
+        #[command(subcommand)]
+        command: commands::share::ShareCommands,
+    },
 }
 
 #[tokio::main]
@@ -90,6 +94,7 @@ async fn main() -> Result<()> {
         Commands::Vault { command } => commands::vault::run(command, client).await,
         Commands::Item { command } => commands::item::run(command, client).await,
         Commands::Invite { command } => commands::invite::run(command, client).await,
+        Commands::Share { command } => commands::share::run(command, client).await,
         _ => Ok(()),
     }
 }
