@@ -19,6 +19,7 @@ mod pagination;
 pub mod password;
 mod ping;
 mod share;
+mod user;
 mod user_keys;
 mod utils;
 mod vault;
