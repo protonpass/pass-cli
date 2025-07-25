@@ -42,7 +42,11 @@ pub async fn run(client: PassClient, output_format: OutputFormat) -> Result<()> 
             if let Some(totp_limit) = user_info.plan.totp_limit {
                 println!("TOTP limit: {}", totp_limit);
             }
-            println!("Storage used: {:.2} / {:.2} MiB", user_info.plan.storage_used / (1 << 20), user_info.plan.storage_quota / (1 << 20));
+            println!(
+                "Storage used: {:.2} / {:.2} MiB",
+                user_info.plan.storage_used / (1 << 20),
+                user_info.plan.storage_quota / (1 << 20)
+            );
         }
         OutputFormat::Json => {
             let out = UserInfoJsonOutput {

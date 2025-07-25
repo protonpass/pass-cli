@@ -121,7 +121,7 @@ impl PassClient {
         if !res.status().is_success() {
             return Err(anyhow!("HTTP Status: {:?}", res.status()));
         }
-        let response: GetUserInfoResponse = res.body_json()?;
+        let response: GetUserInfoResponse = assert_response!(res);
         Ok(response.access)
     }
 }
