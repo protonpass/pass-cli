@@ -34,13 +34,13 @@ pub async fn run(client: PassClient, output_format: OutputFormat) -> Result<()> 
                 );
             }
             if let Some(vault_limit) = user_info.plan.vault_limit {
-                println!("Vault limit: {}", vault_limit);
+                println!("Vault limit: {vault_limit}");
             }
             if let Some(alias_limit) = user_info.plan.alias_limit {
-                println!("Alias limit: {}", alias_limit);
+                println!("Alias limit: {alias_limit}");
             }
             if let Some(totp_limit) = user_info.plan.totp_limit {
-                println!("TOTP limit: {}", totp_limit);
+                println!("TOTP limit: {totp_limit}");
             }
             println!(
                 "Storage used: {:.2} / {:.2} MiB",
