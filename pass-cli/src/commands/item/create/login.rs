@@ -29,7 +29,7 @@ impl From<LoginTemplate> for LoginItemCreatePayload {
     }
 }
 
-#[derive(Args)]
+#[derive(Args, Default, PartialEq, Eq)]
 pub struct LoginArgs {
     /// Get a template JSON structure for creating login items
     #[arg(long, help = "Output a JSON template structure")]
@@ -77,17 +77,7 @@ pub struct LoginArgs {
 
 pub async fn run(args: LoginArgs, client: PassClient) -> Result<()> {
     // Show help if no arguments provided
-    if !args.get_template
-        && args.from_template.is_none()
-        && args.share_id.is_none()
-        && args.title.is_none()
-        && args.username.is_none()
-        && args.email.is_none()
-        && args.password.is_none()
-        && args.generate_password.is_none()
-        && args.generate_passphrase.is_none()
-        && args.url.is_empty()
-    {
+    if args.eq(&LoginArgs::default()) {
         bail!(
             "No arguments provided. Use 'pass-cli item create login --help' to see available options."
         );
