@@ -37,6 +37,28 @@ enum Commands {
     Test,
     #[command(about = "Show information about the current session")]
     Info,
+    #[command(about = "Inject secrets into a file templated with secret references")]
+    Inject {
+        #[arg(
+            long,
+            help = "Set filemode for the output file (Unix systems only). It is ignored without the --out-file flag.",
+            default_value = "0600"
+        )]
+        file_mode: String,
+
+        #[arg(short, long, help = "Do not prompt for confirmation")]
+        force: bool,
+
+        #[arg(short, long, help = "The filename of a template file to inject")]
+        in_file: Option<String>,
+
+        #[arg(
+            short,
+            long,
+            help = "Write the injected template to a file instead of stdout"
+        )]
+        out_file: Option<String>,
+    },
     #[command(about = "Vault operations")]
     Vault {
         #[command(subcommand)]
@@ -96,6 +118,12 @@ async fn main() -> Result<()> {
     match cli.command {
         Commands::Test => commands::test::run(client).await,
         Commands::Info => commands::info::run(client).await,
+        Commands::Inject {
+            file_mode,
+            force,
+            in_file,
+            out_file,
+        } => commands::inject::run(file_mode, force, in_file, out_file, client).await,
         Commands::Vault { command } => commands::vault::run(command, client).await,
         Commands::Item { command } => commands::item::run(command, client).await,
         Commands::Invite { command } => commands::invite::run(command, client).await,

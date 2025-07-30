@@ -2,6 +2,7 @@ use clap::ValueEnum;
 use pass_domain::ShareRole;
 
 pub mod info;
+pub mod inject;
 pub mod invite;
 pub mod item;
 pub mod login;

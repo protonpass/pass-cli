@@ -2,6 +2,7 @@ mod alias;
 pub(crate) mod create;
 mod delete;
 mod download_attachment;
+pub(crate) mod find;
 mod get_one;
 pub(crate) mod item_keys;
 mod list;
