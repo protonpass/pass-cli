@@ -5,9 +5,91 @@ use anyhow::{Context, Result};
 use muon::GET;
 use pass_domain::ShareId;
 use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::{Mutex, RwLock};
 
-struct ShareKeysCacheType;
-type ShareKeysCache = HashMap<ShareId, ShareKeys>;
+/// Per-ShareId cache with efficient locking to prevent duplicate fetches
+#[derive(Clone)]
+struct ShareKeyCache {
+    // The actual cache data
+    cache: Arc<RwLock<HashMap<ShareId, ShareKeys>>>,
+    // Per-ShareId locks to prevent duplicate fetches
+    locks: Arc<Mutex<HashMap<ShareId, Arc<Mutex<()>>>>>,
+}
+
+impl ShareKeyCache {
+    fn new() -> Self {
+        Self {
+            cache: Arc::new(RwLock::new(HashMap::new())),
+            locks: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+
+    /// Get share keys with per-ShareId locking to prevent duplicate fetches
+    async fn get_or_fetch<F, Fut>(&self, share_id: &ShareId, fetch_fn: F) -> Result<ShareKeys>
+    where
+        F: FnOnce() -> Fut,
+        Fut: std::future::Future<Output = Result<ShareKeys>>,
+    {
+        let share_id = share_id.clone();
+
+        // Fast path: check cache with read lock
+        {
+            let cache = self.cache.read().await;
+            if let Some(keys) = cache.get(&share_id) {
+                trace!("Returning cached share keys for {}", share_id);
+                return Ok(keys.clone());
+            }
+        }
+
+        // Slow path: get per-ShareId lock to prevent duplicate fetches
+        let share_lock = {
+            let mut locks = self.locks.lock().await;
+            locks
+                .entry(share_id.clone())
+                .or_insert_with(|| Arc::new(Mutex::new(())))
+                .clone()
+        };
+
+        let _guard = share_lock.lock().await;
+
+        // Double-check: another thread might have populated the cache
+        {
+            let cache = self.cache.read().await;
+            if let Some(keys) = cache.get(&share_id) {
+                trace!(
+                    "Returning cached share keys after double-check for {}",
+                    share_id
+                );
+                return Ok(keys.clone());
+            }
+        }
+
+        // We have the lock and no cached value - fetch it
+        trace!("Fetching share keys for {}", share_id);
+        let keys = fetch_fn().await?;
+
+        // Store in cache
+        {
+            let mut cache = self.cache.write().await;
+            cache.insert(share_id.clone(), keys.clone());
+        }
+
+        // Cleanup: remove the lock entry if no longer needed
+        // (Optional optimization to prevent memory leaks)
+        {
+            let mut locks = self.locks.lock().await;
+            if Arc::strong_count(locks.get(&share_id).unwrap()) == 1 {
+                locks.remove(&share_id);
+            }
+        }
+
+        Ok(keys)
+    }
+}
+
+// Cache type for the ShareKeyCache instance
+struct ShareKeyCacheType;
 
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq)]
 pub struct GetShareKeysResponse {
@@ -35,42 +117,38 @@ pub struct ShareKeyResponse {
 
 impl PassClient {
     pub(crate) async fn get_share_keys(&self, share_id: &ShareId) -> Result<ShareKeys> {
-        {
-            let share_id = share_id.clone();
-            self.cache
-                .ensure_has_value(ShareKeysCacheType, ShareKeysCache::new)
-                .await;
-
-            let cached: Option<ShareKeysCache> = self.cache.get(ShareKeysCacheType).await;
-            if let Some(cached) = cached {
-                let share_keys = cached.get(&share_id);
-                if let Some(cached_share_keys) = share_keys {
-                    debug!(">>> Returning cached share keys");
-                    return Ok(cached_share_keys.clone());
-                }
-            }
-        }
-
-        let keys_responses = self
-            .get_share_keys_paginated(share_id)
-            .await
-            .context("Error requesting share keys")?;
-
-        let mut keys = vec![];
-        for key in keys_responses {
-            let decoded =
-                crate::utils::b64_decode(&key.key).context("Error decoding ShareKey key")?;
-            keys.push(ShareKey::new(key.key_rotation, EncryptedShareKey(decoded)));
-        }
-
-        let keys = ShareKeys::new(keys);
+        // Ensure the ShareKeyCache exists in the client cache
         self.cache
-            .update(ShareKeysCacheType, |keys_cache: &mut ShareKeysCache| {
-                keys_cache.insert(share_id.clone(), keys.clone());
-            })
+            .ensure_has_value(ShareKeyCacheType, ShareKeyCache::new)
             .await;
 
-        Ok(keys)
+        // Get the ShareKeyCache from the client cache
+        let share_key_cache: ShareKeyCache = self
+            .cache
+            .get(ShareKeyCacheType)
+            .await
+            .expect("ShareKeyCache should exist after ensure_has_value");
+
+        let client = self.clone();
+        let share_id_for_fetch = share_id.clone();
+
+        share_key_cache
+            .get_or_fetch(share_id, || async move {
+                let keys_responses = client
+                    .get_share_keys_paginated(&share_id_for_fetch)
+                    .await
+                    .context("Error requesting share keys")?;
+
+                let mut keys = vec![];
+                for key in keys_responses {
+                    let decoded = crate::utils::b64_decode(&key.key)
+                        .context("Error decoding ShareKey key")?;
+                    keys.push(ShareKey::new(key.key_rotation, EncryptedShareKey(decoded)));
+                }
+
+                Ok(ShareKeys::new(keys))
+            })
+            .await
     }
 
     async fn get_share_keys_paginated(&self, share_id: &ShareId) -> Result<Vec<ShareKeyResponse>> {
@@ -86,7 +164,7 @@ impl PassClient {
                 break;
             }
         }
-        debug!(
+        trace!(
             "Finished ShareKey retrieval process. Retrieved {} keys",
             share_keys.len()
         );
@@ -100,7 +178,7 @@ impl PassClient {
         share_keys: &mut Vec<ShareKeyResponse>,
         pagination: &Pagination,
     ) -> Result<bool> {
-        debug!("Retrieving page {:?}", pagination);
+        trace!("Retrieving page {:?}", pagination);
         let req = GET!("/pass/v1/share/{}/key", share_id.value())
             .query(("Page", format!("{}", pagination.page())))
             .query(("PageSize", format!("{}", pagination.page_size())));
@@ -114,7 +192,7 @@ impl PassClient {
             res.body_json().context("Error decoding share keys page")?;
 
         let share_key_count = page_keys.keys.keys.len();
-        debug!("Retrieved {} items", share_key_count);
+        trace!("Retrieved {} share keys", share_key_count);
 
         // Always store the keys
         share_keys.extend(page_keys.keys.keys);

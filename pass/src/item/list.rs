@@ -60,7 +60,7 @@ impl PassClient {
                 let share_items = cached.get(&share_id);
                 if let Some(cached_items) = share_items {
                     let items = cached_items.iter().map(|i| &i.item).cloned().collect();
-                    debug!("Returning cached items for share {share_id}");
+                    trace!("Returning cached items for share {share_id}");
                     return Ok(items);
                 }
             }
@@ -115,7 +115,7 @@ impl PassClient {
             let response_content = response.items;
             let revisions = response_content.revisions;
 
-            debug!("Retrieved {} items", revisions.len());
+            trace!("Retrieved {} items", revisions.len());
             if !revisions.is_empty() {
                 let retrieved_size = revisions.len();
                 items.extend(revisions);
@@ -132,7 +132,7 @@ impl PassClient {
             }
         }
 
-        debug!(
+        trace!(
             "Finished item retrieval process. Retrieved {} items",
             items.len()
         );

@@ -54,4 +54,30 @@ impl Cache {
             }
         }
     }
+
+    pub async fn update_if_no_value<T, V, E, F, Fut>(&self, _key: T, callback: F) -> Result<V, E>
+    where
+        T: 'static + Send + Sync,
+        V: 'static + Clone + Send + Sync,
+        F: FnOnce() -> Fut,
+        Fut: Future<Output = Result<V, E>>,
+    {
+        let mut guard = self.inner.write().await;
+
+        if let Some(boxed) = guard.get(&TypeId::of::<T>()) {
+            if let Some(casted) = boxed.downcast_ref::<V>().cloned() {
+                return Ok(casted);
+            }
+        }
+
+        // If not, compute it using the callback
+        match callback().await {
+            Ok(value) => {
+                // Store it in the cache only on success
+                guard.insert(TypeId::of::<T>(), Box::new(value.clone()));
+                Ok(value)
+            }
+            Err(e) => Err(e),
+        }
+    }
 }

@@ -27,32 +27,29 @@ struct SerializableUserKeys {
     keys: Vec<UserKey>,
 }
 
+#[derive(Clone)]
 struct UserKeysCacheType;
 
 impl PassClient {
     pub async fn get_user_keys(&self) -> Result<Vec<UserKey>> {
-        {
-            let cached = self.cache.get(UserKeysCacheType).await;
-            if let Some(keys) = cached {
-                return Ok(keys);
-            }
-        }
-
-        let passphrases = self
-            .get_key_passphrases()
+        let client = self.clone();
+        self.cache
+            .update_if_no_value(UserKeysCacheType, || async move {
+                let passphrases = client
+                    .get_key_passphrases()
+                    .await
+                    .context("Error getting key passphrases")?;
+                let user_keys = client
+                    .fetch_user_keys()
+                    .await
+                    .context("Error fetching user keys")?;
+                client
+                    .client_features
+                    .open_user_keys(user_keys, passphrases.into_map())
+                    .await
+                    .context("Error opening user keys")
+            })
             .await
-            .context("Error getting key passphrases")?;
-        let user_keys = self
-            .fetch_user_keys()
-            .await
-            .context("Error fetching user keys")?;
-        let res = self
-            .client_features
-            .open_user_keys(user_keys, passphrases.into_map())
-            .await?;
-
-        self.cache.store(UserKeysCacheType, res.clone()).await;
-        Ok(res)
     }
 
     pub(crate) async fn get_primary_user_key(&self) -> Result<UserKey> {
@@ -68,7 +65,7 @@ impl PassClient {
     }
 
     async fn fetch_user_keys(&self) -> Result<Vec<ApiKey>> {
-        debug!("Fetching user data");
+        debug!("Fetching user keys");
         let res = self.client.send(GET!("/core/v4/users")).await?;
         if !res.status().is_success() {
             return Err(anyhow!("HTTP Status: {:?}", res.status()));

@@ -3,10 +3,13 @@ use crate::item::item_keys::OpenedItemKey;
 use crate::item::list::ItemRevision;
 use anyhow::{Context, Result, anyhow};
 use bytes::Bytes;
+use futures::stream::{self, StreamExt};
 use pass_domain::{
     Item, ItemData, ItemFlag, ItemId, ItemState, ShareId, ShareType, VaultId, crypto,
 };
 use std::collections::HashMap;
+
+const MAX_CONCURRENCY: usize = 10;
 
 #[derive(Clone)]
 pub(crate) struct ItemWithItemKey {
@@ -183,43 +186,93 @@ impl PassClient {
         vault_id: VaultId,
         items: Vec<ItemRevision>,
     ) -> Result<Vec<ItemWithItemKey>> {
-        let mut res = Vec::with_capacity(items.len());
-        let mut opened_share_keys = HashMap::new();
+        // Process items concurrently with built-in parallelism limiting
+        let results: Vec<(usize, ItemWithItemKey)> = stream::iter(items.into_iter().enumerate())
+            .map(|(index, item)| {
+                let client = self.clone();
+                let share_id = share_id.clone();
+                let vault_id = vault_id.clone();
+                async move {
+                    let item_state = match ItemState::try_from(item.state) {
+                        Ok(state) => state,
+                        Err(e) => {
+                            error!("Error parsing item state for item {}: {}", item.item_id, e);
+                            return None;
+                        }
+                    };
 
-        for item in items {
-            let item_state = ItemState::try_from(item.state).context("Error parsing item state")?;
+                    let item_key = match client.get_item_key(&share_id, &item).await {
+                        Ok(key) => key,
+                        Err(e) => {
+                            error!("Error getting item key for item {}: {}", item.item_id, e);
+                            return None;
+                        }
+                    };
 
-            let item_key = self
-                .get_item_key_with_cache(&share_id, &item, &mut opened_share_keys)
-                .await
-                .context("Error getting item key")?;
+                    let decoded_content = match crate::utils::b64_decode(&item.content) {
+                        Ok(content) => content,
+                        Err(e) => {
+                            error!(
+                                "Error decoding item content for item {}: {}",
+                                item.item_id, e
+                            );
+                            return None;
+                        }
+                    };
 
-            let decoded_content =
-                crate::utils::b64_decode(&item.content).context("Error decoding item content")?;
-            let decrypted = crypto::decrypt(
-                &decoded_content,
-                item_key.key.as_ref(),
-                crypto::EncryptionTag::ItemContent,
-            )
-            .map_err(|e| {
-                error!("Error decrypting item content: {}", e);
-                anyhow!("Error decrypting item content")
-            })?;
+                    let decrypted = match crypto::decrypt(
+                        &decoded_content,
+                        item_key.key.as_ref(),
+                        crypto::EncryptionTag::ItemContent,
+                    ) {
+                        Ok(content) => content,
+                        Err(e) => {
+                            error!(
+                                "Error decrypting item content for item {}: {}",
+                                item.item_id, e
+                            );
+                            return None;
+                        }
+                    };
 
-            let parsed = ItemData::deserialize(&decrypted).context("Error parsing item data")?;
-            res.push(ItemWithItemKey {
-                item: Item {
-                    id: ItemId::new(item.item_id),
-                    content: parsed,
-                    state: item_state,
-                    share_id: share_id.clone(),
-                    vault_id: vault_id.clone(),
-                    flags: ItemFlag::parse_flags(item.flags),
-                },
-                item_key,
-            });
-        }
+                    let parsed = match ItemData::deserialize(&decrypted) {
+                        Ok(data) => data,
+                        Err(e) => {
+                            error!("Error parsing item data for item {}: {}", item.item_id, e);
+                            return None;
+                        }
+                    };
 
-        Ok(res)
+                    Some((
+                        index,
+                        ItemWithItemKey {
+                            item: Item {
+                                id: ItemId::new(item.item_id),
+                                content: parsed,
+                                state: item_state,
+                                share_id,
+                                vault_id,
+                                flags: ItemFlag::parse_flags(item.flags),
+                            },
+                            item_key,
+                        },
+                    ))
+                }
+            })
+            .buffer_unordered(MAX_CONCURRENCY)
+            .filter_map(|result| async { result })
+            .collect()
+            .await;
+
+        // Sort results by original index to preserve order
+        let mut results_with_index = results;
+        results_with_index.sort_by_key(|(index, _)| *index);
+
+        let items: Vec<ItemWithItemKey> = results_with_index
+            .into_iter()
+            .map(|(_, item)| item)
+            .collect();
+
+        Ok(items)
     }
 }
