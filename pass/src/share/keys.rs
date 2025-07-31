@@ -75,15 +75,6 @@ impl ShareKeyCache {
             cache.insert(share_id.clone(), keys.clone());
         }
 
-        // Cleanup: remove the lock entry if no longer needed
-        // (Optional optimization to prevent memory leaks)
-        {
-            let mut locks = self.locks.lock().await;
-            if Arc::strong_count(locks.get(&share_id).unwrap()) == 1 {
-                locks.remove(&share_id);
-            }
-        }
-
         Ok(keys)
     }
 }
