@@ -1,3 +1,4 @@
+use crate::commands::item::list::ListItemsQuery;
 use crate::commands::{OutputFormat, Role};
 use anyhow::Result;
 use clap::Subcommand;
@@ -17,7 +18,9 @@ pub enum ItemCommands {
     #[command(about = "List items in a vault")]
     List {
         #[arg(long, help = "Share ID of the vault to list items from")]
-        share_id: String,
+        share_id: Option<String>,
+        #[arg(help = "Name of the vault to list items from")]
+        vault_name: Option<String>,
         #[arg(long, default_value = "human")]
         output: OutputFormat,
     },
@@ -69,8 +72,13 @@ pub enum ItemCommands {
 
 pub async fn run(subcommand: ItemCommands, client: PassClient) -> Result<()> {
     match subcommand {
-        ItemCommands::List { share_id, output } => {
-            list::run(client, ShareId::new(share_id), output).await
+        ItemCommands::List {
+            share_id,
+            vault_name,
+            output,
+        } => {
+            let query = ListItemsQuery::new(share_id, vault_name)?;
+            list::run(client, query, output).await
         }
         ItemCommands::Create { create_command } => create::run(create_command, client).await,
         ItemCommands::Delete { share_id, item_id } => {

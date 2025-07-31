@@ -55,12 +55,10 @@ impl PassClient {
     }
 
     async fn find_item_by_name(&self, vault_name: &str, item_name: &str) -> Result<Item> {
-        let vaults = self.list_vaults().await.context("Error listing vaults")?;
-        let vault = vaults
-            .into_iter()
-            .find(|v| v.content.name == vault_name)
-            .ok_or_else(|| anyhow!("Could not find vault {}", vault_name))?;
-
+        let vault = self
+            .find_vault(vault_name)
+            .await
+            .context("Error finding vault by name")?;
         let items = self
             .list_items(&vault.share_id)
             .await
