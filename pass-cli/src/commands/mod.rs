@@ -8,6 +8,8 @@ pub mod item;
 pub mod login;
 pub mod logout;
 pub mod password;
+pub mod run;
+pub mod secret_resolver;
 pub mod share;
 pub mod test;
 pub mod user;

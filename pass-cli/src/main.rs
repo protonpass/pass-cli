@@ -59,6 +59,25 @@ enum Commands {
         )]
         out_file: Option<String>,
     },
+    #[command(about = "Pass secrets as environment variables to an application or script")]
+    Run {
+        #[arg(
+            long = "env-file",
+            help = "Enable Dotenv integration with specific Dotenv files to parse",
+            action = clap::ArgAction::Append
+        )]
+        env_files: Vec<String>,
+
+        #[arg(long, help = "Disable masking of secrets on stdout and stderr")]
+        no_masking: bool,
+
+        #[arg(
+            help = "The command and arguments to execute",
+            last = true,
+            required = true
+        )]
+        command: Vec<String>,
+    },
     #[command(about = "Vault operations")]
     Vault {
         #[command(subcommand)]
@@ -121,6 +140,11 @@ async fn main() -> Result<()> {
             in_file,
             out_file,
         } => commands::inject::run(file_mode, force, in_file, out_file, client).await,
+        Commands::Run {
+            env_files,
+            no_masking,
+            command,
+        } => commands::run::run(env_files, no_masking, command, client).await,
         Commands::Vault { command } => commands::vault::run(command, client).await,
         Commands::Item { command } => commands::item::run(command, client).await,
         Commands::Invite { command } => commands::invite::run(command, client).await,
