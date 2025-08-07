@@ -98,10 +98,6 @@ async fn main() -> Result<()> {
     let client = client::get_client().await.context("Error getting client")?;
     match &cli.command {
         Commands::Login { username } => return commands::login::run(username, client).await,
-        Commands::Logout => {
-            commands::logout::run(client).await;
-            return Ok(());
-        }
         Commands::Password { command } => {
             return commands::password::run(command).await;
         }
@@ -116,6 +112,7 @@ async fn main() -> Result<()> {
     let client = PassClient::new(client, Arc::new(CliClientFeatures::new(base_dir)));
 
     match cli.command {
+        Commands::Logout => commands::logout::run(client).await,
         Commands::Test => commands::test::run(client).await,
         Commands::Info => commands::info::run(client).await,
         Commands::Inject {

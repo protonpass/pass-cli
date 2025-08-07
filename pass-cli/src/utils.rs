@@ -2,6 +2,7 @@ use anyhow::Context;
 use std::path::PathBuf;
 
 const ENV_BASE_DIR: &str = "BASE_DIR";
+const PASS_SESSION_DIR: &str = "pass-cli-session";
 
 pub fn ask_for_input(prompt: &str, secure: bool) -> anyhow::Result<String> {
     if secure {
@@ -30,10 +31,14 @@ pub fn get_base_dir() -> anyhow::Result<PathBuf> {
         Err(_) => {
             let current_dir = std::env::current_dir().context("Error getting current dir")?;
             let session_path = current_dir.join(".session");
-            std::fs::create_dir_all(&session_path).context("Error creating session dir")?;
+            std::fs::create_dir_all(&session_path).context("Error creating base dir")?;
             session_path
         }
-    };
+    }
+    .join(PASS_SESSION_DIR)
+    .to_path_buf();
+    std::fs::create_dir_all(&base_dir).context("Error creating base session dir")?;
+
     let base_dir_absolute =
         std::fs::canonicalize(&base_dir).context("error getting absolute path")?;
     Ok(base_dir_absolute)

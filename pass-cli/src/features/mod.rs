@@ -54,6 +54,12 @@ impl ClientFeatures for CliClientFeatures {
         Ok(())
     }
 
+    async fn remove_file(&self, path: &Path) -> Result<()> {
+        tokio::fs::remove_file(self.base_dir.join(path))
+            .await
+            .context("Error deleting file")
+    }
+
     async fn generate_passphrases(
         &self,
         key_salts: Vec<ApiKeySalt>,

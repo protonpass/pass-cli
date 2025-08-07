@@ -11,6 +11,7 @@ pub trait ClientFeatures: Send + Sync {
     async fn get_file(&self, path: &Path) -> anyhow::Result<Vec<u8>>;
     async fn file_exists(&self, path: &Path) -> anyhow::Result<bool>;
     async fn store_file(&self, contents: Vec<u8>, path: &Path) -> anyhow::Result<()>;
+    async fn remove_file(&self, path: &Path) -> anyhow::Result<()>;
 
     async fn generate_passphrases(
         &self,

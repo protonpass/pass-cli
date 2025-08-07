@@ -15,6 +15,7 @@ mod info;
 mod invite;
 mod item;
 mod local_crypto;
+mod logout;
 mod pagination;
 pub mod password;
 mod ping;
