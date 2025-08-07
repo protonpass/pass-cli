@@ -9,7 +9,6 @@ pass-domain = { path = "../pass-domain" }
 
 chrono = "0.4.40"
 clap = { version = "4.5", features = ["derive"] }
-dotenv = "0.15"
 handlebars = "4.4"
 libc = "0.2"
 regex = "1.10"

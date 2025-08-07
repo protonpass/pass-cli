@@ -3,10 +3,11 @@ use pass::PassClient;
 use regex::Regex;
 use std::collections::HashMap;
 use std::env;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Read};
 use std::process::{Child, Command, Stdio};
 use std::sync::Arc;
 use std::thread;
+use std::thread::JoinHandle;
 use tokio::sync::Mutex;
 
 use super::secret_resolver::{PassClientResolver, SecretCache, SecretReference, find_pass_uris};
@@ -212,6 +213,32 @@ async fn kill_process(pid: i32, mut child: Child) {
     let _ = child.kill();
 }
 
+fn handle_stream<R: Read + Send + 'static>(
+    stream: R,
+    masking_regex: Option<Regex>,
+    is_stderr: bool,
+) -> JoinHandle<()> {
+    let reader = BufReader::new(stream);
+    let masking_regex_stdout = masking_regex.clone();
+    thread::spawn(move || {
+        for line in reader.lines() {
+            match line {
+                Ok(line) => {
+                    let masked_line = mask_line(&line, &masking_regex_stdout);
+                    println!("{masked_line}");
+                }
+                Err(e) => {
+                    if is_stderr {
+                        eprintln!("Error reading stderr: {e}")
+                    } else {
+                        eprintln!("Error reading stdout: {e}")
+                    }
+                }
+            }
+        }
+    })
+}
+
 async fn execute_command(
     command_args: &[String],
     resolved_env: HashMap<String, String>,
@@ -272,35 +299,8 @@ async fn execute_command(
         (stdout, stderr)
     };
 
-    // Handle stdout
-    let stdout_reader = BufReader::new(stdout);
-    let masking_regex_stdout = masking_regex.clone();
-    let stdout_handle = thread::spawn(move || {
-        for line in stdout_reader.lines() {
-            match line {
-                Ok(line) => {
-                    let masked_line = mask_line(&line, &masking_regex_stdout);
-                    println!("{masked_line}");
-                }
-                Err(e) => eprintln!("Error reading stdout: {e}"),
-            }
-        }
-    });
-
-    // Handle stderr
-    let stderr_reader = BufReader::new(stderr);
-    let masking_regex_stderr = masking_regex;
-    let stderr_handle = thread::spawn(move || {
-        for line in stderr_reader.lines() {
-            match line {
-                Ok(line) => {
-                    let masked_line = mask_line(&line, &masking_regex_stderr);
-                    eprintln!("{masked_line}");
-                }
-                Err(e) => eprintln!("Error reading stderr: {e}"),
-            }
-        }
-    });
+    let stdout_handle = handle_stream(stdout, masking_regex.clone(), false);
+    let stderr_handle = handle_stream(stderr, masking_regex, true);
 
     // Wait for the child process to complete
     let exit_status = {
