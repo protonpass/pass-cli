@@ -109,6 +109,7 @@ fn find_secret_references(env_vars: &[EnvVar]) -> Result<HashMap<String, Vec<Str
 
 async fn resolve_secrets_and_create_env(
     env_vars: Vec<EnvVar>,
+    secret_refs: HashMap<String, Vec<String>>,
     client: PassClient,
 ) -> Result<HashMap<String, String>> {
     let resolver = PassClientResolver::new(client);
@@ -116,14 +117,12 @@ async fn resolve_secrets_and_create_env(
     let mut resolved_env: HashMap<String, String> = HashMap::new();
 
     for env_var in env_vars {
-        let uris = find_pass_uris(&env_var.value)?;
-
-        if !uris.is_empty() {
+        if let Some(uris) = secret_refs.get(&env_var.name) {
             // Resolve secrets in this variable
             let mut resolved_value = env_var.value.clone();
 
             for uri in uris {
-                let secret_ref = SecretReference::parse(&uri).with_context(|| {
+                let secret_ref = SecretReference::parse(uri).with_context(|| {
                     format!("Invalid secret reference in {}: {}", env_var.name, uri)
                 })?;
 
@@ -137,7 +136,7 @@ async fn resolve_secrets_and_create_env(
                         )
                     })?;
 
-                resolved_value = resolved_value.replace(&uri, &secret_value);
+                resolved_value = resolved_value.replace(uri, &secret_value);
             }
 
             resolved_env.insert(env_var.name, resolved_value);
@@ -310,7 +309,7 @@ async fn execute_command(
                 std::process::exit(130);
             }
         }; // Mutex is released here
-        
+
         child.wait().context("Failed to wait for child process")?
     };
 
@@ -360,7 +359,7 @@ pub async fn run(
     }
 
     // Resolve secrets and create environment
-    let resolved_env = resolve_secrets_and_create_env(env_vars, client)
+    let resolved_env = resolve_secrets_and_create_env(env_vars, secret_refs, client)
         .await
         .context("Failed to resolve secrets")?;
 
