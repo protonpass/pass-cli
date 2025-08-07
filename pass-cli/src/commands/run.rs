@@ -11,6 +11,8 @@ use tokio::sync::Mutex;
 
 use super::secret_resolver::{PassClientResolver, SecretCache, SecretReference, find_pass_uris};
 
+const SIGKILL_GRACE_TIME_MS: u64 = 2_000;
+
 #[derive(Debug)]
 struct EnvVar {
     name: String,
@@ -195,7 +197,7 @@ async fn kill_process(pid: i32, child: &mut Child) {
         libc::kill(pid, libc::SIGTERM);
 
         // Give the process a moment to terminate gracefully
-        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+        tokio::time::sleep(tokio::time::Duration::from_millis(SIGKILL_GRACE_TIME_MS)).await;
 
         // If still running, force kill
         if let Ok(None) = child.try_wait() {
