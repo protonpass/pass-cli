@@ -3,7 +3,7 @@ use pass::PassClient;
 use regex::Regex;
 use std::collections::HashMap;
 use std::env;
-use std::io::{BufRead, BufReader, Read};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::process::{Command, Stdio};
 use std::thread;
 use std::thread::JoinHandle;
@@ -236,6 +236,34 @@ fn handle_stream<R: Read + Send + 'static>(
     })
 }
 
+fn handle_stdin<W: Write + Send + 'static>(mut child_stdin: W) -> JoinHandle<()> {
+    thread::spawn(move || {
+        let stdin = std::io::stdin();
+        let mut buffer = String::new();
+
+        loop {
+            buffer.clear();
+            match stdin.read_line(&mut buffer) {
+                Ok(0) => break, // EOF
+                Ok(_) => {
+                    if let Err(e) = child_stdin.write_all(buffer.as_bytes()) {
+                        eprintln!("Error writing to child stdin: {e}");
+                        break;
+                    }
+                    if let Err(e) = child_stdin.flush() {
+                        eprintln!("Error flushing child stdin: {e}");
+                        break;
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Error reading from stdin: {e}");
+                    break;
+                }
+            }
+        }
+    })
+}
+
 async fn execute_command(
     command_args: &[String],
     resolved_env: HashMap<String, String>,
@@ -259,6 +287,7 @@ async fn execute_command(
     let mut child = Command::new(program)
         .args(args)
         .envs(&resolved_env)
+        .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
@@ -267,10 +296,12 @@ async fn execute_command(
     // Store child process ID for signal handling
     let child_pid = child.id();
 
-    // Get stdout and stderr handles
+    // Get stdin, stdout and stderr handles
+    let stdin = child.stdin.take().unwrap();
     let stdout = child.stdout.take().unwrap();
     let stderr = child.stderr.take().unwrap();
 
+    let stdin_handle = handle_stdin(stdin);
     let stdout_handle = handle_stream(stdout, masking_regex.clone(), false);
     let stderr_handle = handle_stream(stderr, masking_regex, true);
 
@@ -292,13 +323,16 @@ async fn execute_command(
         }
     };
 
-    // Wait for output handling threads to complete
+    // Wait for I/O handling threads to complete
     stdout_handle
         .join()
         .map_err(|_| anyhow!("Failed to join stdout thread"))?;
     stderr_handle
         .join()
         .map_err(|_| anyhow!("Failed to join stderr thread"))?;
+    stdin_handle
+        .join()
+        .map_err(|_| anyhow!("Failed to join stdin thread"))?;
 
     Ok(exit_status.code().unwrap_or(-1))
 }
