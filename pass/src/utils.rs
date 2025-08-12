@@ -1,7 +1,7 @@
 use anyhow::Context;
 use base64::Engine;
 
-pub fn b64_encode(data: Vec<u8>) -> String {
+pub fn b64_encode<T: AsRef<[u8]>>(data: T) -> String {
     base64::engine::general_purpose::STANDARD.encode(data)
 }
 

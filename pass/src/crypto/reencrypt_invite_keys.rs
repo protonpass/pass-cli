@@ -1,5 +1,5 @@
 use crate::crypto::constants::SIGNATURE_CONTEXT_EXISTING_USER;
-use crate::{PgpCrypto, PrivateKey, PublicKey, UnlockedAddressKeys, UserKey};
+use crate::{PgpCrypto, PlainText, PrivateKey, PublicKey, UnlockedAddressKeys, UserKey};
 use anyhow::{Context, Result};
 use std::sync::Arc;
 use zeroize::ZeroizeOnDrop;
@@ -71,7 +71,7 @@ impl ReencryptInviteKeysFlow {
             let encrypted = self
                 .crypto
                 .encrypt_and_sign(
-                    decrypted,
+                    PlainText(decrypted),
                     user_public_key.clone(),
                     user_private_key.clone(),
                     None,

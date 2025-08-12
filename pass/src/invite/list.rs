@@ -51,10 +51,10 @@ pub(crate) struct InviteKeyResponse {
     pub key_rotation: u8,
 }
 
-#[derive(Clone, Debug, Zeroize, ZeroizeOnDrop)]
+#[derive(Clone, Debug)]
 pub struct EncryptedInviteKey(pub(crate) Vec<u8>);
 
-#[derive(Clone, Debug, ZeroizeOnDrop)]
+#[derive(Clone, Debug)]
 pub struct InviteKey {
     pub key: EncryptedInviteKey,
     pub key_rotation: u8,

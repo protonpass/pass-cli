@@ -20,7 +20,7 @@ impl AccountCrypto {
         &self,
         key_salts: Vec<ApiKeySalt>,
         pass: &str,
-    ) -> Result<HashMap<String, Vec<u8>>> {
+    ) -> Result<HashMap<String, Passphrase>> {
         let srp_provider = proton_crypto::new_srp_provider();
 
         let salts: Vec<Salt> = key_salts.iter().map(salt_to_salt).collect();
@@ -33,7 +33,8 @@ impl AccountCrypto {
                     .salt_for_key(&srp_provider, &KeyId(salt.id.clone()), pass.as_bytes())
                     .context("Failed to get salt for key")?;
 
-                res.insert(salt.id, key_secret.as_bytes().to_vec());
+                let passphrase = Passphrase::new(key_secret.as_bytes().to_vec());
+                res.insert(salt.id, passphrase);
             }
         }
 

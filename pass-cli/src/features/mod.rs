@@ -64,7 +64,7 @@ impl ClientFeatures for CliClientFeatures {
         &self,
         key_salts: Vec<ApiKeySalt>,
         pass: &str,
-    ) -> Result<HashMap<String, Vec<u8>>> {
+    ) -> Result<HashMap<String, Passphrase>> {
         AccountCrypto.generate_passphrases(key_salts, pass)
     }
 

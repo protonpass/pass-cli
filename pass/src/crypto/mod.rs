@@ -25,9 +25,24 @@ pub struct PrivateKey {
     pub content: Vec<u8>,
 }
 
-#[derive(Clone, Zeroize, ZeroizeOnDrop)]
+#[derive(Clone)]
 pub struct PublicKey {
     pub content: Vec<u8>,
+}
+
+#[derive(Zeroize, ZeroizeOnDrop)]
+pub struct PlainText(pub(crate) Vec<u8>);
+
+impl PlainText {
+    pub fn new(content: Vec<u8>) -> Self {
+        Self(content)
+    }
+}
+
+impl AsRef<[u8]> for PlainText {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
 }
 
 #[async_trait::async_trait]
@@ -35,7 +50,7 @@ pub trait PgpCrypto {
     async fn encrypt(&self, data: Vec<u8>, key: PublicKey) -> Result<Vec<u8>>;
     async fn encrypt_and_sign(
         &self,
-        data: Vec<u8>,
+        data: PlainText,
         encryption_key: PublicKey,
         signing_key: PrivateKey,
         signing_context: Option<String>,

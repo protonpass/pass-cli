@@ -37,7 +37,7 @@ impl OpenInviteKeyFlow {
             let opened = self
                 .crypto
                 .decrypt_and_verify(
-                    invite_key.key.0.clone(),
+                    invite_key.key.0,
                     private_keys.clone(),
                     self.inviter_keys.clone(),
                     None,

@@ -28,7 +28,7 @@ mod vault;
 pub use account::{Passphrase, UnlockedAddressKey, UnlockedAddressKeys};
 pub use client::PassClient;
 pub use client_features::ClientFeatures;
-pub use crypto::{PgpCrypto, PgpCryptoError, PrivateKey, PublicKey};
+pub use crypto::{PgpCrypto, PgpCryptoError, PlainText, PrivateKey, PublicKey};
 pub use item::create::login;
 pub use item::find::FindItemQuery;
 pub use muon::rest::core::v4::keys::Key as ApiKey;

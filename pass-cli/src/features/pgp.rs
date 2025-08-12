@@ -1,5 +1,5 @@
 use anyhow::{Context, anyhow};
-use pass::{PrivateKey, PublicKey};
+use pass::{PlainText, PrivateKey, PublicKey};
 use proton_crypto::crypto::{
     ArmorerSync, DataEncoding, Decryptor, DecryptorSync, Encryptor, EncryptorSync, PGPProvider,
     PGPProviderSync, Signer, SignerSync, UnixTimestamp,
@@ -42,7 +42,7 @@ impl pass::PgpCrypto for NativePgpCrypto {
 
     async fn encrypt_and_sign(
         &self,
-        data: Vec<u8>,
+        data: PlainText,
         encryption_key: PublicKey,
         signing_key: PrivateKey,
         signing_context: Option<String>,

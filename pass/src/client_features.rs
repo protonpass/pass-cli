@@ -17,7 +17,8 @@ pub trait ClientFeatures: Send + Sync {
         &self,
         key_salts: Vec<ApiKeySalt>,
         pass: &str,
-    ) -> anyhow::Result<HashMap<String, Vec<u8>>>;
+    ) -> anyhow::Result<HashMap<String, Passphrase>>;
+
     async fn open_user_keys(
         &self,
         keys: Vec<ApiKey>,

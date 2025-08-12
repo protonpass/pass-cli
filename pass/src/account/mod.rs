@@ -46,8 +46,8 @@ impl UnlockedAddressKeys {
 pub struct Passphrase(pub(crate) Vec<u8>);
 
 impl Passphrase {
-    pub fn value(self) -> Vec<u8> {
-        self.0.clone()
+    pub fn new(value: Vec<u8>) -> Self {
+        Self(value)
     }
 }
 

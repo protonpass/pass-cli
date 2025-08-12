@@ -30,12 +30,12 @@ impl PassClient {
         for (key_id, passphrase) in passphrases {
             to_serialize.push(SerializedKeyPassphrase {
                 key_id: key_id.to_string(),
-                passphrase: crate::utils::b64_encode(passphrase.clone()),
+                passphrase: crate::utils::b64_encode(passphrase.as_ref()),
             });
 
             res.push(KeyPassphrase {
                 id: key_id,
-                passphrase: Passphrase(passphrase),
+                passphrase,
             })
         }
 
