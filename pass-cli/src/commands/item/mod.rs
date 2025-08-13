@@ -50,9 +50,11 @@ pub enum ItemCommands {
     #[command(about = "View an item")]
     View {
         #[arg(long, help = "Share ID of the vault containing the item")]
-        share_id: String,
+        share_id: Option<String>,
         #[arg(long, help = "ID of the item to view")]
-        item_id: String,
+        item_id: Option<String>,
+        #[arg(help = "Pass URI in format pass://SHARE_ID/ITEM_ID[/FIELD]")]
+        uri: Option<String>,
         #[arg(long, help = "Specific field to view")]
         field: Option<String>,
         #[arg(long, default_value = "human")]
@@ -102,17 +104,12 @@ pub async fn run(subcommand: ItemCommands, client: PassClient) -> Result<()> {
         ItemCommands::View {
             share_id,
             item_id,
+            uri,
             field,
             output,
         } => {
-            view::run(
-                client,
-                ShareId::new(share_id),
-                ItemId::new(item_id),
-                field,
-                output,
-            )
-            .await
+            let query = view::ViewItemQuery::new(share_id, item_id, field, uri)?;
+            view::run(client, query, output).await
         }
         ItemCommands::Attachment { attachment_command } => {
             attachment::run(attachment_command, client).await

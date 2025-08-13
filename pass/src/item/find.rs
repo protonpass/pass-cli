@@ -1,4 +1,5 @@
 use crate::PassClient;
+use crate::utils::is_id;
 use anyhow::{Context, Result, anyhow};
 use pass_domain::{Item, ItemId, ShareId};
 
@@ -16,7 +17,7 @@ pub enum FindItemQuery {
 
 impl FindItemQuery {
     pub fn new(vault: &str, item: &str) -> Self {
-        if Self::is_id(vault) && Self::is_id(item) {
+        if is_id(vault) && is_id(item) {
             Self::Id {
                 share_id: ShareId::new(vault.to_string()),
                 item_id: ItemId::new(item.to_string()),
@@ -27,10 +28,6 @@ impl FindItemQuery {
                 item_name: item.to_string(),
             }
         }
-    }
-
-    fn is_id(value: &str) -> bool {
-        value.len() == 88 && value.ends_with("==")
     }
 }
 

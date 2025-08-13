@@ -21,3 +21,7 @@ pub(crate) fn debug_response(res: &muon::http::HttpRes) {
         }
     }
 }
+
+pub fn is_id(value: &str) -> bool {
+    value.len() == 88 && value.ends_with("==")
+}

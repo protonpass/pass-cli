@@ -1,21 +1,69 @@
 use crate::commands::OutputFormat;
-use anyhow::{Context, Result, bail};
-use pass::PassClient;
+use crate::commands::secret_resolver::ItemReference;
+use anyhow::{Context, Result, anyhow, bail};
+use pass::{FindItemQuery, PassClient};
 use pass_domain::{ItemId, ShareId};
 
-pub async fn run(
-    client: PassClient,
-    share_id: ShareId,
-    item_id: ItemId,
-    field: Option<String>,
-    output: OutputFormat,
-) -> Result<()> {
-    let item = client
-        .view_item(&share_id, &item_id)
-        .await
-        .context("Error retrieving item")?;
+pub enum ViewItemQuery {
+    Ids {
+        share_id: ShareId,
+        item_id: ItemId,
+        field: Option<String>,
+    },
+    Uri(String),
+}
 
-    if let Some(field) = field {
+impl ViewItemQuery {
+    pub fn new(
+        share_id: Option<String>,
+        item_id: Option<String>,
+        field: Option<String>,
+        uri: Option<String>,
+    ) -> Result<Self> {
+        match (share_id, item_id, uri) {
+            (Some(share_id), Some(item_id), None) => Ok(Self::Ids {
+                share_id: ShareId::new(share_id),
+                item_id: ItemId::new(item_id),
+                field,
+            }),
+            (None, None, Some(uri)) => Ok(Self::Uri(uri)),
+            _ => Err(anyhow!(
+                "Please provide either (share_id + item_id) or a uri"
+            )),
+        }
+    }
+}
+
+pub async fn run(client: PassClient, query: ViewItemQuery, output: OutputFormat) -> Result<()> {
+    let (item, effective_field) = match query {
+        ViewItemQuery::Ids {
+            share_id,
+            item_id,
+            field,
+        } => {
+            let item = client
+                .view_item(&share_id, &item_id)
+                .await
+                .context("Error retrieving item")?;
+            (item, field)
+        }
+        ViewItemQuery::Uri(uri) => {
+            let reference = ItemReference::parse(&uri).context("Invalid item reference")?;
+            let item_query = FindItemQuery::new(&reference.share_id, &reference.item_id);
+            let item = client
+                .find_item(item_query)
+                .await
+                .context("Error retrieving item")?;
+
+            let full_item = client
+                .view_item(&item.share_id, &item.id)
+                .await
+                .context("Error fetching item details")?;
+            (full_item, reference.field_name)
+        }
+    };
+
+    if let Some(field) = effective_field {
         match item.item.get_field(&field) {
             Some(field) => println!("{field}"),
             None => bail!("Field does not exist: {}", &field),

@@ -7,41 +7,96 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct ItemReference {
+    pub share_id: String,
+    pub item_id: String,
+    pub field_name: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct SecretReference {
     pub share_id: String,
     pub item_id: String,
     pub field_name: String,
 }
 
-impl SecretReference {
+impl ItemReference {
     pub fn parse(uri: &str) -> Result<Self> {
-        let re = Regex::new(r"^pass://([^/]+)/([^/]+)/(.+)$")
+        // Check for trailing slash first - this is invalid
+        if uri.ends_with('/') {
+            return Err(anyhow!(
+                "Invalid reference format: trailing slash not allowed. Expected: pass://SHARE_ID/ITEM_ID or pass://SHARE_ID/ITEM_ID/FIELD, got: {}",
+                uri
+            ));
+        }
+
+        // Try to parse with field first (3 parts) - field must be non-empty
+        let re_with_field = Regex::new(r"^pass://([^/]+)/([^/]+)/(.+)$")
             .map_err(|e| anyhow!("Failed to compile regex: {}", e))?;
 
-        let captures = re.captures(uri)
-            .ok_or_else(|| anyhow!("Invalid secret reference format. Expected: pass://SHARE_ID/ITEM_ID/FIELD_NAME, got: {}", uri))?;
+        if let Some(captures) = re_with_field.captures(uri) {
+            let share_id = captures
+                .get(1)
+                .ok_or_else(|| anyhow!("Missing share_id in reference"))?
+                .as_str()
+                .to_string();
 
-        let share_id = captures
-            .get(1)
-            .ok_or_else(|| anyhow!("Missing share_id in secret reference"))?
-            .as_str()
-            .to_string();
+            let item_id = captures
+                .get(2)
+                .ok_or_else(|| anyhow!("Missing item_id in reference"))?
+                .as_str()
+                .to_string();
 
-        let item_id = captures
-            .get(2)
-            .ok_or_else(|| anyhow!("Missing item_id in secret reference"))?
-            .as_str()
-            .to_string();
+            let field_name = captures.get(3).map(|m| m.as_str().to_string());
 
-        let field_name = captures
-            .get(3)
-            .ok_or_else(|| anyhow!("Missing field_name in secret reference"))?
-            .as_str()
-            .to_string();
+            return Ok(ItemReference {
+                share_id,
+                item_id,
+                field_name,
+            });
+        }
+
+        // Try to parse without field (2 parts)
+        let re_without_field = Regex::new(r"^pass://([^/]+)/([^/]+)$")
+            .map_err(|e| anyhow!("Failed to compile regex: {}", e))?;
+
+        if let Some(captures) = re_without_field.captures(uri) {
+            let share_id = captures
+                .get(1)
+                .ok_or_else(|| anyhow!("Missing share_id in reference"))?
+                .as_str()
+                .to_string();
+
+            let item_id = captures
+                .get(2)
+                .ok_or_else(|| anyhow!("Missing item_id in reference"))?
+                .as_str()
+                .to_string();
+
+            return Ok(ItemReference {
+                share_id,
+                item_id,
+                field_name: None,
+            });
+        }
+
+        Err(anyhow!(
+            "Invalid reference format. Expected: pass://SHARE_ID/ITEM_ID or pass://SHARE_ID/ITEM_ID/FIELD, got: {}",
+            uri
+        ))
+    }
+}
+
+impl SecretReference {
+    pub fn parse(uri: &str) -> Result<Self> {
+        let item_ref = ItemReference::parse(uri)?;
+
+        let field_name = item_ref.field_name
+            .ok_or_else(|| anyhow!("Secret reference requires a field name. Expected: pass://SHARE_ID/ITEM_ID/FIELD_NAME, got: {}", uri))?;
 
         Ok(SecretReference {
-            share_id,
-            item_id,
+            share_id: item_ref.share_id,
+            item_id: item_ref.item_id,
             field_name,
         })
     }
@@ -199,6 +254,73 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn item_reference_parse_with_field() {
+        let uri = "pass://share123/item456/password";
+        let result = ItemReference::parse(uri).unwrap();
+
+        assert_eq!(result.share_id, "share123");
+        assert_eq!(result.item_id, "item456");
+        assert_eq!(result.field_name, Some("password".to_string()));
+    }
+
+    #[test]
+    fn item_reference_parse_without_field() {
+        let uri = "pass://share123/item456";
+        let result = ItemReference::parse(uri).unwrap();
+
+        assert_eq!(result.share_id, "share123");
+        assert_eq!(result.item_id, "item456");
+        assert_eq!(result.field_name, None);
+    }
+
+    #[test]
+    fn item_reference_parse_invalid() {
+        let uri = "pass://share123";
+        let result = ItemReference::parse(uri);
+        assert!(result.is_err());
+
+        let uri = "invalid://share123/item456/password";
+        let result = ItemReference::parse(uri);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn item_reference_parse_trailing_slash_invalid() {
+        // Test trailing slash after item_id
+        let uri = "pass://share123/item456/";
+        let result = ItemReference::parse(uri);
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("trailing slash not allowed")
+        );
+
+        // Test trailing slash after field
+        let uri = "pass://share123/item456/password/";
+        let result = ItemReference::parse(uri);
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("trailing slash not allowed")
+        );
+
+        // Test trailing slash after share_id
+        let uri = "pass://share123/";
+        let result = ItemReference::parse(uri);
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("trailing slash not allowed")
+        );
+    }
+
+    #[test]
     fn secret_reference_parse_valid() {
         let uri = "pass://share123/item456/password";
         let result = SecretReference::parse(uri).unwrap();
@@ -219,12 +341,24 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn secret_reference_parse_requires_field() {
+        let uri = "pass://share123/item456";
+        let result = SecretReference::parse(uri);
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("requires a field name")
+        );
+    }
+
+    #[test]
     fn secret_reference_parse_invalid_missing_parts() {
         let invalid_uris = vec![
-            "pass://share123/item456",
             "pass://share123",
             "pass://",
-            "pass://share123/item456/",
+            "pass://share123/item456/", // trailing slash
             "share123/item456/password",
             "https://share123/item456/password",
         ];
