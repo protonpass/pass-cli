@@ -138,12 +138,12 @@ pub async fn get_client() -> anyhow::Result<Client> {
         });
 
     let mut use_allow_all = false;
-    if let EnvId::Custom(ref env) = store.env {
-        if let Some(server) = env.servers(&AppVersion::Other).first() {
-            let host_name = format!("{}", server.endpoint.host.name());
-            if host_name == "localhost" {
-                use_allow_all = true;
-            }
+    if let EnvId::Custom(ref env) = store.env
+        && let Some(server) = env.servers(&AppVersion::Other).first()
+    {
+        let host_name = format!("{}", server.endpoint.host.name());
+        if host_name == "localhost" {
+            use_allow_all = true;
         }
     }
 

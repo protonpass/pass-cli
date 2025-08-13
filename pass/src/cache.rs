@@ -48,10 +48,10 @@ impl Cache {
         updater: impl FnOnce(&mut V),
     ) {
         let mut map = self.inner.write().await;
-        if let Some(boxed) = map.get_mut(&TypeId::of::<T>()) {
-            if let Some(value) = boxed.downcast_mut::<V>() {
-                updater(value);
-            }
+        if let Some(boxed) = map.get_mut(&TypeId::of::<T>())
+            && let Some(value) = boxed.downcast_mut::<V>()
+        {
+            updater(value);
         }
     }
 
@@ -64,10 +64,10 @@ impl Cache {
     {
         let mut guard = self.inner.write().await;
 
-        if let Some(boxed) = guard.get(&TypeId::of::<T>()) {
-            if let Some(casted) = boxed.downcast_ref::<V>().cloned() {
-                return Ok(casted);
-            }
+        if let Some(boxed) = guard.get(&TypeId::of::<T>())
+            && let Some(casted) = boxed.downcast_ref::<V>().cloned()
+        {
+            return Ok(casted);
         }
 
         // If not, compute it using the callback
