@@ -1533,7 +1533,7 @@ dependencies = [
 [[package]]
 name = "gopenpgp-sys"
 version = "0.3.1"
-source = "git+ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git#7c81cec34329def3112413e3120380078fc9616d"
+source = "git+ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git?tag=release-2025-07-02#7c81cec34329def3112413e3120380078fc9616d"
 dependencies = [
  "base64",
  "bindgen 0.72.0",
@@ -3312,12 +3312,12 @@ checksum = "95067976aca6421a523e491fce939a3e65249bac4b977adee0ee9771568e8aa3"
 [[package]]
 name = "proton-crypto"
 version = "0.6.0"
-source = "git+ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git#7c81cec34329def3112413e3120380078fc9616d"
+source = "git+ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git?tag=release-2025-07-02#7c81cec34329def3112413e3120380078fc9616d"
 dependencies = [
  "gopenpgp-sys",
  "hex",
  "parking_lot",
- "proton-srp 0.7.0 (git+ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git)",
+ "proton-srp 0.7.0 (git+ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git?tag=release-2025-07-02)",
  "rand 0.8.5",
  "serde",
  "subtle",
@@ -3327,7 +3327,7 @@ dependencies = [
 [[package]]
 name = "proton-crypto-account"
 version = "0.12.0"
-source = "git+ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git#7c81cec34329def3112413e3120380078fc9616d"
+source = "git+ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git?tag=release-2025-07-02#7c81cec34329def3112413e3120380078fc9616d"
 dependencies = [
  "base64",
  "derive_more 2.0.1",
@@ -3345,7 +3345,7 @@ dependencies = [
 [[package]]
 name = "proton-pass-common"
 version = "0.25.9"
-source = "git+ssh://git@gitlab.protontech.ch/proton/clients/pass/proton-pass-common.git#fac7366dc5ab4d1e911923a45644c3ac422d62c5"
+source = "git+ssh://git@gitlab.protontech.ch/proton/clients/pass/proton-pass-common.git?tag=0.25.9#fac7366dc5ab4d1e911923a45644c3ac422d62c5"
 dependencies = [
  "async-trait",
  "coset",
@@ -3372,7 +3372,7 @@ dependencies = [
 [[package]]
 name = "proton-pass-derive"
 version = "0.25.9"
-source = "git+ssh://git@gitlab.protontech.ch/proton/clients/pass/proton-pass-common.git#fac7366dc5ab4d1e911923a45644c3ac422d62c5"
+source = "git+ssh://git@gitlab.protontech.ch/proton/clients/pass/proton-pass-common.git?tag=0.25.9#fac7366dc5ab4d1e911923a45644c3ac422d62c5"
 dependencies = [
  "quote",
  "syn",
@@ -3381,7 +3381,7 @@ dependencies = [
 [[package]]
 name = "proton-pass-totp"
 version = "0.25.9"
-source = "git+ssh://git@gitlab.protontech.ch/proton/clients/pass/proton-pass-common.git#fac7366dc5ab4d1e911923a45644c3ac422d62c5"
+source = "git+ssh://git@gitlab.protontech.ch/proton/clients/pass/proton-pass-common.git?tag=0.25.9#fac7366dc5ab4d1e911923a45644c3ac422d62c5"
 dependencies = [
  "proton-pass-derive",
  "serde",
@@ -3410,7 +3410,7 @@ dependencies = [
 [[package]]
 name = "proton-srp"
 version = "0.7.0"
-source = "git+ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git#7c81cec34329def3112413e3120380078fc9616d"
+source = "git+ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git?tag=release-2025-07-02#7c81cec34329def3112413e3120380078fc9616d"
 dependencies = [
  "base64",
  "bcrypt",
