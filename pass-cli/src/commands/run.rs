@@ -10,6 +10,8 @@ use std::thread::JoinHandle;
 
 use super::secret_resolver::{PassClientResolver, SecretCache, SecretReference, find_pass_uris};
 
+const STDIN_BUFF_SIZE: usize = 1024;
+
 #[derive(Debug)]
 struct EnvVar {
     name: String,
@@ -238,15 +240,14 @@ fn handle_stream<R: Read + Send + 'static>(
 
 fn handle_stdin<W: Write + Send + 'static>(mut child_stdin: W) -> JoinHandle<()> {
     thread::spawn(move || {
-        let stdin = std::io::stdin();
-        let mut buffer = String::new();
-
+        let mut stdin = std::io::stdin();
+        let mut buff = [0; STDIN_BUFF_SIZE];
         loop {
-            buffer.clear();
-            match stdin.read_line(&mut buffer) {
+            match stdin.read(&mut buff) {
                 Ok(0) => break, // EOF
-                Ok(_) => {
-                    if let Err(e) = child_stdin.write_all(buffer.as_bytes()) {
+                Ok(l) => {
+                    let content = &buff[0..l];
+                    if let Err(e) = child_stdin.write_all(content) {
                         eprintln!("Error writing to child stdin: {e}");
                         break;
                     }
