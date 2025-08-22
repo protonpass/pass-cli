@@ -3,7 +3,7 @@ use crate::constants::ITEM_CONTENT_CONTENT_FORMAT_VERSION;
 use anyhow::{Context, Result, anyhow};
 use pass_domain::{ItemContent, ItemData, ShareId, crypto};
 
-#[derive(serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 pub(crate) struct CreateItemRequest {
     #[serde(rename = "KeyRotation")]
     pub key_rotation: u8,

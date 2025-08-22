@@ -62,6 +62,8 @@ NJZIw3A4KuoCpttkwXh2d0Q3JmmvAg==
 =wzSx
 -----END PGP PRIVATE KEY BLOCK-----
 "#;
+
+#[allow(dead_code)]
 pub const TEST_ADDRESS_KEY_PUBLIC_KEY: &str = r#"-----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: ProtonMail
 

@@ -24,7 +24,7 @@ struct ItemsList {
     pub last_token: Option<String>,
 }
 
-#[derive(Clone, Debug, serde::Deserialize)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 #[allow(dead_code)]
 pub(crate) struct ItemRevision {
     #[serde(rename = "ItemID")]

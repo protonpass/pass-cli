@@ -1,5 +1,5 @@
-mod keys;
-mod list;
+pub(crate) mod keys;
+pub(crate) mod list;
 mod open_key;
 
 use zeroize::{Zeroize, ZeroizeOnDrop};
