@@ -1,5 +1,5 @@
 use crate::account::{Passphrase, UnlockedAddressKeys};
-use crate::{ApiKey, ApiKeySalt, PgpCrypto, UserKey};
+use crate::{ApiKey, ApiKeySalt, PgpCrypto, PrivateKey, PublicKey, UserKey};
 use pass_domain::AddressKey;
 use std::collections::HashMap;
 use std::path::Path;
@@ -28,6 +28,13 @@ pub trait ClientFeatures: Send + Sync {
     async fn open_address_keys(
         &self,
         user_keys: Vec<UserKey>,
+        address_keys: Vec<AddressKey>,
+    ) -> anyhow::Result<UnlockedAddressKeys>;
+
+    async fn open_address_keys_with_keys(
+        &self,
+        private_keys: Vec<PrivateKey>,
+        public_keys: Vec<PublicKey>,
         address_keys: Vec<AddressKey>,
     ) -> anyhow::Result<UnlockedAddressKeys>;
 

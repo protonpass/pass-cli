@@ -1,7 +1,8 @@
 use anyhow::{Context, Result, anyhow};
 use muon::rest::core::v4::keys::Key;
 use pass::{
-    ApiKey, ApiKeySalt, Passphrase, PrivateKey, UnlockedAddressKey, UnlockedAddressKeys, UserKey,
+    ApiKey, ApiKeySalt, Passphrase, PrivateKey, PublicKey, UnlockedAddressKey, UnlockedAddressKeys,
+    UserKey,
 };
 use pass_domain::AddressKey;
 use proton_crypto::crypto::{
@@ -88,13 +89,14 @@ impl AccountCrypto {
 
     pub fn open_address_keys(
         &self,
-        user_keys: Vec<UserKey>,
+        private_keys: Vec<PrivateKey>,
+        public_keys: Vec<PublicKey>,
         address_keys: Vec<AddressKey>,
     ) -> Result<UnlockedAddressKeys> {
         let mut unlocked_keys = Vec::with_capacity(address_keys.len());
         for address_key in address_keys {
             let unlocked = self
-                .unlock_address_key(&user_keys, address_key)
+                .unlock_address_key(&private_keys, &public_keys, address_key)
                 .context("Error unlocking address key")?;
             unlocked_keys.push(unlocked);
         }
@@ -104,19 +106,24 @@ impl AccountCrypto {
 
     fn unlock_address_key(
         &self,
-        user_keys: &[UserKey],
+        private_keys: &[PrivateKey],
+        public_keys: &[PublicKey],
         address_key: AddressKey,
     ) -> Result<UnlockedAddressKey> {
         match (&address_key.signature, &address_key.token) {
             (Some(signature), Some(token)) => self.unlock_address_key_with_detached_signature(
                 &address_key,
-                user_keys,
+                private_keys,
+                public_keys,
                 signature,
                 token,
             ),
-            (None, Some(token)) => {
-                self.unlock_address_key_with_embedded_signature(&address_key, user_keys, token)
-            }
+            (None, Some(token)) => self.unlock_address_key_with_embedded_signature(
+                &address_key,
+                private_keys,
+                public_keys,
+                token,
+            ),
             _ => Err(anyhow::anyhow!("Unsupported address key")),
         }
     }
@@ -124,32 +131,27 @@ impl AccountCrypto {
     fn unlock_address_key_with_embedded_signature(
         &self,
         address_key: &AddressKey,
-        user_keys: &[UserKey],
+        private_keys: &[PrivateKey],
+        public_keys: &[PublicKey],
         token: &str,
     ) -> Result<UnlockedAddressKey> {
         let provider = proton_crypto::new_pgp_provider();
+        let mut imported_public_keys = Vec::with_capacity(public_keys.len());
+        for public_key in public_keys {
+            let as_public_key = provider
+                .public_key_import(public_key.as_ref(), DataEncoding::Bytes)
+                .context("Error importing public key")?;
+            imported_public_keys.push(as_public_key);
+        }
 
-        let unlock_with_key = |key: &UserKey| -> Result<UnlockedAddressKey> {
-            let decryptor = provider.new_decryptor();
-            let uk_as_private_key = provider
-                .private_key_import_unlocked(&key.private_key, DataEncoding::Bytes)
-                .context("Error importing private user key")?;
-            let uk_as_public_key = provider
-                .public_key_import(&key.public_key, DataEncoding::Bytes)
-                .context("Error importing public user key")?;
-
-            let decrypted_token = decryptor
-                .with_decryption_key(&uk_as_private_key)
-                .with_verification_key(&uk_as_public_key)
-                .decrypt(token, DataEncoding::Armor)
-                .context("Error decrypting and verifying address key token")?;
-
-            let instance = self.unlock_with_passphrase(address_key, decrypted_token.as_ref())?;
-            Ok(instance)
-        };
-
-        for key in user_keys {
-            match unlock_with_key(key) {
+        for key in private_keys {
+            match unlock_address_key_with_key(
+                &provider,
+                key,
+                &imported_public_keys,
+                address_key,
+                token,
+            ) {
                 Ok(instance) => {
                     return Ok(instance);
                 }
@@ -166,27 +168,33 @@ impl AccountCrypto {
     fn unlock_address_key_with_detached_signature(
         &self,
         locked_key: &AddressKey,
-        user_keys: &[UserKey],
+        private_keys: &[PrivateKey],
+        public_keys: &[PublicKey],
         signature: &str,
         token: &str,
     ) -> Result<UnlockedAddressKey> {
         let provider = proton_crypto::new_pgp_provider();
+        let mut imported_public_keys = Vec::with_capacity(public_keys.len());
+        for public_key in public_keys {
+            let as_public_key = provider
+                .public_key_import(public_key.as_ref(), DataEncoding::Bytes)
+                .context("Error importing public key")?;
+            imported_public_keys.push(as_public_key);
+        }
 
-        let unlock_with_key = |key: &UserKey| -> Result<UnlockedAddressKey> {
+        let unlock_with_key = |key: &PrivateKey| -> Result<UnlockedAddressKey> {
             let verifier = provider.new_verifier();
             let decryptor = provider.new_decryptor();
             let as_private_key = provider
-                .private_key_import_unlocked(&key.private_key, DataEncoding::Bytes)
+                .private_key_import_unlocked(key.as_ref(), DataEncoding::Bytes)
                 .context("Error importing private user key")?;
             let decrypted_token = decryptor
                 .with_decryption_key(&as_private_key)
                 .decrypt(token, DataEncoding::Armor)
                 .context("Error decrypting address token")?;
 
-            let as_public_key = provider.public_key_import(&key.public_key, DataEncoding::Bytes)?;
-
             let verified = verifier
-                .with_verification_key(&as_public_key)
+                .with_verification_keys(&imported_public_keys)
                 .verify_detached(&decrypted_token, signature, DataEncoding::Armor);
 
             match verified {
@@ -195,7 +203,7 @@ impl AccountCrypto {
             }
         };
 
-        for key in user_keys {
+        for key in private_keys {
             match unlock_with_key(key) {
                 Ok(instance) => {
                     return Ok(instance);
@@ -256,4 +264,47 @@ fn salt_to_salt(salt: &ApiKeySalt) -> Salt {
         id: KeyId(salt.id.clone()),
         key_salt: salt.key_salt.as_ref().map(|s| KeySalt(s.to_string())),
     }
+}
+
+fn unlock_address_key_with_key<T: PGPProviderSync>(
+    provider: &T,
+    decryption_key: &PrivateKey,
+    public_keys: &[T::PublicKey],
+    address_key: &AddressKey,
+    token: &str,
+) -> Result<UnlockedAddressKey> {
+    let decryptor = provider.new_decryptor();
+    let as_private_key = provider
+        .private_key_import_unlocked(decryption_key.as_ref(), DataEncoding::Bytes)
+        .context("Error importing private user key")?;
+
+    let decrypted_token = decryptor
+        .with_decryption_key(&as_private_key)
+        .with_verification_keys(public_keys)
+        .decrypt(token, DataEncoding::Armor)
+        .context("Error decrypting and verifying address key token")?;
+
+    let instance = unlock_address_key_with_passphrase(provider, address_key, decrypted_token)?;
+    Ok(instance)
+}
+
+fn unlock_address_key_with_passphrase<T: PGPProviderSync>(
+    provider: &T,
+    address_key: &AddressKey,
+    passphrase: T::VerifiedData,
+) -> Result<UnlockedAddressKey> {
+    let as_private_key = provider
+        .private_key_import(&address_key.private_key, passphrase, DataEncoding::Armor)
+        .context("Error importing private address key")?;
+
+    let exported = provider
+        .private_key_export_unlocked(&as_private_key, DataEncoding::Bytes)
+        .context("Error exporting private key")?;
+
+    Ok(UnlockedAddressKey {
+        id: address_key.id.clone(),
+        private_key: PrivateKey {
+            content: exported.as_ref().to_vec(),
+        },
+    })
 }

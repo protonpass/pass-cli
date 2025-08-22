@@ -2,7 +2,8 @@ use crate::PassClient;
 use anyhow::{Context, Result, anyhow};
 use muon::GET;
 use pass_domain::{
-    AddressId, ItemId, Permission, Share, ShareContent, ShareId, ShareRole, ShareType, VaultId,
+    AddressId, GroupId, ItemId, Permission, Share, ShareContent, ShareId, ShareRole, ShareType,
+    VaultId,
 };
 
 const TARGET_TYPE_VAULT: u8 = 1;
@@ -44,6 +45,8 @@ pub struct ShareResponse {
     pub expiration_time: Option<i64>,
     #[serde(rename = "CreateTime")]
     pub create_time: i64,
+    #[serde(rename = "GroupID")]
+    pub group_id: Option<String>,
 }
 
 impl TryFrom<ShareResponse> for Share {
@@ -74,6 +77,7 @@ impl TryFrom<ShareResponse> for Share {
             ),
             share_role: ShareRole::from_value(&value.share_role_id, value.owner, value.permission),
             content: share_content,
+            group_id: value.group_id.map(GroupId::new),
             share_type: match value.target_type {
                 TARGET_TYPE_VAULT => ShareType::Vault {
                     vault_id: VaultId::new(value.target_id),

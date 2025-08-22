@@ -180,7 +180,7 @@ impl PassClient {
                 .await
                 .context("Error opening item keys with vault share"),
             ShareType::Item { .. } => self
-                .open_item_keys_with_item_share(item_keys)
+                .open_item_keys_with_item_share(share_id, item_keys)
                 .await
                 .context("Error opening item keys with item share"),
         }
@@ -210,7 +210,7 @@ impl PassClient {
                     .clone();
 
                 let opened_share_key = self
-                    .open_share_key(share_key)
+                    .open_share_key_for_share_id(share_id, share_key)
                     .await
                     .context("Error opening share key")?;
 
@@ -240,16 +240,20 @@ impl PassClient {
 
     async fn open_item_keys_with_item_share(
         &self,
+        share_id: &ShareId,
         item_keys: ItemKeys,
     ) -> Result<Vec<OpenedItemKey>> {
         let mut res = Vec::with_capacity(item_keys.keys.len());
 
         for key in item_keys.keys {
             let opened = self
-                .open_share_key(ShareKey {
-                    key_rotation: key.key_rotation,
-                    key: EncryptedShareKey(key.key.0.clone()),
-                })
+                .open_share_key_for_share_id(
+                    share_id,
+                    ShareKey {
+                        key_rotation: key.key_rotation,
+                        key: EncryptedShareKey(key.key.0.clone()),
+                    },
+                )
                 .await
                 .context("Error opening item key")?;
 

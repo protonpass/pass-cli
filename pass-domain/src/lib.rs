@@ -32,6 +32,7 @@ macro_rules! implement_custom_methods {
 }
 
 pub use models::address::*;
+pub use models::group::*;
 pub use models::invite::*;
 pub use models::item::*;
 pub use models::share::*;

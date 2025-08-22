@@ -11,8 +11,9 @@ use std::io::Read;
 const ENVIRONMENT_ENV_VAR: &str = "ENVIRONMENT";
 const XDEBUG_SESSION_ENV_VAR: &str = "XDEBUG_SESSION";
 const XDEBUG_SESSION_HEADER: &str = "XDEBUG_SESSION";
+//const APP_HEADER: &str = "ios-mail@7.1.0";
 //const APP_HEADER: &str = "Linux-pass@1.0.0";
-const APP_HEADER: &str = "ios-mail@7.1.0";
+const APP_HEADER: &str = "web-pass@5.0.999.999";
 
 const PASSWORD_ENV_VAR: &str = "PROTON_PASS_PASSWORD";
 const PASSWORD_FILE_ENV_VAR: &str = "PROTON_PASS_PASSWORD_FILE";

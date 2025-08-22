@@ -65,7 +65,7 @@ impl PassClient {
         }
 
         let share_content = match share.content {
-            Some(content) => content,
+            Some(ref content) => content,
             None => return Err(anyhow::anyhow!("Share should have vault content")),
         };
 
@@ -85,7 +85,7 @@ impl PassClient {
         };
 
         let opened_share_key = self
-            .open_share_key(share_key)
+            .open_share_key_for_share(&share, share_key)
             .await
             .context("Failed to open share key")?;
 
@@ -117,7 +117,7 @@ impl PassClient {
 
         let encryption_key_rotation = encryption_key.key_rotation;
         let opened_encryption_key = self
-            .open_share_key(encryption_key)
+            .open_share_key_for_share(&share, encryption_key)
             .await
             .context("Failed to open encryption key")?;
 

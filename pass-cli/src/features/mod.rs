@@ -5,7 +5,10 @@ use crate::features::account::AccountCrypto;
 use crate::features::pgp::NativePgpCrypto;
 use crate::storage::get_local_key;
 use anyhow::{Context, Result};
-use pass::{ApiKey, ApiKeySalt, ClientFeatures, Passphrase, UnlockedAddressKeys, UserKey};
+use pass::{
+    ApiKey, ApiKeySalt, ClientFeatures, Passphrase, PrivateKey, PublicKey, UnlockedAddressKeys,
+    UserKey, UserKeyExt,
+};
 use pass_domain::AddressKey;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -81,7 +84,18 @@ impl ClientFeatures for CliClientFeatures {
         user_keys: Vec<UserKey>,
         address_keys: Vec<AddressKey>,
     ) -> Result<UnlockedAddressKeys> {
-        AccountCrypto.open_address_keys(user_keys, address_keys)
+        let (private, public) = user_keys.split_keys();
+        self.open_address_keys_with_keys(private, public, address_keys)
+            .await
+    }
+
+    async fn open_address_keys_with_keys(
+        &self,
+        private_keys: Vec<PrivateKey>,
+        public_keys: Vec<PublicKey>,
+        address_keys: Vec<AddressKey>,
+    ) -> Result<UnlockedAddressKeys> {
+        AccountCrypto.open_address_keys(private_keys, public_keys, address_keys)
     }
 
     async fn get_pgp_crypto(&self) -> Arc<dyn pass::PgpCrypto> {

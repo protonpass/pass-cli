@@ -3,7 +3,7 @@ use crate::item::item_keys::OpenedItemKeys;
 use crate::share::ShareKeys;
 use crate::{PassClient, PublicKey};
 use anyhow::{Context, Result};
-use pass_domain::{Address, ItemId, ShareId, ShareRole, ShareType, TargetType};
+use pass_domain::{Address, ItemId, Share, ShareId, ShareRole, ShareType, TargetType};
 
 pub(crate) enum InviteRequest {
     ExistingUser(CreateInvitesRequest),
@@ -125,7 +125,7 @@ impl PassClient {
             .context("Error getting share keys")?;
 
         let invite_target = match item_id {
-            None => match share.share_type {
+            None => match &share.share_type {
                 ShareType::Vault { .. } => {
                     // User with vault access is sharing vault access
                     InviteTarget::Vault { share_keys }
@@ -155,9 +155,9 @@ impl PassClient {
                         item_keys: OpenedItemKeys::new(opened_keys),
                     }
                 }
-                ShareType::Item { item_id, .. } => {
+                ShareType::Item { ref item_id, .. } => {
                     // User with item access is sharing a single item
-                    if !id.eq(&item_id) {
+                    if !id.eq(item_id) {
                         return Err(anyhow::anyhow!(
                             "Trying to share an item with a share that does not grant access to that item"
                         ));
@@ -178,6 +178,7 @@ impl PassClient {
         match mode {
             InviteUserMode::ExistingUser { keys } => self
                 .create_existing_user_invite(
+                    &share,
                     user_address,
                     address_to_invite,
                     role,
@@ -187,7 +188,13 @@ impl PassClient {
                 .await
                 .context("Error creating existing user invite"),
             InviteUserMode::NewUser => self
-                .create_new_user_invite(user_address, address_to_invite, role, invite_target)
+                .create_new_user_invite(
+                    &share,
+                    user_address,
+                    address_to_invite,
+                    role,
+                    invite_target,
+                )
                 .await
                 .context("Error creating new user invite"),
         }
@@ -195,6 +202,7 @@ impl PassClient {
 
     async fn create_existing_user_invite(
         &self,
+        share: &Share,
         user_address: Address,
         address: &str,
         role: &ShareRole,
@@ -204,7 +212,7 @@ impl PassClient {
         let target_type = invite_target.target_type().value();
         let item_id = invite_target.item_id().map(|i| i.value().to_string());
         let encrypted_keys = self
-            .encrypt_share_keys_for_user(user_address, invite_target, invited_keys)
+            .encrypt_share_keys_for_user(share, user_address, invite_target, invited_keys)
             .await
             .context("Error encrypting share keys for invited user")?;
         Ok(InviteRequest::ExistingUser(CreateInvitesRequest {
@@ -222,6 +230,7 @@ impl PassClient {
 
     async fn create_new_user_invite(
         &self,
+        share: &Share,
         user_address: Address,
         address_to_invite: &str,
         role: &ShareRole,
@@ -233,7 +242,7 @@ impl PassClient {
             InviteTarget::Vault { share_keys, .. } => {
                 let latest = share_keys.latest_or_err()?;
                 let latest_opened = self
-                    .open_share_key(latest.clone())
+                    .open_share_key_for_share(share, latest.clone())
                     .await
                     .context("Error opening share key")?;
                 latest_opened.value()
@@ -289,6 +298,7 @@ impl PassClient {
     }
     async fn encrypt_share_keys_for_user(
         &self,
+        share: &Share,
         user_address: Address,
         invite_target: InviteTarget,
         invited_keys: Vec<PublicKey>,
@@ -303,7 +313,7 @@ impl PassClient {
         let flow = EncryptInviteKeysFlow::new(crypto, user_address_keys, invited_keys);
 
         let invite_keys = self
-            .prepare_keys_to_invite(invite_target)
+            .prepare_keys_to_invite(share, invite_target)
             .await
             .context("Error preparing keys to invite")?;
         let encrypted_keys = flow
@@ -324,6 +334,7 @@ impl PassClient {
 
     async fn prepare_keys_to_invite(
         &self,
+        share: &Share,
         invite_target: InviteTarget,
     ) -> Result<Vec<InviteKeyToPrepare>> {
         match invite_target {
@@ -332,7 +343,7 @@ impl PassClient {
                 for key in share_keys.keys {
                     let rotation = key.key_rotation;
                     let opened = self
-                        .open_share_key(key)
+                        .open_share_key_for_share(share, key)
                         .await
                         .context("Error opening share key")?;
                     res.push(InviteKeyToPrepare {

@@ -5,6 +5,7 @@ use pass::PassClient;
 use pass_domain::InviteId;
 
 pub mod accept;
+mod group;
 pub mod list;
 pub mod reject;
 
@@ -25,6 +26,11 @@ pub enum InviteCommands {
         #[arg(help = "ID of the invite to reject")]
         invite_id: String,
     },
+    #[command(about = "Operations to perform on group invites")]
+    Group {
+        #[command(subcommand)]
+        command: group::GroupInviteCommands,
+    },
 }
 
 pub async fn run(subcommand: InviteCommands, client: PassClient) -> Result<()> {
@@ -32,5 +38,6 @@ pub async fn run(subcommand: InviteCommands, client: PassClient) -> Result<()> {
         InviteCommands::List { output } => list::run(client, output).await,
         InviteCommands::Accept { invite_id } => accept::run(client, InviteId::new(invite_id)).await,
         InviteCommands::Reject { invite_id } => reject::run(client, InviteId::new(invite_id)).await,
+        InviteCommands::Group { command } => group::run(command, client).await,
     }
 }

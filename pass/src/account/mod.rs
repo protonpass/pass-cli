@@ -4,10 +4,11 @@ use pass_domain::AddressKeyId;
 use std::collections::{BTreeMap, HashMap};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
-mod address;
+pub(crate) mod address;
 mod address_key;
 mod key_salts;
 mod keys;
+mod org;
 
 #[derive(Clone)]
 pub struct UnlockedAddressKey {
@@ -16,7 +17,6 @@ pub struct UnlockedAddressKey {
 }
 
 #[derive(Clone)]
-#[allow(dead_code)]
 pub struct UnlockedAddressKeys {
     pub(crate) keys: BTreeMap<AddressKeyId, UnlockedAddressKey>,
 }
@@ -39,6 +39,10 @@ impl UnlockedAddressKeys {
             Some(key) => Ok(key),
             None => anyhow::bail!("No address keys available"),
         }
+    }
+
+    pub fn into_keys(self) -> Vec<PrivateKey> {
+        self.keys.into_values().map(|k| k.private_key).collect()
     }
 }
 

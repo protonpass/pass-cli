@@ -100,9 +100,10 @@ impl PassClient {
         };
 
         let share_key = self
-            .open_share_key(key)
+            .open_share_key_for_share_id(share_id, key)
             .await
             .context("Error opening share key")?;
+
         let decrypted = pass_domain::crypto::decrypt(
             &content.content,
             share_key.as_ref(),

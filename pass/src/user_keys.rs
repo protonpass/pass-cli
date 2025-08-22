@@ -23,6 +23,25 @@ impl UserKey {
     }
 }
 
+pub trait UserKeyExt {
+    fn split_keys(self) -> (Vec<PrivateKey>, Vec<PublicKey>);
+}
+
+impl UserKeyExt for Vec<UserKey> {
+    fn split_keys(self) -> (Vec<PrivateKey>, Vec<PublicKey>) {
+        let mut private = Vec::with_capacity(self.len());
+        let mut public = Vec::with_capacity(self.len());
+
+        for key in self {
+            let (pr, pu) = key.into_keys();
+            private.push(pr);
+            public.push(pu);
+        }
+
+        (private, public)
+    }
+}
+
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 struct SerializableUserKeys {
     keys: Vec<UserKey>,

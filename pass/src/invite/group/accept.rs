@@ -1,49 +1,38 @@
 use crate::PassClient;
 use crate::common::CodeResponse;
-use crate::crypto::reencrypt_invite_keys::{InviteKeyToReencrypt, ReencryptInviteKeysFlow};
+use crate::crypto::reencrypt_group_invite_keys::{
+    GroupInviteKeyToReencrypt, ReencryptGroupInviteKeysFlow,
+};
+use crate::invite::accept::{AcceptInviteKey, AcceptInviteRequest};
 use crate::invite::list::InviteWithKeys;
 use anyhow::{Context, Result};
 use muon::POST;
 use pass_domain::InviteId;
 
-#[derive(Debug, serde::Serialize)]
-pub(crate) struct AcceptInviteRequest {
-    #[serde(rename = "Keys")]
-    pub keys: Vec<AcceptInviteKey>,
-}
-
-#[derive(Debug, serde::Serialize)]
-pub(crate) struct AcceptInviteKey {
-    #[serde(rename = "Key")]
-    pub key: String,
-    #[serde(rename = "KeyRotation")]
-    pub key_rotation: u8,
-}
-
 impl PassClient {
-    pub async fn accept_invite(&self, invite_id: &InviteId) -> Result<()> {
+    pub async fn accept_group_invite(&self, invite_id: &InviteId) -> Result<()> {
         let invites = self
-            .list_user_invites()
+            .list_group_invites()
             .await
-            .context("Error getting pending invites")?;
+            .context("Error getting pending group invites")?;
         let invite = invites
             .into_iter()
             .find(|i| i.invite.id.eq(invite_id))
-            .ok_or_else(|| anyhow::anyhow!("Invite not found"))?;
+            .ok_or_else(|| anyhow::anyhow!("Group invite not found"))?;
 
         let request = self
-            .accept_invite_request(invite)
+            .accept_group_invite_request(invite)
             .await
             .context("Error creating accept invite request")?;
 
-        let req = POST!("/pass/v1/invite/{invite_id}")
+        let req = POST!("/pass/v1/invite/group/{invite_id}")
             .body_json(request)
-            .context("Error creating accept invite request")?;
+            .context("Error creating accept group invite request")?;
         let res = self
             .client
             .send(req)
             .await
-            .context("Error sending accept invite request")?;
+            .context("Error sending accept group invite request")?;
 
         let response: CodeResponse = assert_response!(res);
         response.success_guard()?;
@@ -53,37 +42,38 @@ impl PassClient {
         Ok(())
     }
 
-    async fn accept_invite_request(&self, invite: InviteWithKeys) -> Result<AcceptInviteRequest> {
+    async fn accept_group_invite_request(
+        &self,
+        invite: InviteWithKeys,
+    ) -> Result<AcceptInviteRequest> {
         let inviter_keys = self
             .get_keys_for_email(&invite.invite.inviter_email, true)
             .await
             .context("Error getting inviter keys")?;
 
-        let user_keys = self
-            .get_user_keys()
+        let group_addresses = self
+            .get_group_addresses()
             .await
-            .context("Error getting user keys")?;
-        let addresses = self
-            .get_addresses()
-            .await
-            .context("Error getting addresses")?;
-        let address = addresses
-            .into_iter()
-            .find(|a| a.email == invite.invite.invited_email)
-            .ok_or_else(|| anyhow::anyhow!("Invited address not found"))?;
+            .context("Error getting group address")?;
 
-        let address_keys = self
-            .open_address_keys(address.keys)
+        let invited_group_address = group_addresses
+            .into_iter()
+            .find(|a| a.address.email == invite.invite.invited_email)
+            .ok_or_else(|| anyhow::anyhow!("Invited Group Address not found"))?;
+
+        let invited_group_address_keys = self
+            .open_group_keys(invited_group_address.address.keys)
             .await
-            .context("Error opening address keys")?;
+            .context("Error opening group address keys")?;
 
         let crypto = self.client_features.get_pgp_crypto().await;
-        let flow = ReencryptInviteKeysFlow::new(crypto, user_keys, address_keys, inviter_keys);
+        let flow =
+            ReencryptGroupInviteKeysFlow::new(crypto, invited_group_address_keys, inviter_keys);
 
         let keys_to_reencrypt = invite
             .keys
             .into_iter()
-            .map(|k| InviteKeyToReencrypt {
+            .map(|k| GroupInviteKeyToReencrypt {
                 key: k.key.0.clone(),
                 key_rotation: k.key_rotation,
             })

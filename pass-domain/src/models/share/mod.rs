@@ -4,6 +4,7 @@ mod role;
 pub use member::*;
 pub use role::*;
 
+use crate::models::group::GroupId;
 use crate::{AddressId, ItemId, VaultId};
 use anyhow::{Result, anyhow};
 
@@ -73,6 +74,7 @@ pub struct Share {
     pub permission: Permission,
     pub content: Option<ShareContent>,
     pub share_role: ShareRole,
+    pub group_id: Option<GroupId>,
 }
 
 impl Share {
@@ -82,6 +84,10 @@ impl Share {
 
     pub fn is_item_share(&self) -> bool {
         matches!(self.share_type, ShareType::Item { .. })
+    }
+
+    pub fn is_group_share(&self) -> bool {
+        self.group_id.is_some()
     }
 
     pub fn can_share(&self) -> bool {

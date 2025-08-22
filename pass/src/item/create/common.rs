@@ -52,7 +52,7 @@ impl PassClient {
         })?;
 
         let opened_share_key = self
-            .open_share_key(share_key.clone())
+            .open_share_key_for_share_id(share_id, share_key.clone())
             .await
             .context("Error opening share key")?;
 

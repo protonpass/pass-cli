@@ -6,7 +6,7 @@ use pass_domain::{Address, AddressId, AddressKey, AddressKeyId};
 
 struct AddressCacheType;
 
-fn api_address_to_domain_address(value: addresses::Address) -> Address {
+pub(crate) fn api_address_to_domain_address(value: addresses::Address) -> Address {
     Address {
         id: AddressId::new(value.id),
         email: value.email,

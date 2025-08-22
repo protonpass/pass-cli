@@ -1,115 +1,78 @@
 use crate::PassClient;
 use crate::crypto::open_invite_key::OpenInviteKeyFlow;
+use crate::invite::list::{
+    EncryptedInviteKey, InviteKey, InviteKeyResponse, InviteWithKeys, OpenedInviteKey,
+    PendingInviteVaultData,
+};
 use anyhow::{Context, Result, anyhow};
 use muon::GET;
-use pass_domain::{Invite, InviteId, InviteVaultData, TargetType, VaultData, crypto};
-use zeroize::{Zeroize, ZeroizeOnDrop};
+use pass_domain::{GroupId, Invite, InviteId, InviteVaultData, TargetType, VaultData};
 
-#[derive(Clone, Debug, serde::Deserialize)]
-struct GetPendingInvitesResponse {
-    #[serde(rename = "Invites")]
-    pub invites: Vec<PendingInvite>,
-}
-
-#[derive(Clone, Debug, serde::Deserialize)]
-struct PendingInvite {
-    #[serde(rename = "InviteToken")]
-    pub invite_token: String,
-    #[serde(rename = "RemindersSent")]
-    pub reminders_sent: u8,
-    #[serde(rename = "TargetType")]
-    pub target_type: u8,
-    #[serde(rename = "TargetID")]
-    pub target_id: String,
+#[derive(Debug, serde::Deserialize)]
+struct GroupInviteContent {
     #[serde(rename = "InviterEmail")]
     pub inviter_email: String,
+    #[serde(rename = "InvitedGroupID")]
+    pub invited_group_id: String,
     #[serde(rename = "InvitedEmail")]
     pub invited_email: String,
-    #[serde(rename = "Keys")]
-    pub keys: Vec<InviteKeyResponse>,
+    #[serde(rename = "TargetType")]
+    pub target_type: u8,
+    #[serde(rename = "RemindersSent")]
+    pub reminders_sent: u8,
+    #[serde(rename = "InviteToken")]
+    pub invite_token: String,
     #[serde(rename = "VaultData")]
     pub vault_data: Option<PendingInviteVaultData>,
+    #[serde(rename = "Keys")]
+    pub keys: Vec<InviteKeyResponse>,
 }
 
-#[derive(Clone, Debug, serde::Deserialize)]
-pub(crate) struct PendingInviteVaultData {
-    #[serde(rename = "Content")]
-    pub content: String,
-    #[serde(rename = "ContentKeyRotation")]
-    pub content_key_rotation: u8,
-    #[serde(rename = "MemberCount")]
-    pub member_count: u32,
-    #[serde(rename = "ItemCount")]
-    pub item_count: u32,
+#[derive(Debug, serde::Deserialize)]
+struct GroupInvitesResponse {
+    #[serde(rename = "Invites")]
+    pub invites: Vec<GroupInviteContent>,
 }
 
-#[derive(Clone, Debug, serde::Deserialize)]
-pub(crate) struct InviteKeyResponse {
-    #[serde(rename = "Key")]
-    pub key: String,
-    #[serde(rename = "KeyRotation")]
-    pub key_rotation: u8,
-}
-
-#[derive(Clone, Debug)]
-pub struct EncryptedInviteKey(pub(crate) Vec<u8>);
-
-#[derive(Clone, Debug)]
-pub struct InviteKey {
-    pub key: EncryptedInviteKey,
-    pub key_rotation: u8,
-}
-
-#[derive(Clone, Debug, Zeroize, ZeroizeOnDrop)]
-pub(crate) struct DecryptedInviteKey(pub(crate) Vec<u8>);
-
-impl AsRef<[u8]> for DecryptedInviteKey {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
-
-#[derive(Clone, Debug, ZeroizeOnDrop)]
-pub(crate) struct OpenedInviteKey {
-    pub key: DecryptedInviteKey,
-    pub key_rotation: u8,
-}
-
-#[derive(Clone, Debug)]
-pub struct InviteWithKeys {
-    pub invite: Invite,
-    pub keys: Vec<InviteKey>,
+#[derive(Debug, serde::Deserialize)]
+struct GetGroupInvitesResponse {
+    #[serde(rename = "Invites")]
+    pub invites: GroupInvitesResponse,
 }
 
 impl PassClient {
-    pub async fn list_user_invites(&self) -> Result<Vec<InviteWithKeys>> {
+    pub async fn list_group_invites(&self) -> Result<Vec<InviteWithKeys>> {
         let res = self
             .client
-            .send(GET!("/pass/v1/invite"))
+            .send(GET!("/pass/v1/invite/group"))
             .await
-            .context("Error fetching invites")?;
-        let response: GetPendingInvitesResponse = assert_response!(res);
+            .context("Error fetching group invites")?;
+        let response: GetGroupInvitesResponse = assert_response!(res);
 
         let mut result = Vec::new();
-        for invite in response.invites {
+        for invite in response.invites.invites {
             let opened = self
-                .invite_response_to_invite(invite)
+                .group_invite_response_to_invite(invite)
                 .await
-                .context("Error opening invite")?;
+                .context("Error opening group invite")?;
             result.push(opened);
         }
 
         Ok(result)
     }
 
-    async fn invite_response_to_invite(&self, invite: PendingInvite) -> Result<InviteWithKeys> {
+    async fn group_invite_response_to_invite(
+        &self,
+        invite: GroupInviteContent,
+    ) -> Result<InviteWithKeys> {
         let vault_data = match invite.vault_data {
             None => None,
             Some(data) => {
                 let vault_data = self
-                    .open_vault_data(
+                    .open_vault_data_for_group_invite(
                         &invite.invited_email,
                         &invite.inviter_email,
+                        GroupId::new(invite.invited_group_id),
                         invite.keys.clone(),
                         &data,
                     )
@@ -138,7 +101,7 @@ impl PassClient {
                 id: InviteId::new(invite.invite_token.to_string()),
                 token: invite.invite_token,
                 target_type: TargetType::from_value(invite.target_type)?,
-                target_id: invite.target_id,
+                target_id: "".to_string(), // TODO: Remove
                 reminders: invite.reminders_sent,
                 inviter_email: invite.inviter_email,
                 invited_email: invite.invited_email,
@@ -148,15 +111,16 @@ impl PassClient {
         })
     }
 
-    async fn open_vault_data(
+    async fn open_vault_data_for_group_invite(
         &self,
         invited_address: &str,
         inviter_address: &str,
+        invited_group_id: GroupId,
         keys: Vec<InviteKeyResponse>,
         vault_data: &PendingInviteVaultData,
     ) -> Result<VaultData> {
         let opened_invite_keys = self
-            .open_invite_keys(invited_address, inviter_address, keys)
+            .open_group_invite_keys(invited_address, inviter_address, invited_group_id, keys)
             .await
             .context("Error opening invite keys")?;
 
@@ -170,31 +134,11 @@ impl PassClient {
             .context("Error opening vault data")
     }
 
-    pub(crate) async fn open_invite_vault_data(
-        &self,
-        invite_key: OpenedInviteKey,
-        vault_data: &PendingInviteVaultData,
-    ) -> Result<VaultData> {
-        let decoded_content = crate::utils::b64_decode(&vault_data.content)
-            .context("Error decoding vault_data invite content")?;
-
-        let decrypted = crypto::decrypt(
-            &decoded_content,
-            invite_key.key.as_ref(),
-            crypto::EncryptionTag::VaultContent,
-        )
-        .map_err(|e| {
-            error!("Error decrypting vault data from invite: {}", e);
-            anyhow!("Error decrypting vault data invite")
-        })?;
-
-        VaultData::deserialize(&decrypted).context("Error deserializing vault data")
-    }
-
-    pub(crate) async fn open_invite_keys(
+    async fn open_group_invite_keys(
         &self,
         invited_address: &str,
         inviter_address: &str,
+        invited_group_id: GroupId,
         keys: Vec<InviteKeyResponse>,
     ) -> Result<Vec<OpenedInviteKey>> {
         let inviter_keys = self
@@ -202,19 +146,20 @@ impl PassClient {
             .await
             .context("Error getting keys for inviter")?;
 
-        let invited_addresses = self
-            .get_addresses()
+        let group_addresses = self
+            .get_group_addresses()
             .await
-            .context("Error getting addresses")?;
-        let invited_address = invited_addresses
+            .context("Error getting group addresses")?;
+
+        let invited_address_for_group = group_addresses
             .into_iter()
-            .find(|a| a.email == invited_address)
-            .ok_or_else(|| anyhow!("Missing invite address"))?;
+            .find(|a| a.address.email == invited_address && a.group_id == invited_group_id)
+            .ok_or_else(|| anyhow!("Missing invited group address"))?;
 
         let invited_address_keys = self
-            .open_address_keys(invited_address.keys)
+            .open_group_keys(invited_address_for_group.address.keys)
             .await
-            .context("Error opening address keys")?;
+            .context("Error opening address keys for group")?;
 
         let crypto = self.client_features.get_pgp_crypto().await;
         let flow = OpenInviteKeyFlow::new(crypto, invited_address_keys, inviter_keys);
