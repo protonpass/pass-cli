@@ -15,7 +15,7 @@ serde.workspace = true
 zeroize.workspace = true
 
 aes-gcm = "0.10.3"
-uuid = { version = "1.17.0", features = ["v4"] }
+uuid = { version = "1.17.0", features = ["v4", "js"] }
 
 [build-dependencies]
 protobuf-codegen.workspace = true

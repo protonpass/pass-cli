@@ -6,7 +6,7 @@ use muon::GET;
 use pass_domain::ShareId;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::{Mutex, RwLock};
+use async_lock::{Mutex, RwLock};
 
 /// Per-ShareId cache with efficient locking to prevent duplicate fetches
 #[derive(Clone)]
