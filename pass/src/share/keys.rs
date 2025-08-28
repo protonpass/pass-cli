@@ -2,11 +2,11 @@ use crate::PassClient;
 use crate::pagination::Pagination;
 use crate::share::{EncryptedShareKey, ShareKey, ShareKeys};
 use anyhow::{Context, Result};
+use async_lock::{Mutex, RwLock};
 use muon::GET;
 use pass_domain::ShareId;
 use std::collections::HashMap;
 use std::sync::Arc;
-use async_lock::{Mutex, RwLock};
 
 /// Per-ShareId cache with efficient locking to prevent duplicate fetches
 #[derive(Clone)]
