@@ -9,8 +9,7 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
-# muon = { version = "1.6.0", registry = "proton", features = ["unsealed", "util", "testing-runner", "testing-server"] }
-muon = { git = "ssh://git@gitlab.protontech.ch/ProtonVPN/rust/muon.git", rev = "00c88397be359d84adc0897429bd1cea2a4b31ac", features = ["unsealed", "util", "testing-runner", "testing-server"] }
+muon = { version = "1.7.1", registry = "proton", features = ["unsealed", "util", "testing-runner", "testing-server"] }
 proton-crypto = { git = "ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git", rev = "278fdb6f44ba4fca97d3f47820f361c5f08e5435" }
 proton-crypto-account = { git = "ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git", rev = "278fdb6f44ba4fca97d3f47820f361c5f08e5435" }
 proton-pass-common = {  git = "ssh://git@gitlab.protontech.ch/proton/clients/pass/proton-pass-common.git", tag = "0.25.9" }

@@ -2506,8 +2506,9 @@ dependencies = [
 
 [[package]]
 name = "muon"
-version = "1.7.0"
-source = "git+ssh://git@gitlab.protontech.ch/ProtonVPN/rust/muon.git?rev=00c88397be359d84adc0897429bd1cea2a4b31ac#00c88397be359d84adc0897429bd1cea2a4b31ac"
+version = "1.7.1"
+source = "sparse+https://rust.gitlab-pages.protontech.ch/shared/registry/index/"
+checksum = "8885e1c12c8578affe0e9a0b31ae13705572cf37f73a71e689363045407ad6a3"
 dependencies = [
  "anyhow",
  "async-channel",
