@@ -3608,12 +3608,12 @@ checksum = "95067976aca6421a523e491fce939a3e65249bac4b977adee0ee9771568e8aa3"
 [[package]]
 name = "proton-crypto"
 version = "0.6.0"
-source = "git+ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git?rev=7d6a5f74c328650151aa469f786942aae9f8ea1e#7d6a5f74c328650151aa469f786942aae9f8ea1e"
+source = "git+ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git?rev=2ccbd848a6398b913a5d5babbbe9705661ecde7f#2ccbd848a6398b913a5d5babbbe9705661ecde7f"
 dependencies = [
  "hex",
  "parking_lot",
  "proton-rpgp",
- "proton-srp 0.7.0 (git+ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git?rev=7d6a5f74c328650151aa469f786942aae9f8ea1e)",
+ "proton-srp 0.7.0 (git+ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git?rev=2ccbd848a6398b913a5d5babbbe9705661ecde7f)",
  "rand 0.8.5",
  "serde",
  "subtle",
@@ -3623,7 +3623,7 @@ dependencies = [
 [[package]]
 name = "proton-crypto-account"
 version = "0.12.0"
-source = "git+ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git?rev=7d6a5f74c328650151aa469f786942aae9f8ea1e#7d6a5f74c328650151aa469f786942aae9f8ea1e"
+source = "git+ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git?rev=2ccbd848a6398b913a5d5babbbe9705661ecde7f#2ccbd848a6398b913a5d5babbbe9705661ecde7f"
 dependencies = [
  "base64",
  "derive_more 2.0.1",
@@ -3690,7 +3690,7 @@ dependencies = [
 [[package]]
 name = "proton-rpgp"
 version = "0.1.0"
-source = "git+ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git?rev=7d6a5f74c328650151aa469f786942aae9f8ea1e#7d6a5f74c328650151aa469f786942aae9f8ea1e"
+source = "git+ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git?rev=2ccbd848a6398b913a5d5babbbe9705661ecde7f#2ccbd848a6398b913a5d5babbbe9705661ecde7f"
 dependencies = [
  "chrono",
  "hex",
@@ -3722,7 +3722,7 @@ dependencies = [
 [[package]]
 name = "proton-srp"
 version = "0.7.0"
-source = "git+ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git?rev=7d6a5f74c328650151aa469f786942aae9f8ea1e#7d6a5f74c328650151aa469f786942aae9f8ea1e"
+source = "git+ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git?rev=2ccbd848a6398b913a5d5babbbe9705661ecde7f#2ccbd848a6398b913a5d5babbbe9705661ecde7f"
 dependencies = [
  "base64",
  "bcrypt",
