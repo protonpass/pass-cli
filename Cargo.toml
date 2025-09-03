@@ -10,8 +10,8 @@ resolver = "2"
 
 [workspace.dependencies]
 muon = { version = "1.7.1", registry = "proton", features = ["unsealed", "util", "testing-runner", "testing-server", "other-platform"] }
-proton-crypto = { git = "ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git", rev = "2ccbd848a6398b913a5d5babbbe9705661ecde7f" }
-proton-crypto-account = { git = "ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git", rev = "2ccbd848a6398b913a5d5babbbe9705661ecde7f" }
+proton-crypto = { git = "ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git", rev = "90f3aa2f50c93d742bbc21bfcce9aaa8764c5c11" }
+proton-crypto-account = { git = "ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git", rev = "90f3aa2f50c93d742bbc21bfcce9aaa8764c5c11" }
 proton-pass-common = {  git = "ssh://git@gitlab.protontech.ch/proton/clients/pass/proton-pass-common.git", tag = "0.25.9" }
 
 anyhow = "1.0"
