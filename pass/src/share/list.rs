@@ -1,5 +1,5 @@
 use crate::PassClient;
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Result};
 use muon::GET;
 use pass_domain::{
     AddressId, GroupId, ItemId, Permission, Share, ShareContent, ShareId, ShareRole, ShareType,
@@ -101,12 +101,9 @@ impl PassClient {
     }
 
     async fn fetch_shares(&self) -> Result<Vec<Share>> {
-        let res = self.client.send(GET!("/pass/v1/share")).await?;
-        if !res.status().is_success() {
-            return Err(anyhow!("HTTP Status: {:?}", res.status()));
-        }
+        let response = self.client.send(GET!("/pass/v1/share")).await?;
+        let res: GetSharesResponse = assert_response!(response);
 
-        let res: GetSharesResponse = res.body_json()?;
         let mut result = vec![];
         for share in res.shares {
             result.push(share.try_into()?);
