@@ -6,6 +6,7 @@ mod features;
 mod models;
 mod protos;
 mod types;
+pub mod utils;
 
 macro_rules! implement_custom_methods {
     ($t:ty) => {

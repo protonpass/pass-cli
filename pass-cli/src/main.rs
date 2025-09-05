@@ -109,6 +109,12 @@ enum Commands {
         #[command(subcommand)]
         command: commands::user::UserCommands,
     },
+    #[cfg(feature = "internal")]
+    #[command(about = "Internal operations")]
+    Internal {
+        #[command(subcommand)]
+        command: commands::internal::InternalCommands,
+    },
 }
 
 #[tokio::main]
@@ -151,6 +157,9 @@ async fn main() -> Result<()> {
         Commands::Invite { command } => commands::invite::run(command, client).await,
         Commands::Share { command } => commands::share::run(command, client).await,
         Commands::User { command } => commands::user::run(command, client).await,
+
+        #[cfg(feature = "internal")]
+        Commands::Internal { command } => commands::internal::run(command, client).await,
         _ => Ok(()),
     }
 }

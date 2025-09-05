@@ -3,6 +3,8 @@ use pass_domain::ShareRole;
 
 pub mod info;
 pub mod inject;
+#[cfg(feature = "internal")]
+pub mod internal;
 pub mod invite;
 pub mod item;
 pub mod login;

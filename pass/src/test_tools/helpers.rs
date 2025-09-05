@@ -4,11 +4,11 @@ use crate::share::keys::{ShareKeyList, ShareKeyResponse};
 use crate::test_tools::{MuonServerExt, TEST_ADDRESS_ID, success};
 use muon::Method;
 use muon::test::server::Server;
+pub use pass_domain::utils::random_string;
 use pass_domain::{
     CustomItem, CustomSection, ItemContent, ItemData, ItemExtraField, ItemExtraFieldContent,
     TargetType, crypto,
 };
-use rand::Rng;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
@@ -192,18 +192,6 @@ impl ItemRevisionBuilder {
             alias_email: self.alias_email.unwrap_or(None),
         }
     }
-}
-
-pub fn random_string(length: usize) -> String {
-    let chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".as_bytes();
-
-    let mut res = String::new();
-    while res.len() < length {
-        let idx = rand::rng().random_range(0..chars.len());
-        res.push(chars[idx] as char);
-    }
-
-    res
 }
 
 pub fn encrypt_for_vault_key(data: &[u8], tag: crypto::EncryptionTag) -> Vec<u8> {
