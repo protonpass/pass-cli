@@ -1,5 +1,7 @@
 use crate::features::CliClientFeatures;
-use crate::store::{AllowAllPinVerifier, AuthenticatorStore, CustomEnv, SerializedEnv};
+use crate::store::{
+    AllowAllPinVerifier, AuthenticatorStore, CustomEnv, GetStoreError, SerializedEnv,
+};
 use crate::utils::ask_for_input;
 use anyhow::{Context, bail};
 use muon::app::AppVersion;
@@ -143,13 +145,27 @@ pub async fn get_client(
     let app = App::new(get_app_header()).context("failed to create app")?;
     let key_provider = client_features.key_provider.clone();
 
-    let store = AuthenticatorStore::get_from_local(base_dir.clone(), key_provider.clone())
-        .await?
-        .unwrap_or_else(|| {
-            let env = EnvId::from(get_env());
-            debug!("Using env {env:?}");
-            AuthenticatorStore::new_with_path(env, base_dir, key_provider)
-        });
+    let store = match AuthenticatorStore::get_from_local(base_dir.clone(), key_provider.clone())
+        .await
+    {
+        Ok(store) => store,
+        Err(e) => {
+            return match e {
+                GetStoreError::CannotDecrypt(e) => Err(anyhow::anyhow!(
+                    "Error decrypting local session({e:#}). Make sure you have not changed your key provider / removed your local key, or try to logout and log in again"
+                )),
+                GetStoreError::Other(e) => {
+                    Err(anyhow::anyhow!("Error loading local session: {e:#}"))
+                }
+            };
+        }
+    };
+
+    let store = store.unwrap_or_else(|| {
+        let env = EnvId::from(get_env());
+        debug!("Using env {env:?}");
+        AuthenticatorStore::new_with_path(env, base_dir, key_provider)
+    });
 
     let mut use_allow_all = false;
     if let EnvId::Custom(ref env) = store.env

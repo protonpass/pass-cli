@@ -137,6 +137,11 @@ impl Store for AuthenticatorStore {
     }
 }
 
+pub(crate) enum GetStoreError {
+    CannotDecrypt(anyhow::Error),
+    Other(anyhow::Error),
+}
+
 impl AuthenticatorStore {
     pub fn new_with_path(
         env: EnvId,
@@ -154,28 +159,43 @@ impl AuthenticatorStore {
     pub async fn get_from_local(
         base_path: PathBuf,
         key_provider: Arc<dyn LocalKeyProvider + Send + Sync>,
-    ) -> anyhow::Result<Option<AuthenticatorStore>> {
+    ) -> Result<Option<AuthenticatorStore>, GetStoreError> {
         let file_path = base_path.join(FILE_NAME);
         if !file_path.exists() || !file_path.is_file() {
             return Ok(None);
         }
 
-        let contents = std::fs::read(file_path).context("Error reading file")?;
-        let local_key = key_provider
-            .get_key()
-            .await
-            .context("Error getting local key")?;
+        let contents = match std::fs::read(file_path) {
+            Ok(contents) => contents,
+            Err(e) => return Err(GetStoreError::Other(anyhow!("Error reading file: {e}"))),
+        };
+        let local_key = match key_provider.get_key().await {
+            Ok(k) => k,
+            Err(e) => {
+                return Err(GetStoreError::Other(anyhow!(
+                    "Error getting local key: {e}"
+                )));
+            }
+        };
 
         let decrypted =
             match pass_domain::crypto::decrypt(&contents, &local_key, EncryptionTag::Unknown) {
                 Ok(decrypted) => decrypted,
                 Err(e) => {
-                    return Err(anyhow!("Error decrypting session: {}", e));
+                    return Err(GetStoreError::CannotDecrypt(anyhow!(
+                        "Error decrypting session: {e}"
+                    )));
                 }
             };
 
-        let deserialized: SerializedStore =
-            serde_json::from_slice(&decrypted).context("Error deserializing json")?;
+        let deserialized: SerializedStore = match serde_json::from_slice(&decrypted) {
+            Ok(s) => s,
+            Err(e) => {
+                return Err(GetStoreError::Other(anyhow!(
+                    "Error deserializing json: {e}"
+                )));
+            }
+        };
 
         Ok(Some(AuthenticatorStore {
             env: EnvId::from(deserialized.env),
