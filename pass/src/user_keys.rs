@@ -15,11 +15,6 @@ fn api_user_key_to_locked_user_key(value: core::v4::keys::Key) -> LockedUserKey 
     }
 }
 
-#[derive(Clone, serde::Deserialize, serde::Serialize)]
-struct SerializableUserKeys {
-    keys: Vec<UserKey>,
-}
-
 #[derive(Clone)]
 struct UserKeysCacheType;
 

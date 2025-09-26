@@ -67,13 +67,15 @@ impl ProtonAccountCrypto {
                     return Ok(instance);
                 }
                 Err(e) => {
-                    warn!("Error unlocking key with embedded signature: {}", e);
+                    warn!("Error unlocking key with embedded signature: {:#}", e);
                     continue;
                 }
             }
         }
 
-        Err(anyhow!("No user key could unlock address key"))
+        Err(anyhow!(
+            "No user key could unlock address key with embedded signature"
+        ))
     }
 
     fn unlock_address_key_with_detached_signature(
@@ -97,8 +99,8 @@ impl ProtonAccountCrypto {
             let verifier = provider.new_verifier();
             let decryptor = provider.new_decryptor();
             let as_private_key = provider
-                .private_key_import_unlocked(key.as_ref(), DataEncoding::Bytes)
-                .context("Error importing private user key")?;
+                .private_key_import_unlocked(key.as_ref(), DataEncoding::Auto)
+                .context("Error importing private key")?;
             let decrypted_token = decryptor
                 .with_decryption_key(&as_private_key)
                 .decrypt(token, DataEncoding::Armor)
@@ -120,13 +122,15 @@ impl ProtonAccountCrypto {
                     return Ok(instance);
                 }
                 Err(e) => {
-                    warn!("Error unlocking key with detached signature: {}", e);
+                    warn!("Error unlocking key with detached signature: {:#}", e);
                     continue;
                 }
             }
         }
 
-        Err(anyhow!("No user key could unlock address key"))
+        Err(anyhow!(
+            "No user key could unlock address key with detached signature"
+        ))
     }
 
     fn unlock_with_passphrase(
@@ -312,8 +316,8 @@ fn unlock_address_key_with_passphrase<T: PGPProviderSync>(
     passphrase: T::VerifiedData,
 ) -> Result<UnlockedAddressKey> {
     let as_private_key = provider
-        .private_key_import(&address_key.private_key, passphrase, DataEncoding::Armor)
-        .context("Error importing private address key")?;
+        .private_key_import(&address_key.private_key, passphrase, DataEncoding::Auto)
+        .context("Error importing private address key for unlock with passphrase")?;
 
     let exported = provider
         .private_key_export_unlocked(&as_private_key, DataEncoding::Bytes)
