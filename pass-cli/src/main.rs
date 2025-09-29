@@ -32,7 +32,10 @@ enum Commands {
     },
 
     #[command(about = "Log out of the current session")]
-    Logout,
+    Logout {
+        #[arg(long, help = "Force logout even if remote logout fails")]
+        force: bool,
+    },
     #[command(about = "Test if the authenticated connection can be established")]
     Test,
     #[command(about = "Show information about the current session")]
@@ -116,10 +119,24 @@ enum Commands {
     },
 }
 
+impl Commands {
+    pub fn is_force_logout(&self) -> bool {
+        if let Commands::Logout { force } = self {
+            *force
+        } else {
+            false
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     logs::setup_logs();
     let cli = Cli::parse();
+
+    if cli.command.is_force_logout() {
+        return commands::logout::force_logout().await;
+    }
 
     let base_dir = utils::get_base_dir().context("Error getting base dir")?;
     let client_features =
@@ -144,7 +161,7 @@ async fn main() -> Result<()> {
     let client = PassClient::new(client, client_features);
 
     match cli.command {
-        Commands::Logout => commands::logout::run(client).await,
+        Commands::Logout { .. } => commands::logout::run(client).await,
         Commands::Test => commands::test::run(client).await,
         Commands::Info => commands::info::run(client).await,
         Commands::Inject {
