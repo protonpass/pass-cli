@@ -101,7 +101,7 @@ pub struct SerializedStore {
 }
 
 #[derive(Clone)]
-pub struct AuthenticatorStore {
+pub struct PassSessionStore {
     pub env: EnvId,
     pub auth: Arc<RwLock<Auth>>,
     pub base_path: PathBuf,
@@ -109,19 +109,19 @@ pub struct AuthenticatorStore {
 }
 
 #[async_trait::async_trait]
-impl Store for AuthenticatorStore {
+impl Store for PassSessionStore {
     fn env(&self) -> EnvId {
         self.env.clone()
     }
 
     async fn get_auth(&self) -> Auth {
-        trace!("[STORE] AuthenticatorStore::get_auth()");
+        trace!("[STORE] PassSessionStore::get_auth()");
         let lock = self.auth.read().await;
         lock.clone()
     }
 
     async fn set_auth(&mut self, auth: Auth) -> anyhow::Result<Auth, StoreError> {
-        trace!("[STORE] AuthenticatorStore::set_auth()");
+        trace!("[STORE] PassSessionStore::set_auth()");
         {
             let mut lock = self.auth.write().await;
             *lock = auth.clone();
@@ -142,7 +142,7 @@ pub(crate) enum GetStoreError {
     Other(anyhow::Error),
 }
 
-impl AuthenticatorStore {
+impl PassSessionStore {
     pub fn new_with_path(
         env: EnvId,
         base_path: PathBuf,
@@ -159,7 +159,7 @@ impl AuthenticatorStore {
     pub async fn get_from_local(
         base_path: PathBuf,
         key_provider: Arc<dyn LocalKeyProvider>,
-    ) -> Result<Option<AuthenticatorStore>, GetStoreError> {
+    ) -> Result<Option<PassSessionStore>, GetStoreError> {
         let file_path = base_path.join(FILE_NAME);
         if !file_path.exists() || !file_path.is_file() {
             return Ok(None);
@@ -197,7 +197,7 @@ impl AuthenticatorStore {
             }
         };
 
-        Ok(Some(AuthenticatorStore {
+        Ok(Some(PassSessionStore {
             env: EnvId::from(deserialized.env),
             auth: Arc::new(RwLock::new(deserialized.auth)),
             base_path,
