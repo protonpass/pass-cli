@@ -11,7 +11,7 @@ pass-pgp = { path = "../pass-pgp" }
 
 base64 = "0.22.1"
 clap = { version = "4.5", features = ["derive"] }
-ctap-hid-fido2 = { version = "3.5.5" }
+ctap-hid-fido2 = "3.5.5"
 handlebars = "6.3.2"
 keyring = { version = "3.6.3", features = ["apple-native", "sync-secret-service", "windows-native"] }
 libc = "0.2"
@@ -25,7 +25,6 @@ async-trait.workspace = true
 chrono.workspace = true
 muon.workspace = true
 proton-crypto.workspace = true
-proton-crypto-account.workspace = true
 rand.workspace = true
 serde.workspace = true
 serde_json.workspace = true
