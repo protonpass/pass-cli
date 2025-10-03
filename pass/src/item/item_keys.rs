@@ -42,7 +42,7 @@ impl ItemKey {
     }
 }
 
-#[derive(Clone, Debug, Zeroize, ZeroizeOnDrop)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize, Zeroize, ZeroizeOnDrop)]
 pub(crate) struct DecryptedItemKey(pub(crate) Vec<u8>);
 
 impl DecryptedItemKey {
@@ -57,7 +57,7 @@ impl AsRef<[u8]> for DecryptedItemKey {
     }
 }
 
-#[derive(Clone, Debug, ZeroizeOnDrop)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize, ZeroizeOnDrop)]
 pub(crate) struct OpenedItemKey {
     pub(crate) key: DecryptedItemKey,
     pub(crate) key_rotation: u8,

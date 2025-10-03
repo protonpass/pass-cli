@@ -1,7 +1,6 @@
 use anyhow::{Context, Result};
 use keyring::{Entry, Error as KeyringError};
 use pass_domain::LocalKeyProvider;
-use rand::RngCore;
 use tokio::sync::RwLock;
 
 const KEYRING_SERVICE_NAME: &str = "ProtonPassCLI";
@@ -16,7 +15,7 @@ impl KeyringKeyProvider {
     pub fn new() -> Self {
         Self {
             key: RwLock::new(None),
-            xor_key: rand::rng().next_u32() as u8,
+            xor_key: pass_domain::crypto::generate_random_byte(),
         }
     }
 

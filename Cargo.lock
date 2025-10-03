@@ -3094,7 +3094,6 @@ dependencies = [
  "pass-pgp",
  "proton-crypto",
  "proton-crypto-account",
- "rand 0.9.2",
  "regex",
  "rpassword",
  "serde",

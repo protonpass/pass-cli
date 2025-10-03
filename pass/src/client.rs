@@ -9,6 +9,7 @@ pub struct PassClient {
     pub(crate) client: Client,
     pub(crate) cache: Cache,
     pub(crate) client_features: Arc<dyn ClientFeatures>,
+    pub(crate) memory_xor_key: u8,
 }
 
 impl PassClient {
@@ -17,6 +18,7 @@ impl PassClient {
             client,
             client_features,
             cache: Cache::new(),
+            memory_xor_key: pass_domain::crypto::generate_random_byte(),
         }
     }
 

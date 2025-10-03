@@ -8,7 +8,31 @@ use pass_domain::{Item, ShareId};
 use std::collections::HashMap;
 
 struct ItemsForShareCacheType;
-type ItemsForShareCache = HashMap<ShareId, Vec<ItemWithItemKey>>;
+type ItemsForShareCache = HashMap<ShareId, SerializedItemsWithKey>;
+
+#[derive(Clone, serde::Deserialize, serde::Serialize)]
+struct SerializedItemsWithKey(Vec<u8>);
+
+impl SerializedItemsWithKey {
+    pub fn new(content: &[ItemWithItemKey], xor_key: u8) -> Result<Self> {
+        let serialized = serde_json::to_vec(content).context("Error serializing content")?;
+        let xored = Self::perform_xor(serialized, xor_key);
+        Ok(Self(xored))
+    }
+
+    pub fn deserialize(&self, xor_key: u8) -> Result<Vec<ItemWithItemKey>> {
+        let xored = Self::perform_xor(self.0.clone(), xor_key);
+        let deserialized = serde_json::from_slice(&xored).context("Error deserializing content")?;
+        Ok(deserialized)
+    }
+
+    fn perform_xor(mut data: Vec<u8>, xor_key: u8) -> Vec<u8> {
+        for i in &mut data {
+            *i ^= xor_key;
+        }
+        data
+    }
+}
 
 #[derive(Clone, Debug, serde::Deserialize)]
 struct GetItemsResponse {
@@ -57,11 +81,18 @@ impl PassClient {
 
             let cached: Option<ItemsForShareCache> = self.cache.get(ItemsForShareCacheType).await;
             if let Some(cached) = cached {
-                let share_items = cached.get(&share_id);
+                let share_items: Option<&SerializedItemsWithKey> = cached.get(&share_id);
                 if let Some(cached_items) = share_items {
-                    let items = cached_items.iter().map(|i| &i.item).cloned().collect();
-                    trace!("Returning cached items for share {share_id}");
-                    return Ok(items);
+                    match cached_items.deserialize(self.memory_xor_key) {
+                        Ok(items) => {
+                            let items = items.into_iter().map(|i| i.item).collect();
+                            trace!("Returning cached items for share {share_id}");
+                            return Ok(items);
+                        }
+                        Err(e) => {
+                            warn!("Error deserializing cached items: {e:#}");
+                        }
+                    }
                 }
             }
         }
@@ -76,11 +107,13 @@ impl PassClient {
             .await
             .context("Error opening items")?;
 
+        let serialized = SerializedItemsWithKey::new(&opened, self.memory_xor_key)
+            .context("Error caching items")?;
         self.cache
             .update(
                 ItemsForShareCacheType,
                 |share_items: &mut ItemsForShareCache| {
-                    share_items.insert(share_id.clone(), opened.clone());
+                    share_items.insert(share_id.clone(), serialized);
                 },
             )
             .await;

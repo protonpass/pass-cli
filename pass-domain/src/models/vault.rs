@@ -2,7 +2,7 @@ use crate::ShareId;
 use crate::protos::vault::vault_v1;
 use anyhow::{Context, Result, anyhow};
 
-#[derive(Clone, Debug, serde::Serialize)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct VaultId(pub(crate) String);
 display_for_basic!(VaultId);
 

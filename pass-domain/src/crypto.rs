@@ -39,6 +39,10 @@ impl EncryptionTag {
 
 const KEY_LENGTH: usize = 32;
 
+pub fn generate_random_byte() -> u8 {
+    rand::rng().next_u32() as u8
+}
+
 pub fn generate_encryption_key() -> Vec<u8> {
     random_bytes(KEY_LENGTH)
 }

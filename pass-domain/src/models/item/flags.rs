@@ -1,4 +1,4 @@
-#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub enum ItemFlag {
     SkipHealthCheck = 1 << 0, // 1
     EmailBreached = 1 << 1,   // 2

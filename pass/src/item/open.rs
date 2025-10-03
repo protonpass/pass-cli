@@ -11,7 +11,7 @@ use std::collections::HashMap;
 
 const MAX_CONCURRENCY: usize = 10;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub(crate) struct ItemWithItemKey {
     pub item: Item,
     pub item_key: OpenedItemKey,

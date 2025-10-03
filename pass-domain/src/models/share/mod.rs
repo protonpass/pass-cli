@@ -8,7 +8,7 @@ use crate::models::group::GroupId;
 use crate::{AddressId, ItemId, VaultId};
 use anyhow::{Result, anyhow};
 
-#[derive(Clone, Debug, Hash, Eq, PartialEq, serde::Serialize)]
+#[derive(Clone, Debug, Hash, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct ShareId(pub(crate) String);
 
 impl ShareId {
@@ -29,7 +29,7 @@ pub enum ShareType {
     Item { vault_id: VaultId, item_id: ItemId },
 }
 
-#[derive(Clone, Debug, serde::Serialize)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub enum TargetType {
     Vault,
     Item,

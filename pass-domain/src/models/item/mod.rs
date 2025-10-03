@@ -9,7 +9,7 @@ pub use attachment::*;
 pub use flags::*;
 use protobuf::Message;
 
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub struct ItemId(pub(crate) String);
 display_for_basic!(ItemId);
 
@@ -23,7 +23,7 @@ impl ItemId {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub enum ItemState {
     Active = 1,
     Trashed = 2,
@@ -40,7 +40,7 @@ impl TryFrom<u8> for ItemState {
     }
 }
 
-#[derive(Clone, Debug, serde::Serialize)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct Item {
     pub id: ItemId,
     pub share_id: ShareId,
@@ -50,7 +50,7 @@ pub struct Item {
     pub flags: Vec<ItemFlag>,
 }
 
-#[derive(Clone, Debug, serde::Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq)]
 pub struct ItemData {
     pub title: String,
     pub note: String,
@@ -145,7 +145,7 @@ impl From<item_v1::Item> for ItemData {
     }
 }
 
-#[derive(Clone, Debug, serde::Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq)]
 pub struct ItemExtraField {
     pub name: String,
     pub content: ItemExtraFieldContent,
@@ -173,7 +173,7 @@ impl From<item_v1::ExtraField> for ItemExtraField {
     }
 }
 
-#[derive(Clone, Debug, serde::Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq)]
 pub enum ItemExtraFieldContent {
     Text(String),
     Totp(String),
@@ -237,7 +237,7 @@ impl From<item_v1::extra_field::Content> for ItemExtraFieldContent {
     }
 }
 
-#[derive(Clone, Debug, serde::Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq)]
 pub enum ItemContent {
     Note(NoteItem),
     Login(LoginItem),
@@ -308,7 +308,7 @@ impl From<item_v1::Content> for ItemContent {
     }
 }
 
-#[derive(Clone, Debug, serde::Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq)]
 pub struct NoteItem;
 
 impl From<NoteItem> for item_v1::ItemNote {
@@ -323,7 +323,7 @@ impl From<item_v1::ItemNote> for NoteItem {
     }
 }
 
-#[derive(Clone, Debug, serde::Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq)]
 pub struct LoginItem {
     pub email: String,
     pub username: String,
@@ -357,7 +357,7 @@ impl From<item_v1::ItemLogin> for LoginItem {
     }
 }
 
-#[derive(Clone, Debug, serde::Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq)]
 pub struct AliasItem;
 
 impl From<AliasItem> for item_v1::ItemAlias {
@@ -372,7 +372,7 @@ impl From<item_v1::ItemAlias> for AliasItem {
     }
 }
 
-#[derive(Clone, Debug, serde::Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq)]
 pub struct CreditCardItem {
     pub cardholder_name: String,
     pub card_type: CardType,
@@ -409,7 +409,7 @@ impl From<item_v1::ItemCreditCard> for CreditCardItem {
     }
 }
 
-#[derive(Clone, Debug, serde::Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq)]
 pub struct IdentityItem {
     pub full_name: String,
     pub email: String,
@@ -488,7 +488,7 @@ impl From<item_v1::ItemIdentity> for IdentityItem {
     }
 }
 
-#[derive(Clone, Debug, serde::Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq)]
 pub struct SshKeyItem {
     pub private_key: String,
     pub public_key: String,
@@ -513,7 +513,7 @@ impl From<item_v1::ItemSSHKey> for SshKeyItem {
     }
 }
 
-#[derive(Clone, Debug, serde::Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq)]
 pub struct WifiItem {
     pub ssid: String,
     pub password: String,
@@ -541,7 +541,7 @@ impl From<item_v1::ItemWifi> for WifiItem {
     }
 }
 
-#[derive(Clone, Debug, serde::Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq)]
 pub struct CustomItem {
     pub sections: Vec<CustomSection>,
 }
@@ -571,7 +571,7 @@ impl From<item_v1::ItemCustom> for CustomItem {
     }
 }
 
-#[derive(Clone, Debug, serde::Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq)]
 pub struct CustomSection {
     pub section_name: String,
     pub section_fields: Vec<ItemExtraField>,
@@ -604,7 +604,7 @@ impl From<item_v1::CustomSection> for CustomSection {
     }
 }
 
-#[derive(Clone, Debug, Default, serde::Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, serde::Deserialize, serde::Serialize, PartialEq, Eq)]
 pub enum CardType {
     #[default]
     Unspecified,
@@ -638,7 +638,7 @@ impl From<item_v1::CardType> for CardType {
     }
 }
 
-#[derive(Clone, Debug, Default, serde::Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, serde::Deserialize, serde::Serialize, PartialEq, Eq)]
 pub enum WifiSecurity {
     #[default]
     UnspecifiedWifiSecurity,
