@@ -101,7 +101,7 @@ pub struct SerializedStore {
 }
 
 #[derive(Clone)]
-pub struct AuthenticatorStore {
+pub struct PassSessionStore {
     pub env: EnvId,
     pub auth: Arc<RwLock<Auth>>,
     pub base_path: PathBuf,
@@ -109,19 +109,19 @@ pub struct AuthenticatorStore {
 }
 
 #[async_trait::async_trait]
-impl Store for AuthenticatorStore {
+impl Store for PassSessionStore {
     fn env(&self) -> EnvId {
         self.env.clone()
     }
 
     async fn get_auth(&self) -> Auth {
-        trace!("[STORE] AuthenticatorStore::get_auth()");
+        trace!("[STORE] PassSessionStore::get_auth()");
         let lock = self.auth.read().await;
         lock.clone()
     }
 
     async fn set_auth(&mut self, auth: Auth) -> anyhow::Result<Auth, StoreError> {
-        trace!("[STORE] AuthenticatorStore::set_auth()");
+        trace!("[STORE] PassSessionStore::set_auth()");
         {
             let mut lock = self.auth.write().await;
             *lock = auth.clone();
@@ -137,12 +137,52 @@ impl Store for AuthenticatorStore {
     }
 }
 
+/// Wrapper around Arc<RwLock<PassSessionStore>> that implements Store
+#[derive(Clone)]
+pub struct SharedPassSessionStore {
+    pub inner: Arc<RwLock<PassSessionStore>>,
+}
+
+impl SharedPassSessionStore {
+    pub fn new(store: PassSessionStore) -> Self {
+        Self {
+            inner: Arc::new(RwLock::new(store)),
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl Store for SharedPassSessionStore {
+    fn env(&self) -> EnvId {
+        // We need to block here since env() is not async
+        // This is safe because env is read-only and cloned
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                let store = self.inner.read().await;
+                store.env.clone()
+            })
+        })
+    }
+
+    async fn get_auth(&self) -> Auth {
+        trace!("[STORE] SharedPassSessionStore::get_auth()");
+        let store = self.inner.read().await;
+        store.get_auth().await
+    }
+
+    async fn set_auth(&mut self, auth: Auth) -> anyhow::Result<Auth, StoreError> {
+        trace!("[STORE] SharedPassSessionStore::set_auth()");
+        let mut store = self.inner.write().await;
+        store.set_auth(auth).await
+    }
+}
+
 pub(crate) enum GetStoreError {
     CannotDecrypt(anyhow::Error),
     Other(anyhow::Error),
 }
 
-impl AuthenticatorStore {
+impl PassSessionStore {
     pub fn new_with_path(
         env: EnvId,
         base_path: PathBuf,
@@ -159,7 +199,7 @@ impl AuthenticatorStore {
     pub async fn get_from_local(
         base_path: PathBuf,
         key_provider: Arc<dyn LocalKeyProvider>,
-    ) -> Result<Option<AuthenticatorStore>, GetStoreError> {
+    ) -> Result<Option<PassSessionStore>, GetStoreError> {
         let file_path = base_path.join(FILE_NAME);
         if !file_path.exists() || !file_path.is_file() {
             return Ok(None);
@@ -197,7 +237,7 @@ impl AuthenticatorStore {
             }
         };
 
-        Ok(Some(AuthenticatorStore {
+        Ok(Some(PassSessionStore {
             env: EnvId::from(deserialized.env),
             auth: Arc::new(RwLock::new(deserialized.auth)),
             base_path,
@@ -242,5 +282,10 @@ impl AuthenticatorStore {
         debug!("[STORE] Stored session");
 
         Ok(())
+    }
+
+    pub async fn needs_extra_password(&self) -> bool {
+        let auth = self.auth.read().await;
+        !auth.has_scope("pass")
     }
 }

@@ -1,19 +1,25 @@
 use crate::client::authenticate_client;
 use crate::features::CliClientFeatures;
+use crate::store::PassSessionStore;
 use crate::utils::get_base_dir;
 use anyhow::{Context, Result};
 use muon::Client;
 use pass::{CreateVaultArgs, PassClient};
 use std::sync::Arc;
+use tokio::sync::RwLock;
 
-pub async fn run(username: &str, client: Client) -> Result<()> {
+pub async fn run(
+    username: &str,
+    client: Client,
+    store: Arc<RwLock<PassSessionStore>>,
+) -> Result<()> {
     if client.is_authenticated().await {
         info!("Client is already authenticated. Log out if you want to log in again");
         return Ok(());
     }
     info!("Logging in user: {}", username);
 
-    let authenticated_client = authenticate_client(client, username).await?;
+    let authenticated_client = authenticate_client(client, username, store).await?;
 
     info!("Logged in user: {}", username);
     let base_dir = get_base_dir().context("Couldn't get base directory")?;
