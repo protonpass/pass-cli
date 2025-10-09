@@ -119,6 +119,11 @@ enum Commands {
         #[command(subcommand)]
         command: commands::internal::InternalCommands,
     },
+    #[command(about = "Check for and install updates")]
+    Update {
+        #[arg(short, long, help = "Skip confirmation prompt")]
+        yes: bool,
+    },
 }
 
 impl Commands {
@@ -141,6 +146,13 @@ async fn main() -> Result<()> {
     }
 
     let base_dir = utils::get_base_dir().context("Error getting base dir")?;
+
+    // Check for updates in the background (non-blocking, weekly check)
+    // This runs for all commands except update itself to avoid recursion
+    if !matches!(cli.command, Commands::Update { .. }) {
+        let _ = commands::update::check_for_updates_background(&base_dir).await;
+    }
+
     let client_features =
         CliClientFeatures::new(base_dir.clone()).context("Error creating client features")?;
     let client_features = Arc::new(client_features);
@@ -152,6 +164,9 @@ async fn main() -> Result<()> {
         Commands::Login { username } => return commands::login::run(username, client, store).await,
         Commands::Password { command } => {
             return commands::password::run(command).await;
+        }
+        Commands::Update { yes } => {
+            return commands::update::run(*yes, base_dir.clone()).await;
         }
         _ => {}
     };

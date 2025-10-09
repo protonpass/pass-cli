@@ -9,14 +9,19 @@ pass-domain = { path = "../pass-domain" }
 pass-fs = { path = "../pass-fs" }
 pass-pgp = { path = "../pass-pgp" }
 
+atty = "0.2"
 base64 = "0.22.1"
 clap = { version = "4.5", features = ["derive"] }
 ctap-hid-fido2 = "3.5.5"
+futures-util = "0.3"
 handlebars = "6.3.2"
 keyring = { version = "3.6.3", features = ["apple-native", "sync-secret-service", "windows-native"] }
 libc = "0.2"
 regex = "1.10"
+reqwest = { version = "0.12", features = ["json", "stream"] }
 rpassword = "7.3.1"
+semver = "1.0"
+sha2 = "0.10"
 thiserror = "2"
 tracing-subscriber = { version = "0.3", features = ["default"] }
 
@@ -25,12 +30,11 @@ async-trait.workspace = true
 chrono.workspace = true
 muon.workspace = true
 proton-crypto.workspace = true
-proton-crypto-account.workspace = true
-rand.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
 tracing.workspace = true
+uuid.workspace = true
 
 [dev-dependencies]
 tempfile = "3.8"
