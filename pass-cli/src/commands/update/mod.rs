@@ -11,6 +11,7 @@ use std::path::PathBuf;
 pub use check::check_for_updates_background;
 
 const ENV_NO_UPDATE_CHECK: &str = "PROTON_PASS_NO_UPDATE_CHECK";
+const ENV_UPDATE_VERSION_STRATEGY: &str = "PASS_CLI_UPDATE_VERSION_STRATEGY";
 const DEFAULT_MANIFEST_URL: &str = "https://protonapps.com/download/pass-cli/versions.json";
 
 #[cfg(debug_assertions)]
@@ -32,6 +33,12 @@ fn is_autoupdate_disabled() -> bool {
     std::env::var(ENV_NO_UPDATE_CHECK).is_ok()
 }
 
+fn is_force_update_strategy() -> bool {
+    std::env::var(ENV_UPDATE_VERSION_STRATEGY)
+        .map(|val| val.to_lowercase() == "force")
+        .unwrap_or(false)
+}
+
 pub async fn run(yes: bool, base_dir: PathBuf) -> Result<()> {
     if is_autoupdate_disabled() {
         eprintln!("Auto-update is disabled via {}.", ENV_NO_UPDATE_CHECK);
@@ -48,7 +55,10 @@ pub async fn run(yes: bool, base_dir: PathBuf) -> Result<()> {
     let version_info = &manifest.pass_cli_versions;
     let latest_version = &version_info.version;
 
-    if !platform::is_newer_version(latest_version, current_version)? {
+    let force_update = is_force_update_strategy();
+    if force_update {
+        println!("Force update strategy enabled, skipping version check.");
+    } else if !platform::is_newer_version(latest_version, current_version)? {
         println!("Already up to date (v{}).", current_version);
         return Ok(());
     }
