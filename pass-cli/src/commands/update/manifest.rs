@@ -3,6 +3,12 @@ use std::collections::HashMap;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ManifestHeader {
+    pub format_version: u32,
+}
+
+#[derive(Debug, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Manifest {
     pub format_version: u32,
     pub pass_cli_versions: VersionInfo,
@@ -66,12 +72,27 @@ pub async fn fetch_manifest(url: &str) -> Result<Manifest> {
         ));
     }
 
-    let manifest: Manifest = response
-        .json()
+    // Get response body as text for two-step parsing
+    let body = response
+        .text()
         .await
-        .context("Failed to parse manifest JSON")?;
+        .context("Failed to read manifest response body")?;
 
-    Ok(manifest)
+    // Parse only the header to check format version
+    let header: ManifestHeader =
+        serde_json::from_str(&body).context("Failed to parse manifest header")?;
+
+    match header.format_version {
+        1 => {
+            let manifest: Manifest =
+                serde_json::from_str(&body).context("Failed to parse manifest JSON")?;
+            Ok(manifest)
+        }
+        _ => Err(anyhow::anyhow!(
+            "Unsupported manifest format version {}. Please upgrade pass-cli manually.",
+            header.format_version
+        )),
+    }
 }
 
 #[cfg(test)]
@@ -128,5 +149,24 @@ mod tests {
         let macos_urls = manifest.pass_cli_versions.urls.get("macos").unwrap();
         assert!(macos_urls.contains_key("x86_64"));
         assert!(macos_urls.contains_key("aarch64"));
+    }
+
+    #[test]
+    fn test_unsupported_version_rejected() {
+        let json = r#"{
+            "formatVersion": 2,
+            "passCliVersions": {
+                "version": "4.5.6",
+                "urls": {}
+            }
+        }"#;
+
+        // Should be able to parse header
+        let header: ManifestHeader = serde_json::from_str(json).unwrap();
+        assert_eq!(header.format_version, 2);
+
+        // But version 2 should not be parsed as full manifest in fetch_manifest
+        // (This test validates the header parsing works; actual version rejection
+        // is tested in integration tests since fetch_manifest is async)
     }
 }

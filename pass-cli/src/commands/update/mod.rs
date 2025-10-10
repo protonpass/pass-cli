@@ -45,13 +45,6 @@ pub async fn run(yes: bool, base_dir: PathBuf) -> Result<()> {
         .await
         .context("Failed to fetch update manifest")?;
 
-    if manifest.format_version != 1 {
-        return Err(anyhow::anyhow!(
-            "Unsupported update manifest (formatVersion={}). Please upgrade pass-cli manually.",
-            manifest.format_version
-        ));
-    }
-
     let version_info = &manifest.pass_cli_versions;
     let latest_version = &version_info.version;
 
