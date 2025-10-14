@@ -12,7 +12,11 @@ pub use check::check_for_updates_background;
 
 const ENV_NO_UPDATE_CHECK: &str = "PROTON_PASS_NO_UPDATE_CHECK";
 const ENV_UPDATE_VERSION_STRATEGY: &str = "PASS_CLI_UPDATE_VERSION_STRATEGY";
-const DEFAULT_MANIFEST_URL: &str = "https://protonapps.com/download/pass-cli/versions.json";
+const MANIFEST_BASE_URL: &str = "https://protonapps.com/download/pass-cli/";
+
+fn get_default_manifest_url() -> String {
+    format!("{}versions.json", MANIFEST_BASE_URL)
+}
 
 #[cfg(debug_assertions)]
 const ENV_AUTOUPDATE_URL: &str = "PROTON_PASS_AUTOUPDATE_URL";
@@ -20,13 +24,25 @@ const ENV_AUTOUPDATE_URL: &str = "PROTON_PASS_AUTOUPDATE_URL";
 // In debug mode, allow changing the auto_update url
 #[cfg(debug_assertions)]
 fn get_manifest_url() -> String {
-    std::env::var(ENV_AUTOUPDATE_URL).unwrap_or_else(|_| DEFAULT_MANIFEST_URL.to_string())
+    std::env::var(ENV_AUTOUPDATE_URL).unwrap_or_else(|_| get_default_manifest_url())
 }
 
-// In release mode, enforce the manifest url
+#[cfg(not(debug_assertions))]
+const ENV_RELEASE_CHANNEL: &str = "PROTON_PASS_RELEASE_CHANNEL";
+
+// In release mode, enforce the manifest url with optional release channel support
 #[cfg(not(debug_assertions))]
 fn get_manifest_url() -> String {
-    DEFAULT_MANIFEST_URL.to_string()
+    let channel = std::env::var(ENV_RELEASE_CHANNEL)
+        .unwrap_or_default()
+        .trim()
+        .to_string();
+
+    if channel.is_empty() || channel == "stable" {
+        get_default_manifest_url()
+    } else {
+        format!("{}versions.{}.json", MANIFEST_BASE_URL, channel)
+    }
 }
 
 fn is_autoupdate_disabled() -> bool {
