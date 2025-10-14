@@ -4,9 +4,28 @@ use crate::store::PassSessionStore;
 use crate::utils::get_base_dir;
 use anyhow::{Context, Result};
 use muon::Client;
-use pass::{CreateVaultArgs, PassClient};
+use pass::{CreateVaultArgs, PassClient, PassPlan};
 use std::sync::Arc;
 use tokio::sync::RwLock;
+
+#[cfg(feature = "no-login-restriction")]
+fn is_login_allowed(_: &PassPlan) -> bool {
+    true
+}
+
+#[cfg(not(feature = "no-login-restriction"))]
+fn is_login_allowed(plan: &PassPlan) -> bool {
+    debug!("Checking is_login_allowed with plan {:?}", plan);
+    if plan.type_ == pass::PlanType::Free {
+        debug!("Free plans are not allowed");
+        return false;
+    }
+
+    match plan.internal_name.as_str() {
+        "visionary2022" | "bundlepro2024" => true,
+        _ => false,
+    }
+}
 
 pub async fn run(
     username: &str,
@@ -26,6 +45,17 @@ pub async fn run(
     let key_provider =
         Arc::new(CliClientFeatures::new(base_dir).context("Error creating client features")?);
     let client = PassClient::new(authenticated_client.client, key_provider);
+
+    let info = client
+        .get_user_access()
+        .await
+        .context("Error retrieving user access info")?;
+    if !is_login_allowed(&info.plan) {
+        eprintln!("Your account is not yet allowed to use our CLI");
+        client.logout().await?;
+        crate::commands::logout::run(client).await?;
+        std::process::exit(1);
+    }
 
     client
         .perform_first_time_setup(&authenticated_client.password)

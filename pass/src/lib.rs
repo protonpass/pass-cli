@@ -31,4 +31,5 @@ mod vault;
 pub use client::PassClient;
 pub use item::create::login;
 pub use item::find::FindItemQuery;
+pub use user::access::{PassPlan, PlanType, UserDataSettings, UserInfo};
 pub use vault::{CreateVaultArgs, UpdateVaultArgs};
