@@ -3,11 +3,30 @@
 # Proton Pass CLI Installation Script for Windows
 # Usage: Invoke-WebRequest -Uri https://example.com/install.ps1 -OutFile install.ps1; .\install.ps1
 # Or with custom install dir: $env:PASS_CLI_INSTALL_DIR="C:\custom\path"; .\install.ps1
+# Or with custom channel: $env:PROTON_PASS_CLI_INSTALL_CHANNEL="beta"; .\install.ps1
 
 $ErrorActionPreference = "Stop"
 
-$MANIFEST_URL = "https://protonapps.com/download/pass-cli/versions.json"
+$MANIFEST_BASE_URL = "https://protonapps.com/download/pass-cli/"
 $BINARY_NAME = "pass-cli.exe"
+
+# Get manifest URL based on channel
+function Get-ManifestUrl {
+    $channel = $env:PROTON_PASS_CLI_INSTALL_CHANNEL
+    if ($null -eq $channel) {
+        $channel = ""
+    }
+    $channel = $channel.Trim()
+    
+    if ([string]::IsNullOrEmpty($channel) -or $channel -eq "stable") {
+        return "${MANIFEST_BASE_URL}versions.json"
+    }
+    else {
+        return "${MANIFEST_BASE_URL}versions.${channel}.json"
+    }
+}
+
+$MANIFEST_URL = Get-ManifestUrl
 
 # Color output functions
 function Write-Info {

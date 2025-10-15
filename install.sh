@@ -4,9 +4,24 @@ set -e
 # Proton Pass CLI Installation Script
 # Usage: curl -fsSL https://example.com/install.sh | bash
 # Or with custom install dir: PASS_CLI_INSTALL_DIR=/custom/path bash install.sh
+# Or with custom channel: PROTON_PASS_CLI_INSTALL_CHANNEL=beta bash install.sh
 
-MANIFEST_URL="https://protonapps.com/download/pass-cli/versions.json"
+MANIFEST_BASE_URL="https://protonapps.com/download/pass-cli/"
 BINARY_NAME="pass-cli"
+
+# Get manifest URL based on channel
+get_manifest_url() {
+    channel="${PROTON_PASS_CLI_INSTALL_CHANNEL:-}"
+    channel=$(echo "$channel" | tr -d ' ')
+    
+    if [ -z "$channel" ] || [ "$channel" = "stable" ]; then
+        echo "${MANIFEST_BASE_URL}versions.json"
+    else
+        echo "${MANIFEST_BASE_URL}versions.${channel}.json"
+    fi
+}
+
+MANIFEST_URL=$(get_manifest_url)
 
 # Colors for output
 RED='\033[0;31m'
