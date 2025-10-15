@@ -42,3 +42,4 @@ tempfile = "3.8"
 [features]
 default = []
 internal = []
+no-login-restriction = []

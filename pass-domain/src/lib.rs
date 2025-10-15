@@ -2,6 +2,7 @@
 mod macros;
 
 pub mod crypto;
+mod feature_flag;
 mod features;
 mod models;
 mod protos;
@@ -34,6 +35,7 @@ macro_rules! implement_custom_methods {
     };
 }
 
+pub use feature_flag::*;
 pub use features::*;
 pub use models::address::*;
 pub use models::group::*;
