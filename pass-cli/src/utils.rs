@@ -1,8 +1,7 @@
 use anyhow::Context;
 use std::path::PathBuf;
 
-const ENV_BASE_DIR: &str = "BASE_DIR";
-const PASS_SESSION_DIR: &str = "pass-cli-session";
+const PROTON_PASS_SESSION_DIR_ENV: &str = "PROTON_PASS_SESSION_DIR";
 
 pub fn ask_for_input(prompt: &str, secure: bool) -> anyhow::Result<String> {
     if secure {
@@ -26,20 +25,24 @@ pub fn ask_for_input(prompt: &str, secure: bool) -> anyhow::Result<String> {
 }
 
 pub fn get_base_dir() -> anyhow::Result<PathBuf> {
-    let base_dir = match std::env::var(ENV_BASE_DIR) {
-        Ok(base_dir) => PathBuf::from(base_dir),
-        Err(_) => {
-            let current_dir = std::env::current_dir().context("Error getting current dir")?;
-            let session_path = current_dir.join(".session");
-            std::fs::create_dir_all(&session_path).context("Error creating base dir")?;
-            session_path
-        }
-    }
-    .join(PASS_SESSION_DIR)
-    .to_path_buf();
-    std::fs::create_dir_all(&base_dir).context("Error creating base session dir")?;
+    // Check for environment variable override first
+    let proton_dir = if let Ok(custom_dir) = std::env::var(PROTON_PASS_SESSION_DIR_ENV) {
+        PathBuf::from(custom_dir)
+    } else {
+        // Use platform-specific data directory
+        let data_dir = dirs::data_dir()
+            .context("Failed to determine data directory for this platform")?;
+        data_dir.join("proton-pass-cli")
+    };
 
-    let base_dir_absolute =
-        std::fs::canonicalize(&base_dir).context("error getting absolute path")?;
-    Ok(base_dir_absolute)
+    // Create a .session subfolder (just like before, but in the platform-specific location)
+    let session_dir = proton_dir.join(".session");
+    
+    // Create the directory if it doesn't exist
+    std::fs::create_dir_all(&session_dir).context("Error creating session directory")?;
+
+    // Return the canonicalized (absolute) path
+    let session_dir_absolute =
+        std::fs::canonicalize(&session_dir).context("Error getting absolute path")?;
+    Ok(session_dir_absolute)
 }
