@@ -4,26 +4,40 @@ use crate::store::PassSessionStore;
 use crate::utils::get_base_dir;
 use anyhow::{Context, Result};
 use muon::Client;
-use pass::{CreateVaultArgs, PassClient, PassPlan};
+use pass::{CreateVaultArgs, PassClient};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
 #[cfg(feature = "no-login-restriction")]
-fn is_login_allowed(_: &PassPlan) -> bool {
-    true
+async fn is_login_allowed(_client: &PassClient) -> Result<bool> {
+    Ok(true)
 }
 
 #[cfg(not(feature = "no-login-restriction"))]
-fn is_login_allowed(plan: &PassPlan) -> bool {
+async fn is_login_allowed(client: &PassClient) -> Result<bool> {
+    let ff = client
+        .has_feature_flag(pass_domain::FeatureFlag::PassCanUseCli)
+        .await
+        .context("Error checking PassCanUseCli feature flag")?;
+    if ff {
+        return Ok(true);
+    }
+
+    let info = client
+        .get_user_access()
+        .await
+        .context("Error retrieving user access info")?;
+
+    let plan = info.plan;
     debug!("Checking is_login_allowed with plan {:?}", plan);
     if plan.type_ == pass::PlanType::Free {
         debug!("Free plans are not allowed");
-        return false;
+        return Ok(false);
     }
 
     match plan.internal_name.as_str() {
-        "visionary2022" | "bundlepro2024" => true,
-        _ => false,
+        "visionary2022" | "bundlepro2024" => Ok(true),
+        _ => Ok(false),
     }
 }
 
@@ -45,12 +59,10 @@ pub async fn run(
     let key_provider =
         Arc::new(CliClientFeatures::new(base_dir).context("Error creating client features")?);
     let client = PassClient::new(authenticated_client.client, key_provider);
-
-    let info = client
-        .get_user_access()
+    let login_allowed = is_login_allowed(&client)
         .await
-        .context("Error retrieving user access info")?;
-    if !is_login_allowed(&info.plan) {
+        .context("Error checking login permissions")?;
+    if !login_allowed {
         eprintln!("Your account is not yet allowed to use our CLI");
         client.logout().await?;
         crate::commands::logout::run(client).await?;

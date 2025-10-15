@@ -14,6 +14,7 @@ mod client;
 mod common;
 mod constants;
 mod crypto;
+mod feature_flags;
 mod info;
 mod invite;
 mod item;
