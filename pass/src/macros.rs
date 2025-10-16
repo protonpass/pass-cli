@@ -21,6 +21,16 @@ macro_rules! display_for_basic {
         }
     };
 }
+#[macro_export]
+macro_rules! display_for_enum {
+    ($t:ty) => {
+        impl std::fmt::Display for $t {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{self:?}")
+            }
+        }
+    };
+}
 
 #[macro_export]
 macro_rules! assert_response {

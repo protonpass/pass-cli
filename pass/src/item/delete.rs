@@ -1,4 +1,5 @@
 use crate::PassClient;
+use crate::permission::PermissionAction;
 use crate::utils::debug_response;
 use anyhow::{Context, Result, anyhow};
 use muon::DELETE;
@@ -22,6 +23,11 @@ struct DeleteItemBody {
 
 impl PassClient {
     pub async fn delete_item(&self, share_id: &ShareId, item_id: &ItemId) -> Result<()> {
+        self.action_guard(PermissionAction::DeleteItem {
+            share_id: share_id.clone(),
+            item_id: item_id.clone(),
+        })
+        .await?;
         let item_revision = self
             .fetch_item_revision(share_id, item_id)
             .await

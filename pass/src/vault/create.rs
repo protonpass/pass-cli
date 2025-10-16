@@ -1,4 +1,5 @@
 use crate::PassClient;
+use crate::permission::PermissionAction;
 use crate::utils::debug_response;
 use anyhow::{Context, Result, anyhow};
 use muon::POST;
@@ -46,6 +47,7 @@ struct CreateVaultResponseContent {
 
 impl PassClient {
     pub async fn create_vault(&self, args: CreateVaultArgs) -> Result<(ShareId, VaultId)> {
+        self.action_guard(PermissionAction::CreateVault).await?;
         let req = self
             .create_vault_request(args)
             .await
@@ -136,7 +138,6 @@ mod tests {
         const VAULT_ID: &str = "MyVaultID";
 
         let client = server.pass_client().await;
-
         let handled = server.handler("/pass/v1/vault", |_| {
             success(CreateVaultResponse {
                 share: CreateVaultResponseContent {

@@ -22,6 +22,7 @@ mod local_crypto;
 mod logout;
 mod pagination;
 pub mod password;
+mod permission;
 mod ping;
 mod share;
 mod user;

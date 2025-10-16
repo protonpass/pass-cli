@@ -1,5 +1,7 @@
 use crate::account::key_salts::{GetKeySaltsResponse, KeySaltResponse};
 use crate::test_tools::{MuonServerExt, success};
+use crate::user::access::{GetUserInfoResponse, MonitorStatus};
+use crate::{PassPlan, PlanType, UserDataSettings, UserInfo};
 use muon::rest::core::v4;
 use muon::test::server::Server;
 use std::sync::Arc;
@@ -118,6 +120,55 @@ pub const TEST_PASSPHRASE: &str = "passclitestuser";
 pub const TEST_SALT_ID: &str =
     "sMXH3WRflhDfwvU0GsWvctl0wR3NJWEqtiRs8cf2NeMdBAk8e_MTJkQtS704RfhgVRuxJ7xVV49ta-pMHXbNDg==";
 pub const TEST_SALT_VALUE: &str = "cHQscoez6Cx3YeVBbnKcwg==";
+
+pub fn setup_user_access(server: &Arc<Server>) {
+    setup_user_access_with_limits(server, None, None, None)
+}
+
+pub fn setup_user_access_with_limits(
+    server: &Arc<Server>,
+    vault_limit: Option<u16>,
+    alias_limit: Option<u16>,
+    totp_limit: Option<u16>,
+) {
+    server.handler("/pass/v1/user/access", move |_| {
+        success(GetUserInfoResponse {
+            access: UserInfo {
+                plan: PassPlan {
+                    type_: PlanType::Free,
+                    internal_name: "testplan123".to_string(),
+                    display_name: "Test Plan".to_string(),
+                    manage_subscription: false,
+                    subscription_end: None,
+                    subscription_renewal: false,
+                    subscription_coupon: None,
+                    subscription_offer: None,
+                    hide_upgrade: false,
+                    trial_end: None,
+                    vault_limit,
+                    alias_limit,
+                    totp_limit,
+                    manage_alias: false,
+                    storage_allowed: false,
+                    storage_max_file_size: 0,
+                    storage_used: 0,
+                    storage_quota: 0,
+                },
+                monitor: MonitorStatus {
+                    proton_address: false,
+                    aliases: false,
+                },
+                pending_invites: 0,
+                waiting_new_user_invites: 0,
+                user_data: UserDataSettings {
+                    default_share_id: None,
+                    alias_sync_enabled: false,
+                    pending_alias_to_sync: 0,
+                },
+            },
+        })
+    });
+}
 
 pub fn setup(server: &Arc<Server>) {
     server.handler("/addresses", move |_| {

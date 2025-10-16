@@ -1,4 +1,5 @@
 use crate::PassClient;
+use crate::permission::PermissionAction;
 use crate::utils::debug_response;
 use anyhow::{Context, Result, anyhow};
 use muon::DELETE;
@@ -6,6 +7,10 @@ use pass_domain::ShareId;
 
 impl PassClient {
     pub async fn delete_vault(&self, share_id: &ShareId) -> Result<()> {
+        self.action_guard(PermissionAction::DeleteVault {
+            share_id: share_id.clone(),
+        })
+        .await?;
         let res = self
             .client
             .send(DELETE!("/pass/v1/vault/{}", share_id))
@@ -35,6 +40,7 @@ mod tests {
         const SHARE_ID: &str = "MyShareID";
 
         let client = server.pass_client().await;
+        setup_vault_share(&server, SHARE_ID);
         let handled = server.handler_with_method(
             Method::DELETE,
             format!("/pass/v1/vault/{SHARE_ID}"),

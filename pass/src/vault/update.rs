@@ -1,4 +1,5 @@
 use crate::PassClient;
+use crate::permission::PermissionAction;
 use crate::utils::debug_response;
 use anyhow::{Context, Result, anyhow};
 use muon::PUT;
@@ -29,6 +30,10 @@ struct UpdateVaultRequest {
 
 impl PassClient {
     pub async fn update_vault(&self, share_id: &ShareId, args: UpdateVaultArgs) -> Result<()> {
+        self.action_guard(PermissionAction::UpdateVault {
+            share_id: share_id.clone(),
+        })
+        .await?;
         let req = self
             .update_vault_request(share_id, args)
             .await

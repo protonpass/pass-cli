@@ -1,6 +1,7 @@
 use crate::PassClient;
 use crate::item::create::common::CreateItemRequest;
 use crate::item::list::ItemRevision;
+use crate::permission::PermissionAction;
 use anyhow::{Context, Result, anyhow};
 use muon::POST;
 use pass_domain::{AliasItem, ItemContent, ItemId, ShareId};
@@ -33,6 +34,10 @@ struct CreateItemResponse {
 
 impl PassClient {
     pub async fn create_alias(&self, share_id: &ShareId, prefix: &str) -> Result<CreatedAliasItem> {
+        self.action_guard(PermissionAction::CreateAlias {
+            share_id: share_id.clone(),
+        })
+        .await?;
         let request = self
             .create_alias_request(share_id, prefix)
             .await

@@ -1,6 +1,6 @@
 use crate::PassClient;
-use crate::test_tools::TEST_PASSPHRASE;
 use crate::test_tools::client_features::TestClientFeatures;
+use crate::test_tools::{TEST_PASSPHRASE, setup_user_access};
 pub use muon::Method;
 use muon::test::server::{Request, Response, Server};
 use std::sync::Arc;
@@ -76,6 +76,7 @@ impl MuonServerExt for Arc<Server> {
             .setup_key_passphrases(TEST_PASSPHRASE)
             .await
             .expect("Error setting up passphrases");
+        setup_user_access(self);
         client
     }
 
