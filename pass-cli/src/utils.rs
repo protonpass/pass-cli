@@ -30,14 +30,14 @@ pub fn get_base_dir() -> anyhow::Result<PathBuf> {
         PathBuf::from(custom_dir)
     } else {
         // Use platform-specific data directory
-        let data_dir = dirs::data_dir()
-            .context("Failed to determine data directory for this platform")?;
+        let data_dir =
+            dirs::data_dir().context("Failed to determine data directory for this platform")?;
         data_dir.join("proton-pass-cli")
     };
 
     // Create a .session subfolder (just like before, but in the platform-specific location)
     let session_dir = proton_dir.join(".session");
-    
+
     // Create the directory if it doesn't exist
     std::fs::create_dir_all(&session_dir).context("Error creating session directory")?;
 
