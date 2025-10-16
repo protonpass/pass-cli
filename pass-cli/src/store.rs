@@ -255,7 +255,7 @@ impl PassSessionStore {
         };
 
         let file_path = self.base_path.join(FILE_NAME);
-        debug!("[STORE] Storing session session to {}", file_path.display());
+        debug!("[STORE] Storing session to {}", file_path.display());
 
         let as_str = serde_json::to_string(&serialized).context("Error serializing json")?;
         let local_key = self
