@@ -7,7 +7,7 @@ set -e
 # Or with custom channel: PROTON_PASS_CLI_INSTALL_CHANNEL=beta bash install.sh
 
 MANIFEST_BASE_URL="https://proton.me/download/pass-cli/"
-BINARY_NAME="pass-cli"
+BINARY_NAME="protonpass"
 
 # Get manifest URL based on channel
 get_manifest_url() {

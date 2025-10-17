@@ -96,7 +96,6 @@ del "%~f0"
         .context("Failed to spawn update helper")?;
 
     println!("Update will complete after this process exits.");
-    println!("Please restart pass-cli to use the new version.");
 
     Ok(())
 }
@@ -107,7 +106,7 @@ fn get_backup_path(current_exe: &Path) -> PathBuf {
     let file_name = current_exe
         .file_name()
         .and_then(|n| n.to_str())
-        .unwrap_or("pass-cli");
+        .unwrap_or("protonpass");
 
     backup.set_file_name(format!("{file_name}.old.{pid}"));
     backup

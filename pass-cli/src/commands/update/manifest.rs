@@ -89,7 +89,7 @@ pub async fn fetch_manifest(url: &str) -> Result<Manifest> {
             Ok(manifest)
         }
         _ => Err(anyhow::anyhow!(
-            "Unsupported manifest format version {}. Please upgrade pass-cli manually.",
+            "Unsupported manifest format version {}. Please upgrade protonpass manually.",
             header.format_version
         )),
     }

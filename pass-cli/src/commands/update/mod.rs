@@ -90,7 +90,7 @@ pub async fn run(yes: bool, base_dir: PathBuf) -> Result<()> {
         ))?;
 
     if !yes {
-        println!("Update pass-cli v{current_version} → v{latest_version}? [Y/n]");
+        println!("Update protonpass v{current_version} → v{latest_version}? [Y/n]");
         let mut input = String::new();
         std::io::stdin()
             .read_line(&mut input)
@@ -103,7 +103,7 @@ pub async fn run(yes: bool, base_dir: PathBuf) -> Result<()> {
         }
     }
 
-    println!("Downloading pass-cli v{}...", latest_version);
+    println!("Downloading protonpass v{}...", latest_version);
     let temp_file = download::download_binary(&binary_info.url, &binary_info.hash)
         .await
         .context("Failed to download binary")?;
