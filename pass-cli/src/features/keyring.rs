@@ -41,30 +41,29 @@ impl KeyringKeyProvider {
             Ok(cred) => Ok(cred),
             Err(e) => match e {
                 KeyringError::NoEntry => {
-                    // Check if session exists - if so, we have a problem
+                    // Check if session exists - if so, log the user out
                     if self.session_exists() {
                         eprintln!(
                             "Error: Local encryption key not found but session exists. Forcing logout for security."
                         );
-                        eprintln!("Run 'pass-cli login' to authenticate again.");
 
                         // Perform force logout
                         if let Err(logout_err) = crate::commands::logout::force_logout().await {
                             error!("Error during force logout: {logout_err:#}");
                         }
+                        eprintln!("Run 'protonpass login' to authenticate again.");
 
-                        return Err(anyhow::anyhow!(
-                            "Local encryption key not found. Session has been cleared. Please log in again."
-                        ));
+                        // Finish the process
+                        std::process::exit(1);
+                    } else {
+                        info!("Credential not found in Keyring. Creating one");
+                        let cred = pass_domain::crypto::generate_encryption_key();
+                        entry
+                            .set_secret(&cred)
+                            .map_err(|e| anyhow::anyhow!("Error accessing keyring: {e}"))?;
+                        info!("Stored credential into keyring");
+                        Ok(cred)
                     }
-
-                    info!("Credential not found in Keyring. Creating one");
-                    let cred = pass_domain::crypto::generate_encryption_key();
-                    entry
-                        .set_secret(&cred)
-                        .map_err(|e| anyhow::anyhow!("Error accessing keyring: {e}"))?;
-                    info!("Stored credential into keyring");
-                    Ok(cred)
                 }
                 _ => Err(anyhow::anyhow!(
                     "Error accessing credential on keyring: {e:?}"
