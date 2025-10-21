@@ -2752,9 +2752,9 @@ dependencies = [
 
 [[package]]
 name = "muon"
-version = "1.7.1"
+version = "1.8.0"
 source = "sparse+https://rust.gitlab-pages.protontech.ch/shared/registry/index/"
-checksum = "8885e1c12c8578affe0e9a0b31ae13705572cf37f73a71e689363045407ad6a3"
+checksum = "9bf01e298f15198d4ec19bdaf22a64dd7b8c290dec4d1f72b40cb93afdcaf639"
 dependencies = [
  "anyhow",
  "async-channel",
@@ -2776,6 +2776,7 @@ dependencies = [
  "futures-rustls",
  "futures-timer",
  "getrandom 0.2.16",
+ "getrandom 0.3.3",
  "h2",
  "hickory-client",
  "hickory-proto",
@@ -2817,9 +2818,9 @@ dependencies = [
 
 [[package]]
 name = "muon-proc"
-version = "0.5.0"
+version = "0.6.0"
 source = "sparse+https://rust.gitlab-pages.protontech.ch/shared/registry/index/"
-checksum = "f460da90475d8acb9f3e5071e49324b890b27ea80fc71288dc56dfe1ff6f396a"
+checksum = "896ca7b0894a20c29b620dcce23a3dc34516cc08de1530e9c1915a5cc653300f"
 dependencies = [
  "cfg-if",
  "proc-macro2",

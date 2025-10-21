@@ -30,7 +30,7 @@ mod user_keys;
 mod utils;
 mod vault;
 
-pub use client::PassClient;
+pub use client::{Client, PassClient, PassSessionKeyType};
 pub use item::create::login;
 pub use item::find::FindItemQuery;
 pub use user::access::{PassPlan, PlanType, UserDataSettings, UserInfo};

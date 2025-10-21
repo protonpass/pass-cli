@@ -80,7 +80,6 @@ impl PassClient {
             }
 
             let res = self
-                .client
                 .send(req)
                 .await
                 .context("Error fetching share members")?;

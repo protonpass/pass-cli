@@ -41,7 +41,6 @@ pub(crate) struct GetGroupsResponse {
 impl PassClient {
     pub async fn get_group_addresses(&self) -> Result<Vec<GroupAddress>> {
         let res = self
-            .client
             .send(GET!("/core/v4/groups"))
             .await
             .context("Error fetching groups")?;

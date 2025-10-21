@@ -12,7 +12,6 @@ impl PassClient {
         })
         .await?;
         let res = self
-            .client
             .send(DELETE!("/pass/v1/vault/{}", share_id))
             .await
             .context("Failed to send delete Vault request")?;

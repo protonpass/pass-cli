@@ -44,7 +44,6 @@ impl PassClient {
             .body_json(req)
             .context("Error serializing create_login request")?;
         let response = self
-            .client
             .send(res)
             .await
             .context("Error sending create login request")?;

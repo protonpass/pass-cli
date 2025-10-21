@@ -1,5 +1,6 @@
 use anyhow::{Context, anyhow};
-use muon::{Client, GET, POST, Status};
+use muon::{GET, POST, Session, Status};
+use pass::PassSessionKeyType;
 use proton_crypto::srp::SRPProvider;
 
 pub enum ExtraPasswordError {
@@ -14,7 +15,7 @@ impl From<anyhow::Error> for ExtraPasswordError {
 }
 
 pub async fn perform_extra_password_auth(
-    client: &Client,
+    client: &Session<PassSessionKeyType>,
     password: String,
 ) -> Result<(), ExtraPasswordError> {
     let srp_info = get_srp_info(client).await?;
@@ -61,8 +62,10 @@ struct ExtraPasswordSrpInfo {
     srp_salt: String,
 }
 
-async fn get_srp_info(client: &Client) -> anyhow::Result<ExtraPasswordSrpInfo> {
-    let res = client
+async fn get_srp_info(
+    session: &Session<PassSessionKeyType>,
+) -> anyhow::Result<ExtraPasswordSrpInfo> {
+    let res = session
         .send(GET!("/pass/v1/user/srp/info"))
         .await
         .context("Error requesting SRP info for extra password")?;
@@ -85,13 +88,16 @@ struct ExtraPasswordProofs {
 }
 
 async fn send_srp_proofs(
-    client: &Client,
+    session: &Session<PassSessionKeyType>,
     proofs: ExtraPasswordProofs,
 ) -> Result<(), ExtraPasswordError> {
     let req = POST!("/pass/v1/user/srp/auth")
         .body_json(proofs)
         .context("Error creating SRP request")?;
-    let res = client.send(req).await.context("Error sending SRP proofs")?;
+    let res = session
+        .send(req)
+        .await
+        .context("Error sending SRP proofs")?;
     match res.status() {
         Status::OK => Ok(()),
         Status::BAD_REQUEST => Err(ExtraPasswordError::BadPassword),

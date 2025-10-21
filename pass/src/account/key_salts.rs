@@ -1,6 +1,6 @@
 use crate::PassClient;
 use anyhow::{Context, Result, anyhow};
-use muon::{Client, GET};
+use muon::GET;
 use pass_domain::{KeyPassphrase, KeyPassphrases, KeySalt, Passphrase};
 use std::path::Path;
 
@@ -38,9 +38,7 @@ struct SerializedKeyPassphrase {
 
 impl PassClient {
     pub(crate) async fn setup_key_passphrases(&self, password: &str) -> Result<KeyPassphrases> {
-        let salts = fetch_salts(&self.client)
-            .await
-            .context("failed to fetch salts")?;
+        let salts = self.fetch_salts().await.context("failed to fetch salts")?;
 
         let account_crypto = self.client_features.get_account_crypto().await;
         let passphrases = account_crypto
@@ -111,15 +109,15 @@ impl PassClient {
 
         Ok(KeyPassphrases::new(res))
     }
-}
 
-async fn fetch_salts(client: &Client) -> Result<Vec<KeySalt>> {
-    let res = client.send(GET!("/core/v4/keys/salts")).await?;
-    if !res.status().is_success() {
-        return Err(anyhow!("HTTP Status: {:?}", res.status()));
+    async fn fetch_salts(&self) -> Result<Vec<KeySalt>> {
+        let res = self.send(GET!("/core/v4/keys/salts")).await?;
+        if !res.status().is_success() {
+            return Err(anyhow!("HTTP Status: {:?}", res.status()));
+        }
+        let res: GetKeySaltsResponse = res.ok()?.into_body_json()?;
+
+        let mapped = res.key_salts.into_iter().map(KeySalt::from).collect();
+        Ok(mapped)
     }
-    let res: GetKeySaltsResponse = res.ok()?.into_body_json()?;
-
-    let mapped = res.key_salts.into_iter().map(KeySalt::from).collect();
-    Ok(mapped)
 }

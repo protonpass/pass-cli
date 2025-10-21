@@ -56,7 +56,7 @@ impl PassClient {
 
     async fn fetch_user_keys(&self) -> Result<Vec<LockedUserKey>> {
         debug!("Fetching user keys");
-        let res = self.client.send(GET!("/core/v4/users")).await?;
+        let res = self.send(GET!("/core/v4/users")).await?;
         if !res.status().is_success() {
             return Err(anyhow!("HTTP Status: {:?}", res.status()));
         }

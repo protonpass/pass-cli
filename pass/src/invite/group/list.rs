@@ -43,7 +43,6 @@ struct GetGroupInvitesResponse {
 impl PassClient {
     pub async fn list_group_invites(&self) -> Result<Vec<InviteWithKeys>> {
         let res = self
-            .client
             .send(GET!("/pass/v1/invite/group"))
             .await
             .context("Error fetching group invites")?;

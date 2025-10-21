@@ -174,7 +174,6 @@ impl PassClient {
             .query(("Page", format!("{}", pagination.page())))
             .query(("PageSize", format!("{}", pagination.page_size())));
         let res = self
-            .client
             .send(req)
             .await
             .context("Error getting page for share keys")?;

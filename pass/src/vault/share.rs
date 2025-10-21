@@ -59,7 +59,6 @@ impl PassClient {
             .context("Error creating invites request")?;
 
         let res = self
-            .client
             .send(req)
             .await
             .context("Error sending invite request")?;
@@ -83,7 +82,6 @@ impl PassClient {
             .context("Error creating new user invites request")?;
 
         let res = self
-            .client
             .send(req)
             .await
             .context("Error sending new user invite request")?;

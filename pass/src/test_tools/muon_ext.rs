@@ -1,6 +1,6 @@
 use crate::PassClient;
 use crate::test_tools::client_features::TestClientFeatures;
-use crate::test_tools::{TEST_PASSPHRASE, setup_user_access};
+use crate::test_tools::{TEST_PASSPHRASE, init_session, setup_user_access};
 pub use muon::Method;
 use muon::test::server::{Request, Response, Server};
 use std::sync::Arc;
@@ -17,7 +17,7 @@ pub trait MuonServerExt {
         F: Fn(&Request) -> Option<Response> + Send + Sync + 'static;
 
     async fn pass_client(&self) -> PassClient;
-    fn pass_client_no_setup(&self) -> PassClient;
+    async fn pass_client_no_setup(&self) -> PassClient;
 }
 
 impl MuonServerExt for Arc<Server> {
@@ -70,7 +70,7 @@ impl MuonServerExt for Arc<Server> {
 
     async fn pass_client(&self) -> PassClient {
         super::setup_user_data::setup(self);
-        let client = self.pass_client_no_setup();
+        let client = self.pass_client_no_setup().await;
 
         client
             .setup_key_passphrases(TEST_PASSPHRASE)
@@ -80,9 +80,15 @@ impl MuonServerExt for Arc<Server> {
         client
     }
 
-    fn pass_client_no_setup(&self) -> PassClient {
+    async fn pass_client_no_setup(&self) -> PassClient {
         let key = pass_domain::crypto::generate_encryption_key();
-        PassClient::new(self.client(), Arc::new(TestClientFeatures::new(key)))
+        let client = self.client().await;
+        let session = client
+            .new_session_without_credentials(())
+            .await
+            .expect("Error creating session");
+        init_session(self, session).await;
+        PassClient::new(client, Arc::new(TestClientFeatures::new(key)))
     }
 }
 

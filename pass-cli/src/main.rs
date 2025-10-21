@@ -173,7 +173,11 @@ async fn main() -> Result<()> {
         _ => {}
     };
 
-    if !client.is_authenticated().await {
+    let session = client
+        .get_session(())
+        .await
+        .context("Error getting session")?;
+    if !session.is_authenticated().await {
         return Err(anyhow!("This operation requires an authenticated client"));
     }
 

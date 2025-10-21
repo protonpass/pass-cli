@@ -1,5 +1,5 @@
 use crate::PassClient;
-use anyhow::{Result, anyhow};
+use anyhow::{Context, Result, anyhow};
 use muon::GET;
 
 // Example enum for PlanType
@@ -71,7 +71,7 @@ pub struct PassPlan {
     pub storage_quota: u64,
     /// Can use CLI flag
     #[serde(rename = "CliAllowed")]
-    pub cli_allowed: bool,
+    pub cli_allowed: Option<bool>,
 }
 
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
@@ -119,12 +119,34 @@ pub struct GetUserInfoResponse {
 
 impl PassClient {
     pub async fn get_user_access(&self) -> Result<UserInfo> {
-        let res = self.client.send(GET!("/pass/v1/user/access")).await?;
+        let res = self.send(GET!("/pass/v1/user/access")).await?;
 
         if !res.status().is_success() {
             return Err(anyhow!("HTTP Status: {:?}", res.status()));
         }
         let response: GetUserInfoResponse = assert_response!(res);
         Ok(response.access)
+    }
+
+    pub async fn can_use_cli(&self) -> Result<bool> {
+        let ff = self
+            .has_feature_flag(pass_domain::FeatureFlag::PassCanUseCli)
+            .await
+            .context("Error checking PassCanUseCli feature flag")?;
+        if ff {
+            return Ok(true);
+        }
+
+        let info = self
+            .get_user_access()
+            .await
+            .context("Error retrieving user access info")?;
+
+        let plan = info.plan;
+        debug!("Checking is_login_allowed with plan {:?}", plan);
+        match plan.cli_allowed {
+            Some(v) => Ok(v),
+            None => Ok(false),
+        }
     }
 }

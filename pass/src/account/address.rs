@@ -35,7 +35,6 @@ impl PassClient {
         }
 
         let res = self
-            .client
             .send(GET!("/addresses"))
             .await
             .context("Error requesting addresses")?;
@@ -86,7 +85,7 @@ mod tests {
             success(addresses::GetRes { addresses: vec![] })
         });
 
-        let client = s.pass_client_no_setup();
+        let client = s.pass_client_no_setup().await;
         let addresses = client
             .get_addresses()
             .await
@@ -118,7 +117,7 @@ mod tests {
             })
         });
 
-        let client = s.pass_client_no_setup();
+        let client = s.pass_client_no_setup().await;
         let addresses = client
             .get_addresses()
             .await
@@ -145,7 +144,7 @@ mod tests {
             })
         });
 
-        let client = s.pass_client_no_setup();
+        let client = s.pass_client_no_setup().await;
 
         let recorder = s.new_recorder();
 
