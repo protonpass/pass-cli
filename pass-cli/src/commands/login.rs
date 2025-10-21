@@ -1,7 +1,6 @@
 use crate::client::authenticate_client;
 use crate::features::CliClientFeatures;
 use crate::store::PassSessionStore;
-use crate::utils::get_base_dir;
 use anyhow::{Context, Result};
 use muon::Client;
 use pass::{CreateVaultArgs, PassClient};
@@ -40,6 +39,7 @@ async fn is_login_allowed(client: &PassClient) -> Result<bool> {
 pub async fn run(
     username: &str,
     client: Client,
+    client_features: Arc<CliClientFeatures>,
     store: Arc<RwLock<PassSessionStore>>,
 ) -> Result<()> {
     if client.is_authenticated().await {
@@ -51,10 +51,8 @@ pub async fn run(
     let authenticated_client = authenticate_client(client, username, store).await?;
 
     info!("Logged in user: {}", username);
-    let base_dir = get_base_dir().context("Couldn't get base directory")?;
-    let key_provider =
-        Arc::new(CliClientFeatures::new(base_dir).context("Error creating client features")?);
-    let client = PassClient::new(authenticated_client.client, key_provider);
+
+    let client = PassClient::new(authenticated_client.client, client_features);
     let login_allowed = is_login_allowed(&client)
         .await
         .context("Error checking login permissions")?;

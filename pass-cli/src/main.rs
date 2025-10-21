@@ -161,7 +161,9 @@ async fn main() -> Result<()> {
         .await
         .context("Error getting client")?;
     match &cli.command {
-        Commands::Login { username } => return commands::login::run(username, client, store).await,
+        Commands::Login { username } => {
+            return commands::login::run(username, client, client_features, store).await;
+        }
         Commands::Password { command } => {
             return commands::password::run(command).await;
         }

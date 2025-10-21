@@ -249,6 +249,13 @@ pub async fn get_client(
     base_dir: PathBuf,
     client_features: Arc<CliClientFeatures>,
 ) -> anyhow::Result<(Client, Arc<RwLock<PassSessionStore>>)> {
+    // Check key_provider can be used
+    client_features
+        .key_provider
+        .get_key()
+        .await
+        .context("Error accessing key provider")?;
+
     let app = App::new(get_app_header()).context("failed to create app")?;
     let key_provider = client_features.key_provider.clone();
 
