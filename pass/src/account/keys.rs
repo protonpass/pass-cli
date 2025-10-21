@@ -40,7 +40,6 @@ impl PassClient {
             .query(("InternalOnly", internal_only_value.to_string()));
 
         let res = self
-            .client
             .send(req)
             .await
             .context("Error sending get keys request")?;

@@ -40,7 +40,6 @@ impl PassClient {
         share_id: &ShareId,
     ) -> Result<AliasOptionsResponse> {
         let res = self
-            .client
             .send(GET!("/pass/v1/share/{share_id}/alias/options"))
             .await
             .context("Error fetching alias options")?;

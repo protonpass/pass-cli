@@ -101,7 +101,7 @@ impl PassClient {
     }
 
     async fn fetch_shares(&self) -> Result<Vec<Share>> {
-        let response = self.client.send(GET!("/pass/v1/share")).await?;
+        let response = self.send(GET!("/pass/v1/share")).await?;
         let res: GetSharesResponse = assert_response!(response);
 
         let mut result = vec![];

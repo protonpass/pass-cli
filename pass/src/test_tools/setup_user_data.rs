@@ -1,9 +1,10 @@
 use crate::account::key_salts::{GetKeySaltsResponse, KeySaltResponse};
-use crate::test_tools::{MuonServerExt, success};
+use crate::test_tools::{Empty, MuonServerExt, success};
 use crate::user::access::{GetUserInfoResponse, MonitorStatus};
-use crate::{PassPlan, PlanType, UserDataSettings, UserInfo};
+use crate::{PassPlan, PassSessionKeyType, PlanType, UserDataSettings, UserInfo};
 use muon::rest::core::v4;
 use muon::test::server::Server;
+use muon::{GET, Session};
 use std::sync::Arc;
 
 pub const TEST_ADDRESS_EMAIL: &str = "passclitestuser@proton.black";
@@ -125,6 +126,14 @@ pub fn setup_user_access(server: &Arc<Server>) {
     setup_user_access_with_limits(server, None, None, None)
 }
 
+pub async fn init_session(server: &Arc<Server>, session: Session<PassSessionKeyType>) {
+    server.handler("/tests/ping", move |_| success(Empty));
+    session
+        .send(GET!("/tests/ping"))
+        .await
+        .expect("Error setting up test session");
+}
+
 pub fn setup_user_access_with_limits(
     server: &Arc<Server>,
     vault_limit: Option<u16>,
@@ -153,7 +162,7 @@ pub fn setup_user_access_with_limits(
                     storage_max_file_size: 0,
                     storage_used: 0,
                     storage_quota: 0,
-                    cli_allowed: true,
+                    cli_allowed: Some(true),
                 },
                 monitor: MonitorStatus {
                     proton_address: false,

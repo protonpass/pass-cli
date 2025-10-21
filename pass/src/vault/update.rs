@@ -42,7 +42,6 @@ impl PassClient {
             .body_json(&req)
             .context("Failed to update Vault request")?;
         let res = self
-            .client
             .send(req)
             .await
             .context("Failed to send create Vault request")?;

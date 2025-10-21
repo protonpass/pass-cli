@@ -84,7 +84,6 @@ pub struct InviteWithKeys {
 impl PassClient {
     pub async fn list_user_invites(&self) -> Result<Vec<InviteWithKeys>> {
         let res = self
-            .client
             .send(GET!("/pass/v1/invite"))
             .await
             .context("Error fetching invites")?;

@@ -47,7 +47,6 @@ impl PassClient {
             .body_json(request)
             .context("Error serializing create_alias request")?;
         let res = self
-            .client
             .send(req)
             .await
             .context("Error sending create alias request")?;

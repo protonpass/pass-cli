@@ -88,11 +88,7 @@ impl PassClient {
             attachment_id,
             chunk_id
         );
-        let res = self
-            .client
-            .send(req)
-            .await
-            .context("Error downloading chunk")?;
+        let res = self.send(req).await.context("Error downloading chunk")?;
 
         if !res.status().is_success() {
             debug_response(&res);

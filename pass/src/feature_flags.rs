@@ -42,7 +42,6 @@ impl PassClient {
         }
 
         let res = self
-            .client
             .send(GET!("/feature/v2/frontend"))
             .await
             .context("Error requesting feature flags")?;

@@ -40,7 +40,6 @@ impl PassClient {
             .body_json(request)
             .context("Error creating accept invite request")?;
         let res = self
-            .client
             .send(req)
             .await
             .context("Error sending accept invite request")?;

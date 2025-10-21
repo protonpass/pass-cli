@@ -47,7 +47,6 @@ impl PassClient {
         .context("Error creating delete item request")?;
 
         let res = self
-            .client
             .send(req)
             .await
             .context("Failed to send delete item request")?;

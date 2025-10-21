@@ -5,8 +5,10 @@ use muon::common::{Endpoint, Host, Server};
 use muon::env::{Env, EnvId};
 use muon::store::{Store, StoreError};
 use muon::tls::{TlsCert, TlsPinSet, Verifier, VerifyRes};
+use pass::PassSessionKeyType;
 use pass_domain::LocalKeyProvider;
 use pass_domain::crypto::EncryptionTag;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -96,35 +98,23 @@ impl From<EnvId> for SerializedEnv {
 
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct SerializedStore {
-    pub auth: Auth,
+    pub auth: Option<Auth>,
     pub env: SerializedEnv,
 }
 
 #[derive(Clone)]
 pub struct PassSessionStore {
     pub env: EnvId,
-    pub auth: Arc<RwLock<Auth>>,
+    pub auth: Arc<RwLock<Option<Auth>>>,
     pub base_path: PathBuf,
     pub key_provider: Arc<dyn LocalKeyProvider>,
 }
 
-#[async_trait::async_trait]
-impl Store for PassSessionStore {
-    fn env(&self) -> EnvId {
-        self.env.clone()
-    }
-
-    async fn get_auth(&self) -> Auth {
-        trace!("[STORE] PassSessionStore::get_auth()");
-        let lock = self.auth.read().await;
-        lock.clone()
-    }
-
-    async fn set_auth(&mut self, auth: Auth) -> anyhow::Result<Auth, StoreError> {
-        trace!("[STORE] PassSessionStore::set_auth()");
+impl PassSessionStore {
+    async fn inner_set_auth(&mut self, auth: Option<Auth>) -> Result<(), StoreError> {
         {
             let mut lock = self.auth.write().await;
-            *lock = auth.clone();
+            *lock = auth;
         }
 
         if let Err(e) = self.serialize().await {
@@ -132,8 +122,72 @@ impl Store for PassSessionStore {
             Err(StoreError)
         } else {
             debug!("Session updated");
-            Ok(auth)
+            Ok(())
         }
+    }
+}
+
+#[async_trait::async_trait]
+impl Store<PassSessionKeyType> for PassSessionStore {
+    fn env(&self) -> EnvId {
+        self.env.clone()
+    }
+
+    async fn get_auth(&self, _key: &PassSessionKeyType) -> Result<Auth, StoreError> {
+        trace!("[STORE] PassSessionStore::get_auth()");
+        let auth_data = self.auth.read().await;
+        match auth_data.as_ref() {
+            Some(auth) => Ok(auth.clone()),
+            None => Ok(Auth::default()),
+        }
+    }
+
+    async fn set_auth(&mut self, _key: &PassSessionKeyType, auth: Auth) -> Result<(), StoreError> {
+        trace!("[STORE] PassSessionStore::set_auth()");
+        self.inner_set_auth(Some(auth)).await
+    }
+
+    async fn remove_auth(&mut self, _key: &PassSessionKeyType) -> Result<Option<Auth>, StoreError> {
+        trace!("[STORE] PassSessionStore::remove_auth()");
+
+        let old_value = {
+            let lock = self.auth.read().await;
+            lock.clone()
+        };
+
+        self.inner_set_auth(None).await?;
+        Ok(old_value)
+    }
+
+    async fn get_all_auth(&self) -> Result<HashMap<PassSessionKeyType, Auth>, StoreError> {
+        trace!("[STORE] PassSessionStore::get_all_auth()");
+        let lock = self.auth.read().await;
+
+        let mut res = HashMap::new();
+        if let Some(auth) = lock.as_ref() {
+            res.insert((), auth.clone());
+        }
+
+        Ok(res)
+    }
+
+    async fn set_all_auth(
+        &mut self,
+        auth: HashMap<PassSessionKeyType, Auth>,
+    ) -> Result<(), StoreError> {
+        trace!("[STORE] PassSessionStore::set_all_auth()");
+        if let Some(auth_value) = auth.get(&()) {
+            self.inner_set_auth(Some(auth_value.clone())).await?;
+            Ok(())
+        } else {
+            Err(StoreError)
+        }
+    }
+
+    async fn remove_all_auth(&mut self) -> Result<(), StoreError> {
+        trace!("[STORE] PassSessionStore::remove_all_auth()");
+        self.inner_set_auth(None).await?;
+        Ok(())
     }
 }
 
@@ -152,7 +206,7 @@ impl SharedPassSessionStore {
 }
 
 #[async_trait::async_trait]
-impl Store for SharedPassSessionStore {
+impl Store<PassSessionKeyType> for SharedPassSessionStore {
     fn env(&self) -> EnvId {
         // We need to block here since env() is not async
         // This is safe because env is read-only and cloned
@@ -164,16 +218,37 @@ impl Store for SharedPassSessionStore {
         })
     }
 
-    async fn get_auth(&self) -> Auth {
-        trace!("[STORE] SharedPassSessionStore::get_auth()");
-        let store = self.inner.read().await;
-        store.get_auth().await
+    async fn get_auth(&self, key: &PassSessionKeyType) -> Result<Auth, StoreError> {
+        let inner = self.inner.read().await;
+        inner.get_auth(key).await
     }
 
-    async fn set_auth(&mut self, auth: Auth) -> anyhow::Result<Auth, StoreError> {
-        trace!("[STORE] SharedPassSessionStore::set_auth()");
-        let mut store = self.inner.write().await;
-        store.set_auth(auth).await
+    async fn set_auth(&mut self, key: &PassSessionKeyType, auth: Auth) -> Result<(), StoreError> {
+        let mut inner = self.inner.write().await;
+        inner.set_auth(key, auth).await
+    }
+
+    async fn remove_auth(&mut self, key: &PassSessionKeyType) -> Result<Option<Auth>, StoreError> {
+        let mut inner = self.inner.write().await;
+        inner.remove_auth(key).await
+    }
+
+    async fn get_all_auth(&self) -> Result<HashMap<PassSessionKeyType, Auth>, StoreError> {
+        let inner = self.inner.read().await;
+        inner.get_all_auth().await
+    }
+
+    async fn set_all_auth(
+        &mut self,
+        auth: HashMap<PassSessionKeyType, Auth>,
+    ) -> Result<(), StoreError> {
+        let mut inner = self.inner.write().await;
+        inner.set_all_auth(auth).await
+    }
+
+    async fn remove_all_auth(&mut self) -> Result<(), StoreError> {
+        let mut inner = self.inner.write().await;
+        inner.remove_all_auth().await
     }
 }
 
@@ -189,7 +264,7 @@ impl PassSessionStore {
         key_provider: Arc<dyn LocalKeyProvider>,
     ) -> Self {
         Self {
-            auth: Arc::new(RwLock::new(Auth::default())),
+            auth: Arc::new(RwLock::new(None)),
             env,
             base_path,
             key_provider,
@@ -286,6 +361,10 @@ impl PassSessionStore {
 
     pub async fn needs_extra_password(&self) -> bool {
         let auth = self.auth.read().await;
-        !auth.has_scope("pass")
+        if let Some(ref auth) = *auth {
+            !auth.has_scope("pass")
+        } else {
+            false
+        }
     }
 }

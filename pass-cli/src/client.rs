@@ -10,7 +10,8 @@ use muon::app::AppVersion;
 use muon::client::flow::{LoginFlow, LoginTwoFactorFlow};
 use muon::common::{BoxFut, Sender, SenderLayer};
 use muon::env::{Env, EnvId};
-use muon::{App, Client, ProtonRequest, ProtonResponse};
+use muon::{App, GET, ProtonRequest, ProtonResponse, Session};
+use pass::{Client, PassSessionKeyType};
 use std::io::Read;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -121,14 +122,18 @@ pub async fn authenticate_client(
     username: &str,
     store: Arc<RwLock<PassSessionStore>>,
 ) -> anyhow::Result<AuthenticatedClient> {
-    let auth = client.auth();
+    let session = client
+        .new_session_without_credentials(())
+        .await
+        .context("Error creating session")?;
+    let auth = session.auth();
     let password = get_password()?;
-    let client = match auth.login(username, &password).await {
-        LoginFlow::Ok(client, _) => client,
+    let session = match auth.login(username, &password).await {
+        LoginFlow::Ok(session, _) => session,
 
-        LoginFlow::TwoFactor(client, _) => {
-            let has_totp = client.has_totp();
-            let has_fido = client.fido_details().is_some();
+        LoginFlow::TwoFactor(session, _) => {
+            let has_totp = session.has_totp();
+            let has_fido = session.fido_details().is_some();
 
             if has_totp && has_fido {
                 // Both methods available, let user choose
@@ -142,10 +147,10 @@ pub async fn authenticate_client(
                     match choice {
                         "1" => {
                             let totp = get_totp()?;
-                            break client.totp(&totp).await?;
+                            break session.totp(&totp).await?;
                         }
                         "2" => {
-                            break handle_fido(client).await?;
+                            break handle_fido(session).await?;
                         }
                         _ => {
                             println!("Invalid option. Please enter a valid one.");
@@ -155,9 +160,9 @@ pub async fn authenticate_client(
                 }
             } else if has_totp {
                 let totp = get_totp()?;
-                client.totp(&totp).await?
+                session.totp(&totp).await?
             } else if has_fido {
-                handle_fido(client).await?
+                handle_fido(session).await?
             } else {
                 bail!("no 2FA available");
             }
@@ -168,7 +173,7 @@ pub async fn authenticate_client(
         }
     };
 
-    // Check if needs extra password
+    // Check if it needs extra password
     let store_guard = store.read().await;
     let needs_extra_password = store_guard.needs_extra_password().await;
     if needs_extra_password {
@@ -179,14 +184,19 @@ pub async fn authenticate_client(
         loop {
             if attempts == 0 {
                 println!("Too many incorrect extra password attempts, logging out");
-                client.logout().await;
+                session.logout().await;
                 return Err(anyhow!("Error in extra password flow"));
             }
 
             let extra_password = get_extra_password()?;
-            match crate::extra_password::perform_extra_password_auth(&client, extra_password).await
+            match crate::extra_password::perform_extra_password_auth(&session, extra_password).await
             {
-                Ok(()) => return Ok(AuthenticatedClient { client, password }),
+                Ok(()) => {
+                    init_session(&session)
+                        .await
+                        .context("Error initializing session")?;
+                    return Ok(AuthenticatedClient { client, password });
+                }
                 Err(e) => match e {
                     ExtraPasswordError::Other(e) => {
                         return Err(anyhow!("Error in extra password flow: {e:#}"));
@@ -199,11 +209,24 @@ pub async fn authenticate_client(
             }
         }
     } else {
+        init_session(&session)
+            .await
+            .context("Error initializing session")?;
         Ok(AuthenticatedClient { client, password })
     }
 }
 
-async fn handle_fido(client: LoginTwoFactorFlow) -> anyhow::Result<Client> {
+async fn init_session(session: &Session<PassSessionKeyType>) -> anyhow::Result<()> {
+    session
+        .send(GET!("/tests/ping"))
+        .await
+        .context("Error initializing session")?;
+    Ok(())
+}
+
+async fn handle_fido(
+    client: LoginTwoFactorFlow<PassSessionKeyType>,
+) -> anyhow::Result<Session<PassSessionKeyType>> {
     let details = client
         .fido_details()
         .ok_or_else(|| anyhow!("Missing fido details"))?;
@@ -292,7 +315,7 @@ pub async fn get_client(
 
     let shared_store = SharedPassSessionStore::new(store);
     let store_ref = shared_store.inner.clone();
-    let mut builder = Client::builder_async(app, shared_store).await;
+    let mut builder = Client::builder(app, shared_store).await;
 
     if use_allow_all {
         warn!("Adding AllowAllPinVerifier");

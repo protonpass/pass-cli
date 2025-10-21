@@ -38,7 +38,6 @@ impl PassClient {
             }
         }
         let res = self
-            .client
             .send(GET!("/core/v4/organizations/keys"))
             .await
             .context("Error fetching organization key")?;

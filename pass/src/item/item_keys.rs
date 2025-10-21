@@ -130,7 +130,6 @@ impl PassClient {
             // If share is of type vault, we request the item keys
             ShareType::Vault { .. } => {
                 let res = self
-                    .client
                     .send(GET!("/pass/v1/share/{share_id}/item/{item_id}/key"))
                     .await
                     .context("Error sending get item keys request")?;

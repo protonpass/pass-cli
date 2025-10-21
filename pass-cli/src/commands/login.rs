@@ -2,8 +2,7 @@ use crate::client::authenticate_client;
 use crate::features::CliClientFeatures;
 use crate::store::PassSessionStore;
 use anyhow::{Context, Result};
-use muon::Client;
-use pass::{CreateVaultArgs, PassClient};
+use pass::{Client, CreateVaultArgs, PassClient};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -14,26 +13,12 @@ async fn is_login_allowed(_client: &PassClient) -> Result<bool> {
 
 #[cfg(not(feature = "no-login-restriction"))]
 async fn is_login_allowed(client: &PassClient) -> Result<bool> {
-    let ff = client
-        .has_feature_flag(pass_domain::FeatureFlag::PassCanUseCli)
-        .await
-        .context("Error checking PassCanUseCli feature flag")?;
-    if ff {
-        return Ok(true);
-    }
-
-    let info = client
-        .get_user_access()
-        .await
-        .context("Error retrieving user access info")?;
-
-    let plan = info.plan;
-    debug!("Checking is_login_allowed with plan {:?}", plan);
-    if !plan.cli_allowed {
+    let can_use = client.can_use_cli().await?;
+    if !can_use {
         warn!("Your account is not allowed to use the CLI");
     }
 
-    Ok(plan.cli_allowed)
+    Ok(can_use)
 }
 
 pub async fn run(
@@ -42,7 +27,10 @@ pub async fn run(
     client_features: Arc<CliClientFeatures>,
     store: Arc<RwLock<PassSessionStore>>,
 ) -> Result<()> {
-    if client.is_authenticated().await {
+    let session = client.get_session(()).await;
+    if let Some(session) = session
+        && session.is_authenticated().await
+    {
         info!("Client is already authenticated. Log out if you want to log in again");
         return Ok(());
     }
