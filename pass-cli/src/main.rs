@@ -16,10 +16,12 @@ mod logs;
 mod store;
 mod utils;
 
+const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), " (", env!("GIT_HASH"), ")");
+
 #[derive(Parser)]
 #[command(name = "Proton Pass CLI")]
 #[command(about = "A CLI tool for Proton Pass", long_about = None)]
-#[command(version)]
+#[command(version = VERSION)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
