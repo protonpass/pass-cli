@@ -1,3 +1,4 @@
+use crate::crypto::constants::SIGNATURE_CONTEXT_EXISTING_USER;
 use crate::invite::list::{DecryptedInviteKey, InviteKey, OpenedInviteKey};
 use anyhow::{Context, Result};
 use pass_domain::{PgpCrypto, PublicKey, UnlockedAddressKeys};
@@ -38,7 +39,7 @@ impl OpenInviteKeyFlow {
                     invite_key.key.0,
                     private_keys.clone(),
                     self.inviter_keys.clone(),
-                    None,
+                    Some(SIGNATURE_CONTEXT_EXISTING_USER.to_string()),
                 )
                 .await
                 .context("Error decrypting invite key")?;
