@@ -181,10 +181,8 @@ impl Store<PassSessionKeyType> for PassSessionStore {
         trace!("[STORE] PassSessionStore::set_all_auth()");
         if let Some(auth_value) = auth.get(&()) {
             self.inner_set_auth(Some(auth_value.clone())).await?;
-            Ok(())
-        } else {
-            Err(StoreError)
         }
+        Ok(())
     }
 
     async fn remove_all_auth(&mut self) -> Result<(), StoreError> {

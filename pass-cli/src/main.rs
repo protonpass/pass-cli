@@ -136,6 +136,10 @@ impl Commands {
             false
         }
     }
+
+    pub fn is_logout(&self) -> bool {
+        matches!(self, Commands::Logout { .. })
+    }
 }
 
 #[tokio::main]
@@ -175,13 +179,22 @@ async fn main() -> Result<()> {
         _ => {}
     };
 
-    let session = client
-        .get_session(())
-        .await
-        .context("Error getting session")?;
-    if !session.is_authenticated().await {
-        return Err(anyhow!("This operation requires an authenticated client"));
-    }
+    let session = client.get_session(()).await;
+    match session {
+        None => {
+            return if cli.command.is_logout() {
+                eprintln!("There was not an active session, you are already logged out");
+                Ok(())
+            } else {
+                Err(anyhow!("This operation requires an authenticated client"))
+            };
+        }
+        Some(ref session) => {
+            if !session.is_authenticated().await {
+                return Err(anyhow!("This operation requires an authenticated client"));
+            }
+        }
+    };
 
     let client = PassClient::new(client, client_features);
 

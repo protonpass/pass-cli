@@ -100,4 +100,17 @@ impl LocalKeyProvider for KeyringKeyProvider {
             Ok(key)
         }
     }
+
+    async fn remove_key(&self) -> Result<()> {
+        let entry = Self::build_entry()?;
+        if let Err(e) = entry.delete_credential() {
+            return if let KeyringError::NoEntry = e {
+                Ok(())
+            } else {
+                Err(anyhow::anyhow!("Error deleting credential: {e:?}"))
+            };
+        }
+
+        Ok(())
+    }
 }

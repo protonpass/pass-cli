@@ -32,6 +32,10 @@ impl PassClient {
         Ok(())
     }
 
+    pub async fn get_key_provider(&self) -> Result<Arc<dyn pass_domain::LocalKeyProvider>> {
+        self.client_features.get_local_key_provider().await
+    }
+
     pub(crate) async fn send(&self, req: muon::http::HttpReq) -> Result<muon::http::HttpRes> {
         self.client
             .get_session(())

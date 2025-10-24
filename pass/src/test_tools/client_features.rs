@@ -13,6 +13,9 @@ impl LocalKeyProvider for StaticKeyProvider {
     async fn get_key(&self) -> Result<Vec<u8>> {
         Ok(self.key.clone())
     }
+    async fn remove_key(&self) -> Result<()> {
+        Ok(())
+    }
 }
 
 #[derive(Clone)]

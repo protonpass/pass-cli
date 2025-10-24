@@ -10,6 +10,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tracing::info;
 
+const LOCAL_KEY_FILENAME: &str = "local.key";
+
 fn get_key_provider(base_dir: PathBuf) -> Result<Arc<dyn LocalKeyProvider>> {
     let provider_type = env::var("PASS_CLI_KEY_PROVIDER").unwrap_or_default();
 
@@ -55,9 +57,7 @@ impl FsLocalKeyProvider {
     }
 
     pub async fn get_local_key(&self) -> Result<Vec<u8>> {
-        let session_path_absolute =
-            std::fs::canonicalize(&self.base_dir).context("error getting absolute path")?;
-        let key_path = session_path_absolute.join("local.key");
+        let key_path = self.local_key_path()?;
 
         if key_path.exists() && key_path.is_file() {
             return tokio::fs::read(&key_path)
@@ -90,12 +90,30 @@ impl FsLocalKeyProvider {
 
         Ok(f)
     }
+
+    fn local_key_path(&self) -> Result<PathBuf> {
+        let session_path_absolute =
+            std::fs::canonicalize(&self.base_dir).context("error getting absolute path")?;
+        let key_path = session_path_absolute.join(LOCAL_KEY_FILENAME);
+
+        Ok(key_path)
+    }
 }
 
 #[async_trait::async_trait]
 impl LocalKeyProvider for FsLocalKeyProvider {
     async fn get_key(&self) -> Result<Vec<u8>> {
         self.get_local_key().await
+    }
+
+    async fn remove_key(&self) -> Result<()> {
+        let key_path = self.local_key_path()?;
+        if key_path.exists() {
+            tokio::fs::remove_file(&key_path)
+                .await
+                .context("Error removing local key file")?;
+        }
+        Ok(())
     }
 }
 
