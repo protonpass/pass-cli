@@ -1,5 +1,5 @@
 use anyhow::{Context, anyhow};
-use muon::app::AppVersion;
+use muon::app::{AppName, AppVersion, SemVer};
 use muon::client::Auth;
 use muon::common::{Endpoint, Host, Server};
 use muon::env::{Env, EnvId};
@@ -79,7 +79,10 @@ impl From<EnvId> for SerializedEnv {
             EnvId::Prod => SerializedEnv::Prod,
             EnvId::Atlas(atlas) => SerializedEnv::Atlas(atlas),
             EnvId::Custom(env) => {
-                let servers = env.servers(&AppVersion::Other);
+                let servers = env.servers(&AppVersion::Named {
+                    name: AppName::from_str("cli-pass").expect("Invalid AppName"),
+                    version: SemVer::from_str(env!("CARGO_PKG_VERSION")).expect("Invalid SemVer"),
+                });
                 let endpoint = servers
                     .first()
                     .cloned()
