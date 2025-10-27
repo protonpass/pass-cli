@@ -144,7 +144,7 @@ mod tests {
         const SHARE_ID: &str = "MyShareID";
         const ITEM_ID: &str = "MyItemID";
 
-        let client = server.pass_client().await;
+        let client = server.pass_client_with_plan(PlanType::Plus).await;
         setup_share_keys(&server, SHARE_ID);
         setup_vault_share(&server, SHARE_ID);
 
@@ -256,7 +256,7 @@ mod tests {
         const SHARE_ID: &str = "MyShareID";
         const ITEM_ID: &str = "MyItemID";
 
-        let client = server.pass_client().await;
+        let client = server.pass_client_with_plan(PlanType::Plus).await;
         setup_share_keys(&server, SHARE_ID);
         setup_vault_share(&server, SHARE_ID);
 
@@ -347,7 +347,7 @@ mod tests {
         const SHARE_ID: &str = "MyShareID";
         const ITEM_ID: &str = "MyItemID";
 
-        let client = server.pass_client().await;
+        let client = server.pass_client_with_plan(PlanType::Plus).await;
         setup_share_keys(&server, SHARE_ID);
         setup_vault_share(&server, SHARE_ID);
 

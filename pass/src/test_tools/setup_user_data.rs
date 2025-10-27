@@ -122,8 +122,8 @@ pub const TEST_SALT_ID: &str =
     "sMXH3WRflhDfwvU0GsWvctl0wR3NJWEqtiRs8cf2NeMdBAk8e_MTJkQtS704RfhgVRuxJ7xVV49ta-pMHXbNDg==";
 pub const TEST_SALT_VALUE: &str = "cHQscoez6Cx3YeVBbnKcwg==";
 
-pub fn setup_user_access(server: &Arc<Server>) {
-    setup_user_access_with_limits(server, None, None, None)
+pub fn setup_user_access(server: &Arc<Server>, plan_type: PlanType) {
+    setup_user_access_with_limits(server, None, None, None, plan_type)
 }
 
 pub async fn init_session(server: &Arc<Server>, session: Session<PassSessionKeyType>) {
@@ -139,12 +139,13 @@ pub fn setup_user_access_with_limits(
     vault_limit: Option<u16>,
     alias_limit: Option<u16>,
     totp_limit: Option<u16>,
+    plan_type: PlanType,
 ) {
     server.handler("/pass/v1/user/access", move |_| {
         success(GetUserInfoResponse {
             access: UserInfo {
                 plan: PassPlan {
-                    type_: PlanType::Free,
+                    type_: plan_type,
                     internal_name: "testplan123".to_string(),
                     display_name: "Test Plan".to_string(),
                     manage_subscription: false,

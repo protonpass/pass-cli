@@ -3,7 +3,7 @@ use anyhow::{Context, Result, anyhow};
 use muon::GET;
 
 // Example enum for PlanType
-#[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub enum PlanType {
     #[serde(rename = "free")]
     Free,

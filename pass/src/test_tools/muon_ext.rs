@@ -1,4 +1,5 @@
 use crate::PassClient;
+pub use crate::PlanType;
 use crate::test_tools::client_features::TestClientFeatures;
 use crate::test_tools::{TEST_PASSPHRASE, init_session, setup_user_access};
 pub use muon::Method;
@@ -17,6 +18,7 @@ pub trait MuonServerExt {
         F: Fn(&Request) -> Option<Response> + Send + Sync + 'static;
 
     async fn pass_client(&self) -> PassClient;
+    async fn pass_client_with_plan(&self, plan: PlanType) -> PassClient;
     async fn pass_client_no_setup(&self) -> PassClient;
 }
 
@@ -69,6 +71,10 @@ impl MuonServerExt for Arc<Server> {
     }
 
     async fn pass_client(&self) -> PassClient {
+        self.pass_client_with_plan(PlanType::Free).await
+    }
+
+    async fn pass_client_with_plan(&self, plan: PlanType) -> PassClient {
         super::setup_user_data::setup(self);
         let client = self.pass_client_no_setup().await;
 
@@ -76,7 +82,7 @@ impl MuonServerExt for Arc<Server> {
             .setup_key_passphrases(TEST_PASSPHRASE)
             .await
             .expect("Error setting up passphrases");
-        setup_user_access(self);
+        setup_user_access(self, plan);
         client
     }
 
