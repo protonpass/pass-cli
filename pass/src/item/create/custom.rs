@@ -1,5 +1,6 @@
 use crate::PassClient;
 use crate::item::list::ItemRevision;
+use crate::permission::PermissionAction;
 use anyhow::{Context, Result, bail};
 use muon::POST;
 use pass_domain::{
@@ -117,6 +118,10 @@ impl PassClient {
         share_id: &ShareId,
         payload: CustomItemCreatePayload,
     ) -> Result<ItemId> {
+        self.action_guard(PermissionAction::CreateCustomItem {
+            share_id: share_id.clone(),
+        })
+        .await?;
         // Validate and convert sections
         let sections: Result<Vec<CustomSection>> = payload
             .sections
@@ -206,7 +211,7 @@ mod tests {
         const SHARE_ID: &str = "MyShareID";
         const ITEM_ID: &str = "MyItemID";
 
-        let client = server.pass_client().await;
+        let client = server.pass_client_with_plan(PlanType::Plus).await;
         setup_share_keys(&server, SHARE_ID);
         setup_vault_share(&server, SHARE_ID);
 
@@ -323,7 +328,7 @@ mod tests {
         const SHARE_ID: &str = "MyShareID";
         const ITEM_ID: &str = "MyItemID";
 
-        let client = server.pass_client().await;
+        let client = server.pass_client_with_plan(PlanType::Plus).await;
         setup_share_keys(&server, SHARE_ID);
         setup_vault_share(&server, SHARE_ID);
 
@@ -364,7 +369,7 @@ mod tests {
         const SHARE_ID: &str = "MyShareID";
         const ITEM_ID: &str = "MyItemID";
 
-        let client = server.pass_client().await;
+        let client = server.pass_client_with_plan(PlanType::Plus).await;
         setup_share_keys(&server, SHARE_ID);
         setup_vault_share(&server, SHARE_ID);
 
@@ -444,7 +449,7 @@ mod tests {
     async fn test_create_custom_invalid_empty_section_name(server: Arc<Server>) {
         const SHARE_ID: &str = "MyShareID";
 
-        let client = server.pass_client().await;
+        let client = server.pass_client_with_plan(PlanType::Plus).await;
         setup_share_keys(&server, SHARE_ID);
         setup_vault_share(&server, SHARE_ID);
 
@@ -477,7 +482,7 @@ mod tests {
     async fn test_create_custom_invalid_empty_field_name(server: Arc<Server>) {
         const SHARE_ID: &str = "MyShareID";
 
-        let client = server.pass_client().await;
+        let client = server.pass_client_with_plan(PlanType::Plus).await;
         setup_share_keys(&server, SHARE_ID);
         setup_vault_share(&server, SHARE_ID);
 
@@ -515,7 +520,7 @@ mod tests {
         const SHARE_ID: &str = "MyShareID";
         const ITEM_ID: &str = "MyItemID";
 
-        let client = server.pass_client().await;
+        let client = server.pass_client_with_plan(PlanType::Plus).await;
         setup_share_keys(&server, SHARE_ID);
         setup_vault_share(&server, SHARE_ID);
 

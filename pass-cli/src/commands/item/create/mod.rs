@@ -1,5 +1,6 @@
 mod credit_card;
 mod custom;
+mod identity;
 mod login;
 mod note;
 mod wifi;
@@ -36,6 +37,11 @@ pub enum CreateCommands {
         #[command(flatten)]
         args: custom::CustomArgs,
     },
+    /// Create a new identity item
+    Identity {
+        #[command(flatten)]
+        args: identity::IdentityArgs,
+    },
 }
 
 pub async fn run(command: CreateCommands, client: PassClient) -> Result<()> {
@@ -45,5 +51,6 @@ pub async fn run(command: CreateCommands, client: PassClient) -> Result<()> {
         CreateCommands::CreditCard { args } => credit_card::run(args, client).await,
         CreateCommands::Wifi { args } => wifi::run(args, client).await,
         CreateCommands::Custom { args } => custom::run(args, client).await,
+        CreateCommands::Identity { args } => identity::run(args, client).await,
     }
 }

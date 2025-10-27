@@ -7,7 +7,7 @@ use muon::test::server::Server;
 pub use pass_domain::utils::random_string;
 use pass_domain::{
     CustomItem, CustomSection, ItemContent, ItemData, ItemExtraField, ItemExtraFieldContent,
-    TargetType, crypto,
+    PermissionFlag, TargetType, crypto,
 };
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
@@ -66,7 +66,7 @@ pub fn setup_vault_share(server: &Arc<Server>, share_id: &str) {
         target_type: TargetType::Vault.value(),
         target_id: TEST_VAULT_ID.to_string(),
         owner: true,
-        permission: 0,
+        permission: PermissionFlag::Admin.value(),
         share_role_id: "1".to_string(),
         content: None,
         content_key_rotation: None,
