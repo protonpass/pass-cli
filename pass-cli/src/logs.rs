@@ -8,6 +8,7 @@ const PASS_LOG_LEVEL_ENV: &str = "PASS_LOG_LEVEL";
 
 pub fn setup_logs() {
     let subscriber = tracing_subscriber::fmt::layer()
+        .with_writer(std::io::stderr)
         .with_file(true)
         .with_line_number(true)
         .with_target(false);

@@ -179,6 +179,6 @@ async fn create_wifi_from_payload(
         .await
         .context("Error creating WiFi item")?;
 
-    println!("WiFi item created successfully: {}", item_id.value());
+    println!("{}", item_id.value());
     Ok(())
 }

@@ -32,6 +32,7 @@ mod vault;
 
 pub use client::{Client, PassClient, PassSessionKeyType};
 pub use item::create::credit_card;
+pub use item::create::custom;
 pub use item::create::login;
 pub use item::create::note;
 pub use item::create::wifi;

@@ -1,4 +1,5 @@
 mod credit_card;
+mod custom;
 mod login;
 mod note;
 mod wifi;
@@ -19,16 +20,21 @@ pub enum CreateCommands {
         #[command(flatten)]
         args: note::NoteArgs,
     },
-    /// Create a new credit card item (requires paid plan)
+    /// Create a new credit card item
     #[command(name = "credit-card")]
     CreditCard {
         #[command(flatten)]
         args: credit_card::CreditCardArgs,
     },
-    /// Create a new WiFi item (requires paid plan)
+    /// Create a new WiFi item
     Wifi {
         #[command(flatten)]
         args: wifi::WifiArgs,
+    },
+    /// Create a new custom item
+    Custom {
+        #[command(flatten)]
+        args: custom::CustomArgs,
     },
 }
 
@@ -38,5 +44,6 @@ pub async fn run(command: CreateCommands, client: PassClient) -> Result<()> {
         CreateCommands::Note { args } => note::run(args, client).await,
         CreateCommands::CreditCard { args } => credit_card::run(args, client).await,
         CreateCommands::Wifi { args } => wifi::run(args, client).await,
+        CreateCommands::Custom { args } => custom::run(args, client).await,
     }
 }
