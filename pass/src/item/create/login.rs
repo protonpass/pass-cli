@@ -29,6 +29,7 @@ impl PassClient {
             .create_item_request(
                 share_id,
                 &payload.title,
+                "",
                 ItemContent::Login(LoginItem {
                     email: payload.email.unwrap_or_default(),
                     username: payload.username.unwrap_or_default(),

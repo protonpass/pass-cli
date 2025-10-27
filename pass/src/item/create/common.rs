@@ -20,6 +20,7 @@ impl PassClient {
         &self,
         share_id: &ShareId,
         title: &str,
+        note_content: &str,
         item_content: ItemContent,
     ) -> Result<CreateItemRequest> {
         let share_keys = self
@@ -33,7 +34,7 @@ impl PassClient {
 
         let content = ItemData {
             title: title.to_string(),
-            note: "".to_string(),
+            note: note_content.to_string(),
             item_uuid: ItemData::generate_uuid(),
             content: item_content,
             extra_fields: vec![],
