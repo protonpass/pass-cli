@@ -13,9 +13,10 @@ pub enum PermissionAction {
     DeleteItem { share_id: ShareId, item_id: ItemId },
 
     CreateAlias { share_id: ShareId },
-    CreateIdentity,
-    CreateCreditCard,
-    CreateWifi,
+    CreateIdentity { share_id: ShareId },
+    CreateCreditCard { share_id: ShareId },
+    CreateCustomItem { share_id: ShareId },
+    CreateWifi { share_id: ShareId },
 }
 
 display_for_enum!(PermissionAction);
@@ -41,11 +42,22 @@ impl PassClient {
                 self.create_item_guard(share_id).await?;
                 self.create_alias_guard(user_access.plan).await
             }
-            PermissionAction::CreateIdentity => self.create_paid_item_guard(user_access.plan).await,
-            PermissionAction::CreateCreditCard => {
+            PermissionAction::CreateIdentity { share_id } => {
+                self.create_item_guard(share_id).await?;
                 self.create_paid_item_guard(user_access.plan).await
             }
-            PermissionAction::CreateWifi => self.create_paid_item_guard(user_access.plan).await,
+            PermissionAction::CreateCreditCard { share_id } => {
+                self.create_item_guard(share_id).await?;
+                self.create_paid_item_guard(user_access.plan).await
+            }
+            PermissionAction::CreateWifi { share_id } => {
+                self.create_item_guard(share_id).await?;
+                self.create_paid_item_guard(user_access.plan).await
+            }
+            PermissionAction::CreateCustomItem { share_id } => {
+                self.create_item_guard(share_id).await?;
+                self.create_paid_item_guard(user_access.plan).await
+            }
         }
     }
 

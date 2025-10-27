@@ -40,8 +40,11 @@ impl PassClient {
         share_id: &ShareId,
         payload: WifiItemCreatePayload,
     ) -> Result<ItemId> {
-        // Check if user can create Wifi
-        self.action_guard(PermissionAction::CreateWifi).await?;
+        // Check if user can create WiFi
+        self.action_guard(PermissionAction::CreateWifi {
+            share_id: share_id.clone(),
+        })
+        .await?;
 
         // Validate SSID if provided
         let ssid = payload.ssid.as_deref().unwrap_or("");

@@ -1,5 +1,6 @@
 use crate::PassClient;
 use crate::item::list::ItemRevision;
+use crate::permission::PermissionAction;
 use anyhow::{Context, Result, bail};
 use muon::POST;
 use pass_domain::{
@@ -117,6 +118,10 @@ impl PassClient {
         share_id: &ShareId,
         payload: CustomItemCreatePayload,
     ) -> Result<ItemId> {
+        self.action_guard(PermissionAction::CreateCreditCard {
+            share_id: share_id.clone(),
+        })
+        .await?;
         // Validate and convert sections
         let sections: Result<Vec<CustomSection>> = payload
             .sections

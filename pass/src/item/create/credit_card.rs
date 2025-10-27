@@ -107,8 +107,10 @@ impl PassClient {
         payload: CreditCardItemCreatePayload,
     ) -> Result<ItemId> {
         // Check if user has a paid plan
-        self.action_guard(PermissionAction::CreateCreditCard)
-            .await?;
+        self.action_guard(PermissionAction::CreateCreditCard {
+            share_id: share_id.clone(),
+        })
+        .await?;
 
         // Validate expiration date if provided
         let expiration_date = payload.expiration_date.as_deref().unwrap_or("");
