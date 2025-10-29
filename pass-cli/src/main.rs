@@ -115,6 +115,24 @@ enum Commands {
         #[command(subcommand)]
         command: commands::user::UserCommands,
     },
+    #[command(about = "Run an SSH agent with keys from Proton Pass")]
+    SshAgent {
+        #[arg(
+            long,
+            help = "Path to the SSH agent socket (Unix) or named pipe identifier (Windows)"
+        )]
+        socket_path: Option<String>,
+        #[arg(long, help = "Share ID of the vault to load keys from")]
+        share_id: Option<String>,
+        #[arg(long, help = "Name of the vault to load keys from")]
+        vault_name: Option<String>,
+        #[arg(
+            long,
+            help = "Interval in seconds to refresh SSH keys from Proton Pass (0 to disable)",
+            default_value = "3600"
+        )]
+        refresh_interval: u64,
+    },
     #[cfg(feature = "internal")]
     #[command(about = "Internal operations")]
     Internal {
@@ -218,6 +236,15 @@ async fn main() -> Result<()> {
         Commands::Invite { command } => commands::invite::run(command, client).await,
         Commands::Share { command } => commands::share::run(command, client).await,
         Commands::User { command } => commands::user::run(command, client).await,
+        Commands::SshAgent {
+            socket_path,
+            share_id,
+            vault_name,
+            refresh_interval,
+        } => {
+            commands::ssh_agent::run(socket_path, share_id, vault_name, refresh_interval, client)
+                .await
+        }
 
         #[cfg(feature = "internal")]
         Commands::Internal { command } => commands::internal::run(command, client).await,
