@@ -4,6 +4,7 @@ use anyhow::{Context, Result, anyhow};
 use pass::PassClient;
 use pass_domain::{Item, ItemContent};
 use ssh_key::private::PrivateKey as SshPrivateKey;
+use std::collections::HashSet;
 
 pub async fn load_ssh_keys_from_vaults(
     client: &PassClient,
@@ -62,7 +63,7 @@ pub fn extract_ssh_keys(items: Vec<Item>) -> Vec<(Item, String, String)> {
         .collect()
 }
 
-pub fn find_passphrase_in_extra_fields(item: &Item) -> Option<String> {
+pub fn find_passphrases_in_extra_fields(item: &Item) -> Vec<String> {
     // Search terms to look for in field names (case-insensitive, partial match)
     let search_terms = [
         "passphrase",
@@ -75,6 +76,7 @@ pub fn find_passphrase_in_extra_fields(item: &Item) -> Option<String> {
         "key pass",
     ];
 
+    let mut res = HashSet::new();
     for extra_field in &item.content.extra_fields {
         let field_name_lower = extra_field.name.to_lowercase();
 
@@ -93,16 +95,16 @@ pub fn find_passphrase_in_extra_fields(item: &Item) -> Option<String> {
                     && !passphrase.is_empty()
                 {
                     debug!(
-                        "Found passphrase in field '{}' for item '{}'",
+                        "Found candidate passphrase in field '{}' for item '{}'",
                         extra_field.name, item.content.title
                     );
-                    return Some(passphrase);
+                    res.insert(passphrase.to_string());
                 }
             }
         }
     }
 
-    // If no extra field with that name is found, try to find the first one of type hidden
+    // Iterate all extra fields and get the Hidden ones just to have a fallback
     for extra_field in &item.content.extra_fields {
         if let pass_domain::ItemExtraFieldContent::Hidden(ref val) = extra_field.content
             && !val.is_empty()
@@ -111,11 +113,11 @@ pub fn find_passphrase_in_extra_fields(item: &Item) -> Option<String> {
                 "Best effort guess for passphrase in field '{}' for item '{}'",
                 extra_field.name, item.content.title
             );
-            return Some(val.to_string());
+            res.insert(val.to_string());
         }
     }
 
-    None
+    res.into_iter().collect()
 }
 
 pub fn load_and_decrypt_key(item: &Item, private_key_str: &str) -> Result<SshPrivateKey> {
@@ -133,7 +135,10 @@ pub fn load_and_decrypt_key(item: &Item, private_key_str: &str) -> Result<SshPri
         item.content.title
     );
 
-    if let Some(passphrase) = find_passphrase_in_extra_fields(item) {
+    let potential_passphrases = find_passphrases_in_extra_fields(item);
+    if !potential_passphrases.is_empty()
+        && let Some(passphrase) = potential_passphrases.into_iter().next()
+    {
         debug!(
             "Attempting to decrypt key '{}' with found passphrase",
             item.content.title
@@ -145,14 +150,14 @@ pub fn load_and_decrypt_key(item: &Item, private_key_str: &str) -> Result<SshPri
         ))?;
 
         info!("Successfully decrypted SSH key '{}'", item.content.title);
-        Ok(decrypted)
-    } else {
-        Err(anyhow!(
-            "SSH key '{}' is encrypted but no passphrase found in extra fields. \
-            Please add a Hidden field named 'Passphrase' or 'Password' with the key's passphrase.",
-            item.content.title
-        ))
+        return Ok(decrypted);
     }
+
+    Err(anyhow!(
+        "SSH key '{}' is encrypted but no passphrase found in extra fields. \
+        Please add a Hidden field named 'Passphrase' or 'Password' with the key's passphrase.",
+        item.content.title
+    ))
 }
 
 pub async fn load_keys_into_storage(
