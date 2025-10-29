@@ -1,10 +1,13 @@
 use super::VaultQuery;
 use super::key_storage::{Identity, KeyStorage};
 use anyhow::{Context, Result, anyhow};
+use futures::stream::{self, StreamExt};
 use pass::PassClient;
 use pass_domain::{Item, ItemContent};
 use ssh_key::private::PrivateKey as SshPrivateKey;
 use std::collections::HashSet;
+
+const MAX_PARALLEL_SHARE_FETCHES: usize = 20;
 
 pub async fn load_ssh_keys_from_vaults(
     client: &PassClient,
@@ -33,13 +36,26 @@ pub async fn load_ssh_keys_from_vaults(
         }
         VaultQuery::All => {
             let shares = client.list_shares().await.context("Error listing shares")?;
-            for share in shares {
-                let items = client
-                    .list_items(&share.id)
-                    .await
-                    .context(format!("Error listing items for share {}", share.id))?;
-                all_keys.extend(extract_ssh_keys(items));
+
+            // Fetch all items from all shares in parallel with limited concurrency
+            let results: Vec<_> = stream::iter(shares.iter())
+                .map(|share| async move {
+                    let items = client.list_items(&share.id).await;
+                    (share, items)
+                })
+                .buffer_unordered(MAX_PARALLEL_SHARE_FETCHES)
+                .collect()
+                .await;
+
+            let mut all_items = Vec::new();
+            for (share, result) in results {
+                match result {
+                    Ok(items) => all_items.extend(items),
+                    Err(e) => eprintln!("Error listing items for share {}: {}", share.id, e),
+                }
             }
+
+            all_keys.extend(extract_ssh_keys(all_items));
         }
     }
 

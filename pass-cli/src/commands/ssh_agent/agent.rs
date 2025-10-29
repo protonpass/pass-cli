@@ -14,7 +14,7 @@ use std::path::PathBuf;
 
 use super::key_storage::KeyStorage;
 use super::{Identity, VaultQuery, get_default_socket_path};
-use crate::commands::ssh_agent::pass_key::refresh_keys_periodically;
+use crate::commands::ssh_agent::key_load::refresh_keys_periodically;
 use pass::PassClient;
 use ssh_key::private::KeypairData;
 use ssh_key::{Algorithm, HashAlg, Signature};

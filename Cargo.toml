@@ -19,12 +19,13 @@ muon = { version = "1.8.0", registry = "proton", features = ["tls-tokio-rustls",
 proton-crypto = { git = "ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git", tag = "release-2025-08-09" }
 proton-crypto-account = { git = "ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git", tag = "release-2025-08-09" }
 
-proton-pass-common = {  git = "ssh://git@gitlab.protontech.ch/proton/clients/pass/proton-pass-common.git", tag = "0.25.9" }
+proton-pass-common = {  git = "ssh://git@gitlab.protontech.ch/proton/clients/pass/proton-pass-common.git", tag = "0.27.0" }
 
 anyhow = "1.0"
 async-trait = "0.1"
 bytes = "1.10.1"
 chrono = "0.4.40"
+futures = "0.3"
 protobuf = "3.7.2"
 protobuf-codegen = "3.7.2"
 rand = "0.9.1"

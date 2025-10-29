@@ -28,6 +28,7 @@ rsa = "0.9"
 semver = "1.0"
 sha1 = "0.10"
 sha2 = "0.10"
+ssh-agent-client-rs = "1.1.2"
 ssh-agent-lib = "0.5.1"
 ssh-key = { version = "0.6.7", features = ["crypto", "ed25519", "rsa", "p256", "p384", "p521", "encryption"] }
 thiserror = "2"
@@ -36,8 +37,10 @@ tracing-subscriber = { version = "0.3", features = ["default"] }
 anyhow.workspace = true
 async-trait.workspace = true
 chrono.workspace = true
+futures.workspace = true
 muon.workspace = true
 proton-crypto.workspace = true
+proton-pass-common.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
