@@ -3185,7 +3185,7 @@ dependencies = [
 
 [[package]]
 name = "pass"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "async-lock",
@@ -3208,7 +3208,7 @@ dependencies = [
 
 [[package]]
 name = "pass-cli"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3256,7 +3256,7 @@ dependencies = [
 
 [[package]]
 name = "pass-domain"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -3273,7 +3273,7 @@ dependencies = [
 
 [[package]]
 name = "pass-fs"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3283,7 +3283,7 @@ dependencies = [
 
 [[package]]
 name = "pass-pgp"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "async-trait",
