@@ -7,7 +7,7 @@ pub struct KeySalt {
     pub key_salt: Option<String>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct LockedUserKey {
     pub id: String,
     pub private_key: String,
