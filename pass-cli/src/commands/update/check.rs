@@ -46,7 +46,7 @@ pub async fn check_for_updates_background(base_dir: &Path) -> Result<()> {
 
     if is_newer {
         eprintln!(
-            "\nNew update available: v{current_version} -> v{latest_version} (run \"protonpass update\")\n",
+            "\nNew update available: v{current_version} -> v{latest_version} (run \"pass-cli update\")\n",
         );
     }
 
