@@ -51,7 +51,7 @@ impl KeyringKeyProvider {
                         if let Err(logout_err) = crate::commands::logout::force_logout().await {
                             error!("Error during force logout: {logout_err:#}");
                         }
-                        eprintln!("Run 'protonpass login' to authenticate again.");
+                        eprintln!("Run 'pass-cli login' to authenticate again.");
 
                         // Finish the process
                         std::process::exit(1);

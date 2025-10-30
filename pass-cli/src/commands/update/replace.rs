@@ -106,7 +106,7 @@ fn get_backup_path(current_exe: &Path) -> PathBuf {
     let file_name = current_exe
         .file_name()
         .and_then(|n| n.to_str())
-        .unwrap_or("protonpass");
+        .unwrap_or("pass-cli");
 
     backup.set_file_name(format!("{file_name}.old.{pid}"));
     backup
