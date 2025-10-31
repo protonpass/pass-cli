@@ -91,7 +91,22 @@ impl Share {
     }
 
     pub fn can_share(&self) -> bool {
-        self.permission.has_flag(PermissionFlag::Admin)
+        self.has_permission(PermissionFlag::Admin)
+    }
+
+    pub fn has_permission(&self, permission: PermissionFlag) -> bool {
+        self.permission.has_flag(permission)
+    }
+
+    pub fn permission_guard(&self, permission: PermissionFlag) -> Result<()> {
+        if self.has_permission(permission) {
+            Ok(())
+        } else {
+            Err(anyhow!(
+                "Share {} does not have the necessary permissions",
+                self.id
+            ))
+        }
     }
 
     pub fn can_share_guard(&self) -> Result<()> {

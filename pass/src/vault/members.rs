@@ -1,8 +1,9 @@
 use crate::PassClient;
+use crate::common::CodeResponse;
 use crate::pagination::SincePagination;
 use anyhow::{Context, Result};
-use muon::GET;
-use pass_domain::{ShareId, ShareMember, ShareRole, TargetType};
+use muon::{DELETE, GET, PUT};
+use pass_domain::{PermissionFlag, ShareId, ShareMember, ShareRole, TargetType};
 
 #[derive(Debug, serde::Deserialize)]
 struct ShareMembersResponse {
@@ -36,7 +37,7 @@ impl TryFrom<ShareMemberResponse> for ShareMember {
     type Error = anyhow::Error;
     fn try_from(share_response: ShareMemberResponse) -> Result<Self> {
         Ok(Self {
-            share_id: ShareId::new(share_response.share_id),
+            member_share_id: ShareId::new(share_response.share_id),
             email: share_response.user_email,
             name: share_response.user_name,
             is_group_share: share_response.is_group_share,
@@ -49,6 +50,14 @@ impl TryFrom<ShareMemberResponse> for ShareMember {
                 .context("Invalid target type")?,
         })
     }
+}
+
+#[derive(serde::Serialize)]
+struct UpdateMemberRequest {
+    #[serde(rename = "ShareRoleID")]
+    share_role_id: String,
+    #[serde(rename = "ExpireTime")]
+    expire_time: Option<i64>,
 }
 
 impl PassClient {
@@ -99,5 +108,65 @@ impl PassClient {
         }
 
         Ok(members)
+    }
+
+    pub async fn update_vault_member(
+        &self,
+        share_id: &ShareId,
+        member_share_id: &ShareId,
+        role: ShareRole,
+    ) -> Result<()> {
+        let share = self
+            .get_share(share_id)
+            .await
+            .context("Error getting share")?;
+        share.permission_guard(PermissionFlag::Admin)?;
+
+        let request = UpdateMemberRequest {
+            share_role_id: role.value(),
+            expire_time: None,
+        };
+
+        let req = PUT!("/pass/v1/share/{}/user/{}", share_id, member_share_id)
+            .body_json(&request)
+            .context("Failed to create update member request")?;
+
+        let res = self
+            .send(req)
+            .await
+            .context("Failed to send update member request")?;
+
+        let response: CodeResponse = assert_response!(res);
+        response.success_guard()?;
+
+        self.clear_shares_cache().await;
+        Ok(())
+    }
+
+    pub async fn remove_vault_member(
+        &self,
+        share_id: &ShareId,
+        member_share_id: &ShareId,
+    ) -> Result<()> {
+        let share = self
+            .get_share(share_id)
+            .await
+            .context("Error getting share")?;
+        share.permission_guard(PermissionFlag::Admin)?;
+
+        let res = self
+            .send(DELETE!(
+                "/pass/v1/share/{}/user/{}",
+                share_id,
+                member_share_id
+            ))
+            .await
+            .context("Failed to send remove member request")?;
+
+        let response: CodeResponse = assert_response!(res);
+        response.success_guard()?;
+
+        self.clear_shares_cache().await;
+        Ok(())
     }
 }

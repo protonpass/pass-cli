@@ -7,7 +7,7 @@ use pass_domain::ShareId;
 pub mod create;
 pub mod delete;
 pub mod list;
-pub mod members;
+pub mod member;
 pub mod share;
 mod update;
 
@@ -30,13 +30,8 @@ pub enum VaultCommands {
         #[arg(long, help = "New name of the vault")]
         name: String,
     },
-    #[command(about = "List vault members")]
-    Members {
-        #[arg(long, help = "Share ID of the vault")]
-        share_id: String,
-        #[arg(long, default_value = "human")]
-        output: OutputFormat,
-    },
+    #[command(about = "Manage vault members", subcommand)]
+    Member(member::MemberCommands),
     #[command(about = "Delete a vault")]
     Delete {
         #[arg(long, help = "Share ID of the vault to delete")]
@@ -60,9 +55,7 @@ pub async fn run(subcommand: VaultCommands, client: PassClient) -> Result<()> {
             update::run(client, ShareId::new(share_id), name).await
         }
         VaultCommands::Create { name } => create::run(client, name).await,
-        VaultCommands::Members { share_id, output } => {
-            members::run(client, ShareId::new(share_id), output).await
-        }
+        VaultCommands::Member(member_cmd) => member::run(client, member_cmd).await,
         VaultCommands::Delete { share_id } => delete::run(client, ShareId::new(share_id)).await,
         VaultCommands::Share {
             share_id,
