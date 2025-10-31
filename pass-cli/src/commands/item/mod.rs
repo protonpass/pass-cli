@@ -10,6 +10,7 @@ pub mod attachment;
 pub mod create;
 pub mod delete;
 pub mod list;
+pub mod member;
 pub mod share;
 pub mod view;
 
@@ -70,6 +71,8 @@ pub enum ItemCommands {
         #[command(subcommand)]
         alias_command: alias::AliasCommands,
     },
+    #[command(about = "Manage item members", subcommand)]
+    Member(member::MemberCommands),
 }
 
 pub async fn run(subcommand: ItemCommands, client: PassClient) -> Result<()> {
@@ -115,5 +118,6 @@ pub async fn run(subcommand: ItemCommands, client: PassClient) -> Result<()> {
             attachment::run(attachment_command, client).await
         }
         ItemCommands::Alias { alias_command } => alias::run(alias_command, client).await,
+        ItemCommands::Member(member_cmd) => member::run(client, member_cmd).await,
     }
 }

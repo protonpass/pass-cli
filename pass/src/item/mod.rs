@@ -6,5 +6,6 @@ pub(crate) mod find;
 pub(crate) mod get_one;
 pub(crate) mod item_keys;
 pub(crate) mod list;
+mod members;
 mod open;
 mod share;
