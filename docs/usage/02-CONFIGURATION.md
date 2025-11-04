@@ -30,14 +30,14 @@ export PROTON_PASS_SESSION_DIR='/custom/path'
 
 ## Secure key storage
 
-The CLI supports two key storage backends, controlled by the `PASS_CLI_KEY_PROVIDER` environment variable:
+The CLI supports two key storage backends, controlled by the `PROTON_PASS_KEY_PROVIDER` environment variable:
 
 ### 1. Keyring storage (default)
 
 **Configuration:**
 
 ```bash
-export PASS_CLI_KEY_PROVIDER=keyring  # or unset
+export PROTON_PASS_KEY_PROVIDER=keyring  # or unset
 ```
 
 This uses the operating system's secure credential storage:
@@ -70,7 +70,7 @@ This is a known limitation when running in headless Linux environments.
 **Configuration:**
 
 ```bash
-export PASS_CLI_KEY_PROVIDER=fs
+export PROTON_PASS_KEY_PROVIDER=fs
 ```
 
 This stores the encryption key in a file on disk:
