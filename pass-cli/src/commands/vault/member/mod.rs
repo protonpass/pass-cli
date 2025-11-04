@@ -1,3 +1,4 @@
+use super::VaultQuery;
 use crate::commands::{OutputFormat, Role};
 use anyhow::Result;
 use clap::Subcommand;
@@ -13,7 +14,9 @@ pub enum MemberCommands {
     #[command(about = "List vault members")]
     List {
         #[arg(long, help = "Share ID of the vault")]
-        share_id: String,
+        share_id: Option<String>,
+        #[arg(long, help = "Name of the vault")]
+        vault_name: Option<String>,
         #[arg(long, default_value = "human")]
         output: OutputFormat,
     },
@@ -37,8 +40,13 @@ pub enum MemberCommands {
 
 pub async fn run(client: PassClient, subcommand: MemberCommands) -> Result<()> {
     match subcommand {
-        MemberCommands::List { share_id, output } => {
-            list::run(client, ShareId::new(share_id), output).await
+        MemberCommands::List {
+            share_id,
+            vault_name,
+            output,
+        } => {
+            let query = VaultQuery::new(share_id, vault_name)?;
+            list::run(client, query, output).await
         }
         MemberCommands::Update {
             share_id,
