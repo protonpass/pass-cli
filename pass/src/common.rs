@@ -2,7 +2,7 @@ use anyhow::{Result, anyhow};
 
 pub(crate) const SUCCESS_CODE: u32 = 1000;
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, serde::Deserialize, serde::Serialize)]
 pub(crate) struct CodeResponse {
     #[serde(rename = "Code")]
     pub(crate) code: u32,

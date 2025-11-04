@@ -38,6 +38,7 @@ pub mod delete;
 pub mod list;
 pub mod member;
 pub mod share;
+mod transfer;
 mod update;
 
 #[derive(Subcommand)]
@@ -81,6 +82,15 @@ pub enum VaultCommands {
         #[arg(long, default_value = "viewer")]
         role: Role,
     },
+    #[command(about = "Transfer the ownership of one of your vaults")]
+    Transfer {
+        #[arg(long, help = "Share ID of the vault to transfer ownership")]
+        share_id: Option<String>,
+        #[arg(long, help = "Name of the vault to to transfer ownership")]
+        vault_name: Option<String>,
+        #[arg(help = "Member Share ID of the new owner of the vault")]
+        member_share_id: String,
+    },
 }
 
 pub async fn run(subcommand: VaultCommands, client: PassClient) -> Result<()> {
@@ -111,6 +121,14 @@ pub async fn run(subcommand: VaultCommands, client: PassClient) -> Result<()> {
         } => {
             let query = VaultQuery::new(share_id, vault_name)?;
             share::run(client, query, email, role).await
+        }
+        VaultCommands::Transfer {
+            share_id,
+            vault_name,
+            member_share_id,
+        } => {
+            let query = VaultQuery::new(share_id, vault_name)?;
+            transfer::run(client, query, ShareId::new(member_share_id)).await
         }
     }
 }

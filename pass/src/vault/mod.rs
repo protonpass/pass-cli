@@ -7,4 +7,5 @@ mod find;
 mod list;
 mod members;
 mod share;
+mod transfer;
 mod update;

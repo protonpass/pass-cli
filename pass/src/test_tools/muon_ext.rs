@@ -1,5 +1,6 @@
 use crate::PassClient;
 pub use crate::PlanType;
+use crate::common::{CodeResponse, SUCCESS_CODE};
 use crate::test_tools::client_features::TestClientFeatures;
 use crate::test_tools::{TEST_PASSPHRASE, init_session, setup_user_access};
 pub use muon::Method;
@@ -111,6 +112,16 @@ pub fn success<R: serde::Serialize>(res: R) -> Option<Response> {
     )
 }
 
+pub fn success_code() -> Option<Response> {
+    let body = serde_json::to_vec(&CodeResponse { code: SUCCESS_CODE }).unwrap();
+    Some(
+        Response::builder()
+            .status(200)
+            .body(axum_core::body::Body::from(body))
+            .unwrap(),
+    )
+}
+
 #[macro_export]
 macro_rules! last_request {
     ($recorder:expr) => {{
@@ -130,6 +141,15 @@ macro_rules! assert_hit {
     ($handled:expr) => {{
         if !$handled.load(std::sync::atomic::Ordering::SeqCst) {
             panic!("Endpoint has not been hit");
+        }
+    }};
+}
+
+#[macro_export]
+macro_rules! assert_not_hit {
+    ($handled:expr) => {{
+        if $handled.load(std::sync::atomic::Ordering::SeqCst) {
+            panic!("Endpoint has been hit");
         }
     }};
 }

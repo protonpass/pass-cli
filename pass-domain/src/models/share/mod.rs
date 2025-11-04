@@ -82,6 +82,26 @@ impl Share {
         matches!(self.share_type, ShareType::Vault { .. })
     }
 
+    pub fn vault_share_guard(&self) -> Result<()> {
+        if self.is_vault_share() {
+            Ok(())
+        } else {
+            Err(anyhow!("This operation is only valid for vault shares"))
+        }
+    }
+
+    pub fn is_owner(&self) -> bool {
+        matches!(self.share_role, ShareRole::Owner)
+    }
+
+    pub fn owner_guard(&self) -> Result<()> {
+        if self.is_owner() {
+            Ok(())
+        } else {
+            Err(anyhow!("This operation is only valid for owners"))
+        }
+    }
+
     pub fn is_item_share(&self) -> bool {
         matches!(self.share_type, ShareType::Item { .. })
     }
