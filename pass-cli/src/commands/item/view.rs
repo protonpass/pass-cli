@@ -4,10 +4,20 @@ use anyhow::{Context, Result, anyhow, bail};
 use pass::{FindItemQuery, PassClient};
 use pass_domain::{ItemId, ShareId};
 
+pub(crate) enum ShareQuery {
+    ShareId(ShareId),
+    VaultName(String),
+}
+
+pub(crate) enum ItemQuery {
+    ItemId(ItemId),
+    ItemTitle(String),
+}
+
 pub enum ViewItemQuery {
     Ids {
-        share_id: ShareId,
-        item_id: ItemId,
+        share_query: ShareQuery,
+        item_query: ItemQuery,
         field: Option<String>,
     },
     Uri(String),
@@ -16,31 +26,96 @@ pub enum ViewItemQuery {
 impl ViewItemQuery {
     pub fn new(
         share_id: Option<String>,
+        vault_name: Option<String>,
         item_id: Option<String>,
+        item_title: Option<String>,
         field: Option<String>,
         uri: Option<String>,
     ) -> Result<Self> {
-        match (share_id, item_id, uri) {
-            (Some(share_id), Some(item_id), None) => Ok(Self::Ids {
-                share_id: ShareId::new(share_id),
-                item_id: ItemId::new(item_id),
-                field,
-            }),
-            (None, None, Some(uri)) => Ok(Self::Uri(uri)),
-            _ => Err(anyhow!(
-                "Please provide either (share_id + item_id) or a uri"
-            )),
+        // If URI is provided, that's the only valid combination
+        if let Some(uri_value) = uri {
+            if share_id.is_some()
+                || vault_name.is_some()
+                || item_id.is_some()
+                || item_title.is_some()
+            {
+                return Err(anyhow!(
+                    "When using URI, do not provide share-id, vault-name, item-id, or item-title"
+                ));
+            }
+            return Ok(Self::Uri(uri_value));
         }
+
+        // Otherwise, we need exactly one share identifier and one item identifier
+        let share_query = match (share_id, vault_name) {
+            (Some(share_id), None) => ShareQuery::ShareId(ShareId::new(share_id)),
+            (None, Some(vault_name)) => ShareQuery::VaultName(vault_name),
+            (None, None) => {
+                return Err(anyhow!("Please provide either --share-id or --vault-name"));
+            }
+            (Some(_), Some(_)) => {
+                return Err(anyhow!(
+                    "Please provide either --share-id or --vault-name, not both"
+                ));
+            }
+        };
+
+        let item_query = match (item_id, item_title) {
+            (Some(item_id), None) => ItemQuery::ItemId(ItemId::new(item_id)),
+            (None, Some(item_title)) => ItemQuery::ItemTitle(item_title),
+            (None, None) => return Err(anyhow!("Please provide either --item-id or --item-title")),
+            (Some(_), Some(_)) => {
+                return Err(anyhow!(
+                    "Please provide either --item-id or --item-title, not both"
+                ));
+            }
+        };
+
+        Ok(Self::Ids {
+            share_query,
+            item_query,
+            field,
+        })
     }
 }
 
 pub async fn run(client: PassClient, query: ViewItemQuery, output: OutputFormat) -> Result<()> {
     let (item, effective_field) = match query {
         ViewItemQuery::Ids {
-            share_id,
-            item_id,
+            share_query,
+            item_query,
             field,
         } => {
+            // First, resolve the share_id
+            let share_id = match share_query {
+                ShareQuery::ShareId(id) => id,
+                ShareQuery::VaultName(vault_name) => {
+                    let vault = client
+                        .find_vault(&vault_name)
+                        .await
+                        .context("Error finding vault")?;
+                    vault.share_id
+                }
+            };
+
+            // Then, resolve the item_id
+            let item_id = match item_query {
+                ItemQuery::ItemId(id) => id,
+                ItemQuery::ItemTitle(title) => {
+                    let items = client
+                        .list_items(&share_id)
+                        .await
+                        .context("Error listing items")?;
+
+                    let matching_item = items
+                        .iter()
+                        .find(|item| item.content.title == title)
+                        .ok_or_else(|| anyhow!("No item found with title: {}", title))?;
+
+                    matching_item.id.clone()
+                }
+            };
+
             let item = client
                 .view_item(&share_id, &item_id)
                 .await

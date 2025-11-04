@@ -1,9 +1,10 @@
+use super::super::VaultQuery;
 use crate::commands::OutputFormat;
 use anyhow::{Context, Result};
 use pass::PassClient;
-use pass_domain::ShareId;
 
-pub async fn run(client: PassClient, share_id: ShareId, output: OutputFormat) -> Result<()> {
+pub async fn run(client: PassClient, query: VaultQuery, output: OutputFormat) -> Result<()> {
+    let share_id = query.resolve(&client).await?;
     let members = client
         .list_vault_members(&share_id)
         .await
