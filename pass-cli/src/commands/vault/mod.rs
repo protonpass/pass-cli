@@ -35,7 +35,9 @@ pub enum VaultCommands {
     #[command(about = "Delete a vault")]
     Delete {
         #[arg(long, help = "Share ID of the vault to delete")]
-        share_id: String,
+        share_id: Option<String>,
+        #[arg(long, help = "Name of the vault to delete")]
+        vault_name: Option<String>,
     },
     #[command(about = "Share a vault with someone")]
     Share {
@@ -56,7 +58,13 @@ pub async fn run(subcommand: VaultCommands, client: PassClient) -> Result<()> {
         }
         VaultCommands::Create { name } => create::run(client, name).await,
         VaultCommands::Member(member_cmd) => member::run(client, member_cmd).await,
-        VaultCommands::Delete { share_id } => delete::run(client, ShareId::new(share_id)).await,
+        VaultCommands::Delete {
+            share_id,
+            vault_name,
+        } => {
+            let query = delete::DeleteVaultQuery::new(share_id, vault_name)?;
+            delete::run(client, query).await
+        }
         VaultCommands::Share {
             share_id,
             email,
