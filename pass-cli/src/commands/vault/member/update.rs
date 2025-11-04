@@ -1,3 +1,4 @@
+use super::super::VaultQuery;
 use crate::commands::Role;
 use anyhow::{Context, Result};
 use pass::PassClient;
@@ -5,10 +6,11 @@ use pass_domain::{ShareId, ShareRole};
 
 pub async fn run(
     client: PassClient,
-    share_id: ShareId,
+    query: VaultQuery,
     member_share_id: ShareId,
     role: Role,
 ) -> Result<()> {
+    let share_id = query.resolve(&client).await?;
     let share_role: ShareRole = role.into();
 
     client
