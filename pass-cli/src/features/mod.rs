@@ -13,7 +13,7 @@ use tracing::info;
 const LOCAL_KEY_FILENAME: &str = "local.key";
 
 fn get_key_provider(base_dir: PathBuf) -> Result<Arc<dyn LocalKeyProvider>> {
-    let provider_type = env::var("PASS_CLI_KEY_PROVIDER").unwrap_or_default();
+    let provider_type = env::var("PROTON_PASS_KEY_PROVIDER").unwrap_or_default();
 
     match provider_type.as_str() {
         "fs" => {
@@ -25,7 +25,7 @@ fn get_key_provider(base_dir: PathBuf) -> Result<Arc<dyn LocalKeyProvider>> {
             Ok(Arc::new(keyring::KeyringKeyProvider::new(base_dir)?))
         }
         _ => Err(anyhow::anyhow!(
-            "Invalid PASS_CLI_KEY_PROVIDER value: '{}'. Valid values are 'fs' or 'keyring'",
+            "Invalid PROTON_PASS_KEY_PROVIDER value: '{}'. Valid values are 'fs' or 'keyring'",
             provider_type
         )),
     }
