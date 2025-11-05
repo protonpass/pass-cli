@@ -1,5 +1,7 @@
 use crate::extra_password::ExtraPasswordError;
 use crate::features::CliClientFeatures;
+use crate::fido::YubiKeyAuthenticator;
+use crate::fido::error::AuthError;
 use crate::store::{
     AllowAllPinVerifier, CustomEnv, GetStoreError, PassSessionStore, SerializedEnv,
     SharedPassSessionStore,
@@ -224,6 +226,28 @@ async fn init_session(session: &Session<PassSessionKeyType>) -> anyhow::Result<(
     Ok(())
 }
 
+fn get_yubikey_authenticator() -> anyhow::Result<YubiKeyAuthenticator> {
+    loop {
+        match YubiKeyAuthenticator::new() {
+            Ok(auth) => return Ok(auth),
+            Err(e) => match e {
+                AuthError::NoAuthenticator => {
+                    println!(
+                        "Could not detect any authenticator. Is your hardware key plugged in?"
+                    );
+                    println!(
+                        "Try removing it and plugging it back in, then press enter to try again"
+                    );
+                    std::io::stdin()
+                        .read_line(&mut String::new())
+                        .context("Error getting yubikey authenticator")?;
+                }
+                _ => return Err(anyhow!("Failed to create YubikeyAuthenticator: {e:#}")),
+            },
+        }
+    }
+}
+
 async fn handle_fido(
     client: LoginTwoFactorFlow<PassSessionKeyType>,
 ) -> anyhow::Result<Session<PassSessionKeyType>> {
@@ -244,8 +268,7 @@ async fn handle_fido(
         return Err(anyhow!("No Fido2 authentication options not available"));
     }
 
-    let authenticator = crate::fido::YubiKeyAuthenticator::new()
-        .context("Failed to create YubiKeyAuthenticator")?;
+    let authenticator = get_yubikey_authenticator()?;
     let request = authenticator
         .authenticate_interactive(details.clone())
         .expect("Error authenticating interactive session");
