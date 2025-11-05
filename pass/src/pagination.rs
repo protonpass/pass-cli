@@ -67,3 +67,31 @@ impl SincePagination {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pagination_next_with_value_replaces_since() {
+        let initial = SincePagination::default();
+        assert!(initial.since.is_none());
+
+        let value_1 = "value_1";
+        let value_2 = "value_2";
+        let new = initial.next(Some(value_1.to_string()));
+        let new = new.expect("Should be some");
+        assert_eq!(new.since, Some(value_1.to_string()));
+
+        let new2 = new.next(Some(value_2.to_string()));
+        let new2 = new2.expect("Should be some");
+        assert_eq!(new2.since, Some(value_2.to_string()));
+    }
+
+    #[test]
+    fn pagination_next_with_none_returns_none() {
+        let initial = SincePagination::default();
+        let new = initial.next(None);
+        assert!(new.is_none());
+    }
+}

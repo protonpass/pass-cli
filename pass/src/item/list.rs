@@ -1,8 +1,7 @@
 use crate::PassClient;
 use crate::item::open::ItemWithItemKey;
 use crate::pagination::SincePagination;
-use crate::utils::debug_response;
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Result};
 use muon::GET;
 use pass_domain::{Item, ShareId};
 use std::collections::HashMap;
@@ -133,17 +132,12 @@ impl PassClient {
                 .query(("PageSize".to_string(), format!("{}", pagination.page_size)));
 
             if let Some(ref since) = pagination.since {
-                req = req.query(("SinceToken".to_string(), since.to_string()));
+                req = req.query(("Since".to_string(), since.to_string()));
             }
 
             let res = self.send(req).await.context("Error fetching items page")?;
 
-            if !res.status().is_success() {
-                debug_response(&res);
-                return Err(anyhow!("Error fetching items"));
-            }
-
-            let response: GetItemsResponse = res.body_json().context("Unable to parse response")?;
+            let response: GetItemsResponse = assert_response!(res);
             let response_content = response.items;
             let revisions = response_content.revisions;
 
