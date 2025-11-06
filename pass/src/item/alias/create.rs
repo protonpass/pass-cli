@@ -60,13 +60,13 @@ impl PassClient {
         share_id: &ShareId,
         prefix: &str,
     ) -> Result<CreateAliasRequest> {
-        let mut options = self
+        let options = self
             .get_alias_options(share_id)
             .await
             .context("Error fetching alias options")?;
 
-        let suffix = options.suffixes.pop().context("No suffix found")?;
-        let mailbox = options.mailboxes.pop().context("No mailbox found")?;
+        let suffix = options.suffixes.first().context("No suffix found")?;
+        let mailbox = options.mailboxes.first().context("No mailbox found")?;
 
         let title = format!("Alias for {prefix}");
         let item = self
@@ -76,7 +76,7 @@ impl PassClient {
 
         Ok(CreateAliasRequest {
             prefix: prefix.to_string(),
-            signed_suffix: suffix.signed_suffix,
+            signed_suffix: suffix.signed_suffix.to_string(),
             mailbox_ids: vec![mailbox.id],
             alias_name: None,
             item,

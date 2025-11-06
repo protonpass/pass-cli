@@ -439,6 +439,7 @@ mod tests {
                 address: AddressDataResponse {
                     keys: vec![PublicAddressKeyResponse {
                         public_key: group_armored_public_key_clone.to_string(),
+                        primary: 1,
                     }],
                 },
             })

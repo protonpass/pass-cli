@@ -39,10 +39,10 @@ impl ReencryptInviteKeysFlow {
     }
 
     pub async fn reencrypt(
-        mut self,
+        self,
         invite_keys: Vec<InviteKeyToReencrypt>,
     ) -> Result<Vec<ReencryptedInviteKey>> {
-        let (user_private_key, user_public_key) = match self.user_keys.pop() {
+        let (user_private_key, user_public_key) = match self.user_keys.first().cloned() {
             Some(k) => k.into_keys(),
             None => return Err(anyhow::anyhow!("User address key not found")),
         };

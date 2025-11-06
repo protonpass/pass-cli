@@ -69,11 +69,11 @@ impl PassClient {
             .await
             .context("Error fetching item")?;
 
-        let mut opened = self
+        let opened = self
             .open_items(share_id, vec![item_revision])
             .await
             .context("Error opening item")?;
-        let (item, item_key) = match opened.pop() {
+        let (item, item_key) = match opened.first().cloned() {
             Some(item) => (item.item, item.item_key),
             None => return Err(anyhow!("Item not found")),
         };

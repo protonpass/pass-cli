@@ -16,16 +16,16 @@ struct UserInfoJsonOutput {
 }
 
 pub async fn run(client: PassClient, output_format: OutputFormat) -> Result<()> {
-    let mut addresses = client.get_addresses().await?;
-    let primary_address = addresses.pop().ok_or_else(|| {
+    let addresses = client.get_addresses().await?;
+    let primary_address = addresses.first().ok_or_else(|| {
         anyhow::anyhow!("No addresses found. Please add an address to your account.")
     })?;
     let user_info = client.get_user_access().await?;
 
     match output_format {
         OutputFormat::Human => {
-            println!("User: {}", &primary_address.email);
-            println!("Plan: {}", &user_info.plan.display_name);
+            println!("User: {}", primary_address.email);
+            println!("Plan: {}", user_info.plan.display_name);
             if let Some(subscription_end) = user_info.plan.subscription_end {
                 let end_date = chrono::Utc.timestamp_opt(subscription_end as i64, 0);
                 println!(
@@ -50,7 +50,7 @@ pub async fn run(client: PassClient, output_format: OutputFormat) -> Result<()> 
         }
         OutputFormat::Json => {
             let out = UserInfoJsonOutput {
-                email: primary_address.email,
+                email: primary_address.email.to_string(),
                 plan: user_info.plan.display_name,
                 subscription_end: user_info.plan.subscription_end,
                 vault_limit: user_info.plan.vault_limit,

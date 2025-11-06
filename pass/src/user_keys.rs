@@ -46,11 +46,11 @@ impl PassClient {
     }
 
     pub(crate) async fn get_primary_user_key(&self) -> Result<UserKey> {
-        let mut keys = self
+        let keys = self
             .get_user_keys()
             .await
             .context("Error getting user keys")?;
-        if let Some(key) = keys.pop() {
+        if let Some(key) = keys.first().cloned() {
             Ok(key)
         } else {
             Err(anyhow!("Empty list of user keys"))

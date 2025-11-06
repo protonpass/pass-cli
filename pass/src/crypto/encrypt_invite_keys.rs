@@ -35,7 +35,7 @@ impl EncryptInviteKeysFlow {
     }
 
     pub async fn encrypt(
-        mut self,
+        self,
         invite_keys: Vec<InviteKeyToPrepare>,
     ) -> Result<Vec<PreparedInviteKey>> {
         let signing_key = match self.user_address_keys.value().first_entry() {
@@ -43,7 +43,7 @@ impl EncryptInviteKeysFlow {
             None => return Err(anyhow::anyhow!("User address key not found")),
         };
 
-        let invited_key = match self.invited_keys.pop() {
+        let invited_key = match self.invited_keys.first().cloned() {
             Some(k) => k,
             None => return Err(anyhow::anyhow!("Empty list of invited_keys")),
         };
