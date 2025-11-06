@@ -3,6 +3,7 @@ use crate::item::item_keys::OpenedItemKey;
 use crate::item::list::ItemRevision;
 use anyhow::{Context, Result, anyhow};
 use bytes::Bytes;
+use chrono::{DateTime, NaiveDateTime};
 use futures::stream::{self, StreamExt};
 use pass_domain::{
     Item, ItemData, ItemFlag, ItemId, ItemState, ShareId, ShareType, VaultId, crypto,
@@ -10,6 +11,12 @@ use pass_domain::{
 use std::collections::HashMap;
 
 const MAX_CONCURRENCY: usize = 10;
+
+fn timestamp_to_naive_datetime(timestamp: u64) -> NaiveDateTime {
+    DateTime::from_timestamp(timestamp as i64, 0)
+        .map(|dt| dt.naive_utc())
+        .unwrap_or_default()
+}
 
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub(crate) struct ItemWithItemKey {
@@ -175,6 +182,7 @@ impl PassClient {
                 share_id,
                 vault_id,
                 flags: ItemFlag::parse_flags(item.flags),
+                create_time: timestamp_to_naive_datetime(item.create_time),
             },
             item_key,
         }])
@@ -247,12 +255,13 @@ impl PassClient {
                         index,
                         ItemWithItemKey {
                             item: Item {
-                                id: ItemId::new(item.item_id),
+                                id: ItemId::new(item.item_id.clone()),
                                 content: parsed,
                                 state: item_state,
                                 share_id,
                                 vault_id,
                                 flags: ItemFlag::parse_flags(item.flags),
+                                create_time: timestamp_to_naive_datetime(item.create_time),
                             },
                             item_key,
                         },

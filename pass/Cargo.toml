@@ -14,6 +14,7 @@ proton-pass-common.workspace = true
 
 anyhow.workspace = true
 async-trait.workspace = true
+chrono.workspace = true
 futures.workspace = true
 serde.workspace = true
 serde_json.workspace = true

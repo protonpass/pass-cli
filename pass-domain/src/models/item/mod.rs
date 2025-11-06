@@ -48,6 +48,7 @@ pub struct Item {
     pub content: ItemData,
     pub state: ItemState,
     pub flags: Vec<ItemFlag>,
+    pub create_time: chrono::NaiveDateTime,
 }
 
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq)]

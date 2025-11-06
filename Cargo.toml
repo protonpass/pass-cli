@@ -24,7 +24,7 @@ proton-pass-common = {  git = "ssh://git@gitlab.protontech.ch/proton/clients/pas
 anyhow = "1.0"
 async-trait = "0.1"
 bytes = "1.10.1"
-chrono = "0.4.40"
+chrono = { version = "0.4.40", features = ["serde"] }
 futures = "0.3"
 protobuf = "3.7.2"
 protobuf-codegen = "3.7.2"

@@ -134,6 +134,7 @@ mod tests {
                     state: 0,
                     flags: 0,
                     alias_email: None,
+                    create_time: 0,
                 },
             })
         });
@@ -219,6 +220,7 @@ mod tests {
                     state: 0,
                     flags: 0,
                     alias_email: None,
+                    create_time: 0,
                 },
             })
         });
@@ -304,6 +306,7 @@ mod tests {
                     state: 0,
                     flags: 0,
                     alias_email: None,
+                    create_time: 0,
                 },
             })
         });
@@ -451,6 +454,7 @@ mod tests {
                     state: 0,
                     flags: 0,
                     alias_email: None,
+                    create_time: 0,
                 },
             })
         });

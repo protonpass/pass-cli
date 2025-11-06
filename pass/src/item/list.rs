@@ -68,6 +68,8 @@ pub(crate) struct ItemRevision {
     pub flags: u64,
     #[serde(rename = "AliasEmail")]
     pub alias_email: Option<String>,
+    #[serde(rename = "CreateTime")]
+    pub create_time: u64,
 }
 
 impl PassClient {
@@ -218,6 +220,9 @@ mod tests {
                 content: item_data,
                 state: ItemState::Active,
                 flags: vec![],
+                create_time: chrono::DateTime::from_timestamp(1234567890, 0)
+                    .unwrap()
+                    .naive_utc(),
             },
             item_key: crate::item::item_keys::OpenedItemKey {
                 key_rotation: 1,
@@ -269,6 +274,9 @@ mod tests {
                 content: item_data,
                 state: ItemState::Active,
                 flags: vec![],
+                create_time: chrono::DateTime::from_timestamp(1234567890, 0)
+                    .unwrap()
+                    .naive_utc(),
             },
             item_key: crate::item::item_keys::OpenedItemKey {
                 key_rotation: 1,
@@ -324,6 +332,9 @@ mod tests {
                 content: item_data,
                 state: ItemState::Active,
                 flags: vec![],
+                create_time: chrono::DateTime::from_timestamp(1234567890, 0)
+                    .unwrap()
+                    .naive_utc(),
             },
             item_key: crate::item::item_keys::OpenedItemKey {
                 key_rotation: 1,

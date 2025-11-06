@@ -133,6 +133,7 @@ pub struct ItemRevisionBuilder {
     state: Option<u8>,
     flags: Option<u64>,
     alias_email: Option<Option<String>>,
+    create_time: Option<u64>,
 }
 
 #[allow(dead_code)]
@@ -147,6 +148,7 @@ impl ItemRevisionBuilder {
             state: None,
             flags: None,
             alias_email: None,
+            create_time: None,
         }
     }
 
@@ -178,6 +180,10 @@ impl ItemRevisionBuilder {
         self.alias_email = Some(value);
         self
     }
+    pub fn with_create_time(mut self, value: u64) -> Self {
+        self.create_time = Some(value);
+        self
+    }
 
     pub fn build(self) -> ItemRevision {
         ItemRevision {
@@ -190,6 +196,7 @@ impl ItemRevisionBuilder {
             state: self.state.unwrap_or(1),
             flags: self.flags.unwrap_or(0),
             alias_email: self.alias_email.unwrap_or(None),
+            create_time: self.create_time.unwrap_or(1234567890),
         }
     }
 }

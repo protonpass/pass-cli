@@ -240,6 +240,9 @@ mod tests {
                 }],
             },
             flags: vec![],
+            create_time: chrono::DateTime::from_timestamp(1234567890, 0)
+                .unwrap()
+                .naive_utc(),
         }
     }
 
