@@ -11,6 +11,7 @@ pub mod create;
 pub mod delete;
 pub mod list;
 pub mod member;
+pub mod r#move;
 pub mod share;
 pub mod view;
 
@@ -77,6 +78,21 @@ pub enum ItemCommands {
         #[arg(long, default_value = "human")]
         output: OutputFormat,
     },
+    #[command(about = "Move an item to a different vault")]
+    Move {
+        #[arg(long, help = "Share ID of the source vault")]
+        from_share_id: Option<String>,
+        #[arg(long, help = "Name of the source vault")]
+        from_vault_name: Option<String>,
+        #[arg(long, help = "ID of the item to move")]
+        item_id: Option<String>,
+        #[arg(long, help = "Title of the item to move")]
+        item_title: Option<String>,
+        #[arg(long, help = "Share ID of the destination vault")]
+        to_share_id: Option<String>,
+        #[arg(long, help = "Name of the destination vault")]
+        to_vault_name: Option<String>,
+    },
     #[command(about = "Attachment operations")]
     Attachment {
         #[command(subcommand)]
@@ -135,6 +151,24 @@ pub async fn run(subcommand: ItemCommands, client: PassClient) -> Result<()> {
             let query =
                 view::ViewItemQuery::new(share_id, vault_name, item_id, item_title, field, uri)?;
             view::run(client, query, output).await
+        }
+        ItemCommands::Move {
+            from_share_id,
+            from_vault_name,
+            item_id,
+            item_title,
+            to_share_id,
+            to_vault_name,
+        } => {
+            let query = r#move::MoveItemQuery::new(
+                from_share_id,
+                from_vault_name,
+                item_id,
+                item_title,
+                to_share_id,
+                to_vault_name,
+            )?;
+            r#move::run(client, query).await
         }
         ItemCommands::Attachment { attachment_command } => {
             attachment::run(attachment_command, client).await

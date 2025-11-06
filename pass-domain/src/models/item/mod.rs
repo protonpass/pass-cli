@@ -9,7 +9,7 @@ pub use attachment::*;
 pub use flags::*;
 use protobuf::Message;
 
-#[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 pub struct ItemId(pub(crate) String);
 display_for_basic!(ItemId);
 

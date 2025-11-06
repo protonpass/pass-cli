@@ -12,6 +12,7 @@ pub enum PermissionAction {
     UpdateItem { share_id: ShareId, item_id: ItemId },
     DeleteItem { share_id: ShareId, item_id: ItemId },
 
+    CreateItem { share_id: ShareId },
     CreateAlias { share_id: ShareId },
     CreateIdentity { share_id: ShareId },
     CreateCreditCard { share_id: ShareId },
@@ -32,6 +33,7 @@ impl PassClient {
             PermissionAction::CreateVault => self.create_vault_guard(user_access.plan).await,
             PermissionAction::UpdateVault { share_id } => self.update_vault_guard(share_id).await,
             PermissionAction::DeleteVault { share_id } => self.delete_vault_guard(share_id).await,
+            PermissionAction::CreateItem { share_id } => self.create_item_guard(share_id).await,
             PermissionAction::UpdateItem { share_id, item_id } => {
                 self.update_item_guard(share_id, item_id).await
             }

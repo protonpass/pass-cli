@@ -7,5 +7,8 @@ pub(crate) mod get_one;
 pub(crate) mod item_keys;
 pub(crate) mod list;
 mod members;
+mod r#move;
 mod open;
+#[allow(dead_code)]
+mod revisions;
 mod share;
