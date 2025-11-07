@@ -171,7 +171,9 @@ pub async fn authenticate_client(
         }
 
         LoginFlow::Failed { reason, .. } => {
-            bail!("login failed: {reason}, client is staying un-logged.");
+            eprintln!("Authentication failed: {reason}");
+            eprintln!("Make sure the password you entered is the right one.");
+            std::process::exit(1);
         }
     };
 
