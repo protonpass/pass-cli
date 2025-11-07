@@ -54,6 +54,8 @@ pub fn setup_logs() {
 
     if let Some(muon_log_level) = muon_log_level {
         filter = filter.with_target("muon", muon_log_level);
+    } else {
+        filter = filter.with_target("muon", tracing_subscriber::filter::LevelFilter::OFF);
     }
 
     tracing_subscriber::registry()
