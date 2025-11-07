@@ -204,6 +204,49 @@ And also by specifying the path in a URI format:
 pass-cli item view "pass://Personal/TestItem/password"
 ```
 
+### Generate TOTP code(s)
+
+The CLI can generate TOTP (Time-based One-Time Password) codes for items that have TOTP fields.
+
+**Generate TOTP for a specific field:**
+
+```bash
+pass-cli item totp --share-id AbCdEf123456 --item-id XyZ789 --field totp
+```
+
+**Generate all TOTP codes in an item:**
+
+```bash
+pass-cli item totp --share-id AbCdEf123456 --item-id XyZ789
+```
+
+This will find and generate codes for all TOTP fields in the item.
+
+**Using vault and item names:**
+
+```bash
+pass-cli item totp --vault-name Personal --item-title "GitHub Account"
+```
+
+**Using Pass URI format:**
+
+```bash
+pass-cli item totp "pass://Personal/GitHub Account/totp"
+```
+
+**JSON output:**
+
+```bash
+pass-cli item totp --vault-name Personal --item-title "GitHub Account" --output json
+```
+
+Output:
+```json
+{
+  "totp": "123456"
+}
+```
+
 ### Delete an item
 
 ```bash
