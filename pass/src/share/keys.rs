@@ -178,8 +178,7 @@ impl PassClient {
             .await
             .context("Error getting page for share keys")?;
 
-        let page_keys: GetShareKeysResponse =
-            res.body_json().context("Error decoding share keys page")?;
+        let page_keys: GetShareKeysResponse = assert_response!(res);
 
         let share_key_count = page_keys.keys.keys.len();
         trace!("Retrieved {} share keys", share_key_count);

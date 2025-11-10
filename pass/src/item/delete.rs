@@ -32,19 +32,15 @@ impl PassClient {
             .fetch_item_revision(share_id, item_id)
             .await
             .context("Error fetching item")?;
-        let req = DELETE!(
-            "/pass/v1/share/{share_id}/item/{item_id}",
-            share_id = share_id,
-            item_id = item_id
-        )
-        .body_json(DeleteItemsRequest {
-            items: vec![DeleteItemBody {
-                item_id: item_id.value().to_string(),
-                revision: item_revision.revision,
-            }],
-            skip_trash: false,
-        })
-        .context("Error creating delete item request")?;
+        let req = DELETE!("/pass/v1/share/{share_id}/item")
+            .body_json(DeleteItemsRequest {
+                items: vec![DeleteItemBody {
+                    item_id: item_id.value().to_string(),
+                    revision: item_revision.revision,
+                }],
+                skip_trash: true,
+            })
+            .context("Error creating delete item request")?;
 
         let res = self
             .send(req)
