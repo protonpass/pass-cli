@@ -8,6 +8,6 @@ pub async fn run(client: PassClient, name: String) -> Result<()> {
         .await
         .context("error creating vault")?;
 
-    println!("Created vault with id: {share_id}");
+    println!("{share_id}");
     Ok(())
 }
