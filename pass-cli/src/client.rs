@@ -1,7 +1,5 @@
 use crate::extra_password::ExtraPasswordError;
 use crate::features::CliClientFeatures;
-use crate::fido::YubiKeyAuthenticator;
-use crate::fido::error::AuthError;
 use crate::store::{
     AllowAllPinVerifier, CustomEnv, GetStoreError, PassSessionStore, SerializedEnv,
     SharedPassSessionStore,
@@ -9,7 +7,7 @@ use crate::store::{
 use crate::utils::ask_for_input;
 use anyhow::{Context, anyhow, bail};
 use muon::app::AppVersion;
-use muon::client::flow::{LoginFlow, LoginTwoFactorFlow};
+use muon::client::flow::LoginFlow;
 use muon::common::{BoxFut, Sender, SenderLayer};
 use muon::env::{Env, EnvId};
 use muon::{App, GET, ProtonRequest, ProtonResponse, Session};
@@ -137,36 +135,23 @@ pub async fn authenticate_client(
             let has_totp = session.has_totp();
             let has_fido = session.fido_details().is_some();
 
-            if has_totp && has_fido {
-                // Both methods available, let user choose
-                loop {
-                    println!("Multiple 2FA methods available:");
-                    println!("1) TOTP");
-                    println!("2) FIDO");
-                    let choice = ask_for_input("Select authentication method: ", false)?;
-                    let choice = choice.trim();
-
-                    match choice {
-                        "1" => {
-                            let totp = get_totp()?;
-                            break session.totp(&totp).await?;
-                        }
-                        "2" => {
-                            break handle_fido(session).await?;
-                        }
-                        _ => {
-                            println!("Invalid option. Please enter a valid one.");
-                            continue;
-                        }
+            match (has_totp, has_fido) {
+                (true, _) => {
+                    if has_fido {
+                        println!(
+                            "Your account has many 2FA methods available. Using TOTP. If you want to use others, use 'pass-cli login' and login via web"
+                        );
                     }
+                    let totp = get_totp()?;
+                    session.totp(&totp).await?
                 }
-            } else if has_totp {
-                let totp = get_totp()?;
-                session.totp(&totp).await?
-            } else if has_fido {
-                handle_fido(session).await?
-            } else {
-                bail!("no 2FA available");
+                (false, true) => {
+                    println!(
+                        "Your account cannot login interactively. Use 'pass-cli login' and login via web"
+                    );
+                    std::process::exit(1);
+                }
+                (false, false) => bail!("no 2FA available"),
             }
         }
 
@@ -224,63 +209,6 @@ async fn init_session(session: &Session<PassSessionKeyType>) -> anyhow::Result<(
         .await
         .context("Error initializing session")?;
     Ok(())
-}
-
-fn get_yubikey_authenticator() -> anyhow::Result<YubiKeyAuthenticator> {
-    loop {
-        match YubiKeyAuthenticator::new() {
-            Ok(auth) => return Ok(auth),
-            Err(e) => match e {
-                AuthError::NoAuthenticator => {
-                    println!(
-                        "Could not detect any authenticator. Is your hardware key plugged in?"
-                    );
-                    println!(
-                        "Try removing it and plugging it back in, then press enter to try again"
-                    );
-                    std::io::stdin()
-                        .read_line(&mut String::new())
-                        .context("Error getting yubikey authenticator")?;
-                }
-                _ => return Err(anyhow!("Failed to create YubikeyAuthenticator: {e:#}")),
-            },
-        }
-    }
-}
-
-async fn handle_fido(
-    client: LoginTwoFactorFlow<PassSessionKeyType>,
-) -> anyhow::Result<Session<PassSessionKeyType>> {
-    let details = client
-        .fido_details()
-        .ok_or_else(|| anyhow!("Missing fido details"))?;
-    let options = match details.authentication_options {
-        Some(ref opts) => opts.clone(),
-        None => return Err(anyhow!("No authentication options provided")),
-    };
-
-    let allow_credentials = match options.public_key.allow_credentials {
-        Some(ref creds) => !creds.is_empty(),
-        None => false,
-    };
-
-    if !allow_credentials {
-        return Err(anyhow!("No Fido2 authentication options not available"));
-    }
-
-    let authenticator = get_yubikey_authenticator()?;
-    let request = authenticator
-        .authenticate_interactive(details.clone())
-        .expect("Error authenticating interactive session");
-
-    let authenticated_client = match client.fido(request).await {
-        Ok(client) => client,
-        Err(e) => {
-            error!("Error in FIDO2: {e:?}");
-            return Err(anyhow!("Error sending FIDO2 response for login"));
-        }
-    };
-    Ok(authenticated_client)
 }
 
 fn default_app_header() -> String {

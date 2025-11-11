@@ -25,7 +25,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # Install build dependencies
 sudo apt-get update
-sudo apt-get install -y pkg-config libssl-dev libdbus-1-dev libudev-dev
+sudo apt-get install -y pkg-config libssl-dev libdbus-1-dev
 ```
 
 **On Linux (RHEL/Fedora):**
@@ -106,5 +106,4 @@ The debug binary will be at `target/debug/pass-cli`. Same flags can be used for 
 
 If you encounter errors about missing system libraries, install:
 - `libdbus-1-3` or `dbus-libs`
-- `libudev1` or `systemd-libs`
 

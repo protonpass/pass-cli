@@ -217,26 +217,20 @@ check_linux_dependencies() {
     
     case "$pkg_manager" in
         apt)
-            # Check for libdbus-1-3 and libudev1
+            # Check for libdbus-1-3
             if ! dpkg -s libdbus-1-3 &> /dev/null; then
                 missing_deps+=("libdbus-1-3")
             fi
-            if ! dpkg -s libudev1 &> /dev/null; then
-                missing_deps+=("libudev1")
-            fi
             ;;
         dnf|yum)
-            # Check for dbus-libs and systemd-libs
+            # Check for dbus-libs
             if ! rpm -q dbus-libs &> /dev/null; then
                 missing_deps+=("dbus-libs")
-            fi
-            if ! rpm -q systemd-libs &> /dev/null; then
-                missing_deps+=("systemd-libs")
             fi
             ;;
         unknown)
             log_warn "Unknown package manager. Skipping dependency check."
-            log_warn "Please ensure libdbus and libudev are installed for proper operation."
+            log_warn "Please ensure libdbus is installed for proper operation."
             return
             ;;
     esac
