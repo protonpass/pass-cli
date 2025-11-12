@@ -28,13 +28,13 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    #[command(about = "Log in with a given username")]
+    #[command(about = "Log in (defaults to web login)")]
     Login {
-        #[arg(help = "The username to log in with")]
+        #[arg(help = "The username to log in with (for interactive mode)")]
         username: Option<String>,
 
-        #[arg(long, help = "Use web-based login flow")]
-        web: bool,
+        #[arg(long, help = "Use interactive login mode")]
+        interactive: bool,
     },
 
     #[command(about = "Log out of the current session")]
@@ -184,9 +184,18 @@ async fn main() -> Result<()> {
         .await
         .context("Error getting client")?;
     match &cli.command {
-        Commands::Login { username, web } => {
-            return commands::login::run(username.as_deref(), *web, client, client_features, store)
-                .await;
+        Commands::Login {
+            username,
+            interactive,
+        } => {
+            return commands::login::run(
+                username.as_deref(),
+                *interactive,
+                client,
+                client_features,
+                store,
+            )
+            .await;
         }
         Commands::Password { command } => {
             return commands::password::run(command).await;
@@ -212,6 +221,14 @@ async fn main() -> Result<()> {
         }
         Some(ref session) => {
             if !session.is_logged_in().await {
+                commands::logout::cleanup().await?;
+                return Err(anyhow!("This operation requires an authenticated client"));
+            }
+            // Check if session needs extra password
+            let store_guard = store.read().await;
+            let needs_extra_password = store_guard.needs_extra_password().await;
+            drop(store_guard);
+            if needs_extra_password {
                 commands::logout::cleanup().await?;
                 return Err(anyhow!("This operation requires an authenticated client"));
             }

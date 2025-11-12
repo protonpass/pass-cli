@@ -1,5 +1,6 @@
 use crate::cache::Cache;
 use anyhow::{Context, Result};
+use muon::Session;
 use pass_domain::ClientFeatures;
 use std::sync::Arc;
 
@@ -29,12 +30,17 @@ impl PassClient {
     }
 
     pub(crate) async fn send(&self, req: muon::http::HttpReq) -> Result<muon::http::HttpRes> {
-        self.client
-            .get_session(())
-            .await
-            .context("Error getting client session")?
+        self.get_session()
+            .await?
             .send(req)
             .await
             .context("Error sending request")
+    }
+
+    pub async fn get_session(&self) -> Result<Session<PassSessionKeyType>> {
+        self.client
+            .get_session(())
+            .await
+            .context("Error getting client session")
     }
 }

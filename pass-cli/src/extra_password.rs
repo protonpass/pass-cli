@@ -1,3 +1,4 @@
+use crate::client::{get_extra_password, init_session};
 use anyhow::{Context, anyhow};
 use muon::{GET, POST, Session, Status};
 use pass::PassSessionKeyType;
@@ -14,7 +15,7 @@ impl From<anyhow::Error> for ExtraPasswordError {
     }
 }
 
-pub async fn perform_extra_password_auth(
+async fn perform_extra_password_auth(
     client: &Session<PassSessionKeyType>,
     password: String,
 ) -> Result<(), ExtraPasswordError> {
@@ -105,5 +106,37 @@ async fn send_srp_proofs(
             "Invalid status code received: {:?}",
             res.status()
         ))),
+    }
+}
+
+pub async fn handle_extra_password(
+    session: &Session<PassSessionKeyType>,
+) -> Result<(), anyhow::Error> {
+    let mut attempts = 3;
+    loop {
+        if attempts == 0 {
+            println!("Too many incorrect extra password attempts, logging out");
+            session.logout().await;
+            return Err(anyhow!("Error in extra password flow"));
+        }
+
+        let extra_password = get_extra_password()?;
+        match perform_extra_password_auth(session, extra_password).await {
+            Ok(()) => {
+                init_session(session)
+                    .await
+                    .context("Error initializing session")?;
+                return Ok(());
+            }
+            Err(e) => match e {
+                ExtraPasswordError::Other(e) => {
+                    return Err(anyhow!("Error in extra password flow: {e:#}"));
+                }
+                ExtraPasswordError::BadPassword => {
+                    println!("Incorrect extra password");
+                    attempts -= 1;
+                }
+            },
+        }
     }
 }

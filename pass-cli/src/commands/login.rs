@@ -1,4 +1,4 @@
-use crate::client::authenticate_client;
+use crate::client::{authenticate_client, get_username};
 use crate::features::CliClientFeatures;
 use crate::store::PassSessionStore;
 use anyhow::{Context, Result};
@@ -56,19 +56,21 @@ pub(crate) async fn after_login(client: PassClient, key: FirstTimeSetupKey) -> R
 
 pub async fn run(
     username: Option<&str>,
-    web: bool,
+    interactive: bool,
     client: Client,
     client_features: Arc<CliClientFeatures>,
     store: Arc<RwLock<PassSessionStore>>,
 ) -> Result<()> {
-    // Route to web login if --web flag is provided
-    if web {
+    // Route to web login if not in interactive mode
+    if !interactive {
         return crate::commands::login_web::run(client, client_features, store).await;
     }
 
-    // Traditional login requires a username
-    let username =
-        username.ok_or_else(|| anyhow::anyhow!("Username is required for interactive login"))?;
+    // Traditional login requires a username - get it from env var or prompt if not provided
+    let username = match username {
+        Some(u) => u.to_string(),
+        None => get_username().context("Error getting username")?,
+    };
 
     let session = client.get_session(()).await;
     if let Some(session) = session
@@ -79,7 +81,7 @@ pub async fn run(
     }
     info!("Logging in user: {}", username);
 
-    let authenticated_client = authenticate_client(client, username, store).await?;
+    let authenticated_client = authenticate_client(client, &username, store).await?;
 
     info!("Logged in user: {}", username);
     let client = PassClient::new(authenticated_client.client, client_features);
@@ -87,6 +89,6 @@ pub async fn run(
     let setup_key = FirstTimeSetupKey::UserPassword(authenticated_client.password);
     after_login(client, setup_key).await?;
 
-    println!("Successfully logged in as {username}");
+    println!("Successfully logged in as {}", username);
     Ok(())
 }
