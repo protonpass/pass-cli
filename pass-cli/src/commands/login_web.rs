@@ -170,14 +170,16 @@ fn build_web_login_url(env: &EnvId, user_code: &str, encryption_key: &[u8]) -> R
     Ok(url)
 }
 
-async fn create_new_client(client_features: Arc<CliClientFeatures>) -> Result<PassClient> {
+async fn create_new_client(
+    client_features: Arc<CliClientFeatures>,
+) -> Result<(PassClient, Arc<RwLock<PassSessionStore>>)> {
     let base_dir = utils::get_base_dir().context("Error getting base dir")?;
 
-    let (client, _store) = client::get_client(base_dir.clone(), client_features.clone())
+    let (client, store) = client::get_client(base_dir.clone(), client_features.clone())
         .await
         .context("Error getting client")?;
 
-    Ok(PassClient::new(client, client_features))
+    Ok((PassClient::new(client, client_features), store))
 }
 
 pub async fn run(
@@ -247,7 +249,20 @@ pub async fn run(
 
     // HACK: Create a new client to make sure we're using the right store, as the old one sometimes
     // has credentials locally-cached and doesn't work well
-    let pass_client = create_new_client(client_features).await?;
+    let (pass_client, store) = create_new_client(client_features).await?;
+
+    // Check if it needs extra password
+    let needs_extra_password = {
+        let store_guard = store.read().await;
+        store_guard.needs_extra_password().await
+    };
+
+    if needs_extra_password {
+        info!("Account needs Pass extra password");
+
+        let session = pass_client.get_session().await?;
+        crate::extra_password::handle_extra_password(&session).await?;
+    }
 
     // Attempt to retrieve client info to make sure we can actually perform a request
     let user_info = pass_client.get_info().await.context("Error getting info")?;

@@ -1,11 +1,10 @@
-use crate::extra_password::ExtraPasswordError;
 use crate::features::CliClientFeatures;
 use crate::store::{
     AllowAllPinVerifier, CustomEnv, GetStoreError, PassSessionStore, SerializedEnv,
     SharedPassSessionStore,
 };
 use crate::utils::ask_for_input;
-use anyhow::{Context, anyhow, bail};
+use anyhow::{Context, bail};
 use muon::app::AppVersion;
 use muon::client::flow::LoginFlow;
 use muon::common::{BoxFut, Sender, SenderLayer};
@@ -28,6 +27,8 @@ const EXTRA_PASSWORD_ENV_VAR: &str = "PROTON_PASS_EXTRA_PASSWORD";
 const EXTRA_PASSWORD_FILE_ENV_VAR: &str = "PROTON_PASS_EXTRA_PASSWORD_FILE";
 const TOTP_ENV_VAR: &str = "PROTON_PASS_TOTP";
 const TOTP_FILE_ENV_VAR: &str = "PROTON_PASS_TOTP_FILE";
+const USERNAME_ENV_VAR: &str = "PROTON_PASS_USERNAME";
+const USERNAME_FILE_ENV_VAR: &str = "PROTON_PASS_USERNAME_FILE";
 const APP_HEADER_ENV_VAR: &str = "PROTON_PASS_APP_HEADER";
 
 struct XdebugSessionLayer {
@@ -104,7 +105,7 @@ fn get_password() -> anyhow::Result<String> {
     )
 }
 
-fn get_extra_password() -> anyhow::Result<String> {
+pub fn get_extra_password() -> anyhow::Result<String> {
     get_value(
         EXTRA_PASSWORD_ENV_VAR,
         EXTRA_PASSWORD_FILE_ENV_VAR,
@@ -115,6 +116,15 @@ fn get_extra_password() -> anyhow::Result<String> {
 
 fn get_totp() -> anyhow::Result<String> {
     get_value(TOTP_ENV_VAR, TOTP_FILE_ENV_VAR, "Enter TOTP: ", false)
+}
+
+pub fn get_username() -> anyhow::Result<String> {
+    get_value(
+        USERNAME_ENV_VAR,
+        USERNAME_FILE_ENV_VAR,
+        "Enter username: ",
+        false,
+    )
 }
 
 pub async fn authenticate_client(
@@ -161,49 +171,23 @@ pub async fn authenticate_client(
     };
 
     // Check if it needs extra password
-    let store_guard = store.read().await;
-    let needs_extra_password = store_guard.needs_extra_password().await;
+    let needs_extra_password = {
+        let store_guard = store.read().await;
+        store_guard.needs_extra_password().await
+    };
+
     if needs_extra_password {
-        drop(store_guard);
         info!("Account needs Pass extra password");
-
-        let mut attempts = 3;
-        loop {
-            if attempts == 0 {
-                println!("Too many incorrect extra password attempts, logging out");
-                session.logout().await;
-                return Err(anyhow!("Error in extra password flow"));
-            }
-
-            let extra_password = get_extra_password()?;
-            match crate::extra_password::perform_extra_password_auth(&session, extra_password).await
-            {
-                Ok(()) => {
-                    init_session(&session)
-                        .await
-                        .context("Error initializing session")?;
-                    return Ok(AuthenticatedClient { client, password });
-                }
-                Err(e) => match e {
-                    ExtraPasswordError::Other(e) => {
-                        return Err(anyhow!("Error in extra password flow: {e:#}"));
-                    }
-                    ExtraPasswordError::BadPassword => {
-                        println!("Incorrect extra password");
-                        attempts -= 1;
-                    }
-                },
-            }
-        }
-    } else {
-        init_session(&session)
-            .await
-            .context("Error initializing session")?;
-        Ok(AuthenticatedClient { client, password })
+        crate::extra_password::handle_extra_password(&session).await?;
     }
+
+    init_session(&session)
+        .await
+        .context("Error initializing session")?;
+    Ok(AuthenticatedClient { client, password })
 }
 
-async fn init_session(session: &Session<PassSessionKeyType>) -> anyhow::Result<()> {
+pub async fn init_session(session: &Session<PassSessionKeyType>) -> anyhow::Result<()> {
     session
         .send(GET!("/tests/ping"))
         .await
