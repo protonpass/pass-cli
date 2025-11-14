@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use keyring::{Entry, Error as KeyringError};
-use pass_domain::LocalKeyProvider;
+use pass_domain::utils::xor_key;
+use pass_domain::{LocalKey, LocalKeyProvider};
 use std::path::PathBuf;
 use tokio::sync::RwLock;
 
@@ -65,28 +66,31 @@ impl KeyringKeyProvider {
                         Ok(cred)
                     }
                 }
+                KeyringError::PlatformFailure(ref err) => {
+                    let as_str = err.to_string();
+                    if as_str.contains("User canceled the operation") {
+                        eprintln!("Please authorize access to the system keyring");
+                        std::process::exit(1);
+                    } else {
+                        Err(anyhow::anyhow!(
+                            "Error accessing credential on keyring: {e:?}"
+                        ))
+                    }
+                }
                 _ => Err(anyhow::anyhow!(
                     "Error accessing credential on keyring: {e:?}"
                 )),
             },
         }
     }
-
-    fn xor_key(&self, key: &[u8]) -> Vec<u8> {
-        let mut res = Vec::with_capacity(key.len());
-        for b in key {
-            res.push(self.xor_key ^ b);
-        }
-        res
-    }
 }
 
 #[async_trait::async_trait]
 impl LocalKeyProvider for KeyringKeyProvider {
-    async fn get_key(&self) -> Result<Vec<u8>> {
+    async fn get_key(&self) -> Result<LocalKey> {
         let key_guard = self.key.read().await;
         if let Some(key) = &*key_guard {
-            Ok(self.xor_key(key))
+            Ok(LocalKey::new(xor_key(key, self.xor_key)))
         } else {
             drop(key_guard);
             let mut write_key_guard = self.key.write().await;
@@ -95,9 +99,9 @@ impl LocalKeyProvider for KeyringKeyProvider {
                 .await
                 .context("Could not get local key from keyring")?;
 
-            let xored_key = self.xor_key(&key);
+            let xored_key = xor_key(&key, self.xor_key);
             *write_key_guard = Some(xored_key);
-            Ok(key)
+            Ok(LocalKey::new(key))
         }
     }
 

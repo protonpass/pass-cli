@@ -13,6 +13,7 @@ mod extra_password;
 mod features;
 mod logs;
 mod store;
+mod telemetry;
 mod utils;
 
 const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), " (", env!("GIT_HASH"), ")");
@@ -176,8 +177,9 @@ async fn main() -> Result<()> {
         let _ = commands::update::check_for_updates_background(&base_dir).await;
     }
 
-    let client_features =
-        CliClientFeatures::new(base_dir.clone()).context("Error creating client features")?;
+    let client_features = CliClientFeatures::new(base_dir.clone())
+        .await
+        .context("Error creating client features")?;
     let client_features = Arc::new(client_features);
 
     let (client, store) = client::get_client(base_dir.clone(), client_features.clone())
@@ -210,7 +212,7 @@ async fn main() -> Result<()> {
     };
 
     let session = client.get_session(()).await;
-    match session {
+    let user_id = match session {
         None => {
             return if cli.command.is_logout() {
                 eprintln!("There was not an active session, you are already logged out");
@@ -219,22 +221,31 @@ async fn main() -> Result<()> {
                 Err(anyhow!("This operation requires an authenticated client"))
             };
         }
-        Some(ref session) => {
+        Some(session) => {
             if !session.is_logged_in().await {
                 commands::logout::cleanup().await?;
                 return Err(anyhow!("This operation requires an authenticated client"));
             }
             // Check if session needs extra password
-            let store_guard = store.read().await;
-            let needs_extra_password = store_guard.needs_extra_password().await;
-            drop(store_guard);
+            let (needs_extra_password, user_id) = {
+                let store_guard = store.read().await;
+                let needs_extra_password = store_guard.needs_extra_password().await;
+                let auth = store_guard.auth.read().await;
+                let user_id = auth
+                    .clone()
+                    .and_then(|a| a.user_id().map(|u| u.to_string()));
+
+                (needs_extra_password, user_id)
+            };
             if needs_extra_password {
                 commands::logout::cleanup().await?;
                 return Err(anyhow!("This operation requires an authenticated client"));
             }
+            user_id
         }
     };
 
+    client_features.telemetry_handler.set_user_id(user_id).await;
     let client = PassClient::new(client, client_features);
 
     match cli.command {
@@ -258,7 +269,6 @@ async fn main() -> Result<()> {
         Commands::Share { command } => commands::share::run(command, client).await,
         Commands::User { command } => commands::user::run(command, client).await,
         Commands::SshAgent { command } => commands::ssh_agent::run(command, client).await,
-
         #[cfg(feature = "internal")]
         Commands::Internal { command } => commands::internal::run(command, client).await,
         _ => Ok(()),

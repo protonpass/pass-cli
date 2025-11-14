@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 pass = { path = "../pass" }
+pass-db = { path = "../pass-db" }
 pass-domain = { path = "../pass-domain" }
 pass-fs = { path = "../pass-fs" }
 pass-pgp = { path = "../pass-pgp" }
@@ -37,6 +38,7 @@ urlencoding = "2.1"
 anyhow.workspace = true
 async-trait.workspace = true
 chrono.workspace = true
+
 futures.workspace = true
 muon.workspace = true
 proton-crypto.workspace = true

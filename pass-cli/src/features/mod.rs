@@ -1,7 +1,11 @@
 pub(crate) mod keyring;
 
+use crate::telemetry::SqliteTelemetryHandler;
 use anyhow::{Context, Result};
-use pass_domain::{AccountCrypto, ClientFeatures, FsStorage, LocalKeyProvider};
+use pass_db::DatabaseManager;
+use pass_domain::{
+    AccountCrypto, ClientFeatures, FsStorage, LocalKey, LocalKeyProvider, TelemetryHandler,
+};
 use pass_fs::RealFsStorage;
 use pass_pgp::{NativePgpCrypto, ProtonAccountCrypto};
 use std::env;
@@ -35,13 +39,30 @@ fn get_key_provider(base_dir: PathBuf) -> Result<Arc<dyn LocalKeyProvider>> {
 pub struct CliClientFeatures {
     pub storage: Arc<RealFsStorage>,
     pub key_provider: Arc<dyn LocalKeyProvider>,
+    pub database_manager: DatabaseManager,
+    pub telemetry_handler: Arc<SqliteTelemetryHandler>,
 }
 
 impl CliClientFeatures {
-    pub fn new(base_dir: PathBuf) -> Result<Self> {
+    pub async fn new(base_dir: PathBuf) -> Result<Self> {
+        let key_provider = get_key_provider(base_dir.clone())?;
+
+        // Get the encryption key for the database
+        let encryption_key = key_provider
+            .get_key()
+            .await
+            .context("Failed to get encryption key for database")?;
+
+        // Initialize encrypted database with the key
+        let db = DatabaseManager::new(base_dir.clone(), encryption_key)
+            .await
+            .context("Failed to initialize database")?;
+
         Ok(Self {
             storage: Arc::new(RealFsStorage::new(base_dir.clone())),
-            key_provider: get_key_provider(base_dir)?,
+            telemetry_handler: Arc::new(SqliteTelemetryHandler::new(db.clone())),
+            database_manager: db,
+            key_provider,
         })
     }
 }
@@ -102,8 +123,8 @@ impl FsLocalKeyProvider {
 
 #[async_trait::async_trait]
 impl LocalKeyProvider for FsLocalKeyProvider {
-    async fn get_key(&self) -> Result<Vec<u8>> {
-        self.get_local_key().await
+    async fn get_key(&self) -> Result<LocalKey> {
+        Ok(LocalKey::new(self.get_local_key().await?))
     }
 
     async fn remove_key(&self) -> Result<()> {
@@ -133,5 +154,13 @@ impl ClientFeatures for CliClientFeatures {
 
     async fn get_pgp_crypto(&self) -> Arc<dyn pass_domain::PgpCrypto> {
         Arc::new(NativePgpCrypto)
+    }
+
+    async fn get_telemetry_handler(&self) -> Arc<dyn TelemetryHandler> {
+        self.telemetry_handler.clone()
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }

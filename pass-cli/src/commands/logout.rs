@@ -1,4 +1,3 @@
-use crate::features::CliClientFeatures;
 use crate::utils::get_base_dir;
 use anyhow::{Context, Result, anyhow};
 use pass::PassClient;
@@ -54,13 +53,6 @@ pub async fn force_logout() -> Result<()> {
 }
 
 pub async fn cleanup() -> Result<()> {
-    let base_dir = get_base_dir().context("Error getting base dir")?;
-    let client_features =
-        CliClientFeatures::new(base_dir).context("Error creating client features")?;
-    if let Err(e) = client_features.key_provider.remove_key().await {
-        warn!("Error removing local key: {e:#}");
-    }
-
     remove_local_data().await?;
     Ok(())
 }

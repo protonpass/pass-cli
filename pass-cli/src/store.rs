@@ -294,15 +294,18 @@ impl PassSessionStore {
             }
         };
 
-        let decrypted =
-            match pass_domain::crypto::decrypt(&contents, &local_key, EncryptionTag::Unknown) {
-                Ok(decrypted) => decrypted,
-                Err(e) => {
-                    return Err(GetStoreError::CannotDecrypt(anyhow!(
-                        "Error decrypting session: {e}"
-                    )));
-                }
-            };
+        let decrypted = match pass_domain::crypto::decrypt(
+            &contents,
+            local_key.as_ref(),
+            EncryptionTag::Unknown,
+        ) {
+            Ok(decrypted) => decrypted,
+            Err(e) => {
+                return Err(GetStoreError::CannotDecrypt(anyhow!(
+                    "Error decrypting session: {e}"
+                )));
+            }
+        };
 
         let deserialized: SerializedStore = match serde_json::from_slice(&decrypted) {
             Ok(s) => s,
@@ -343,7 +346,7 @@ impl PassSessionStore {
 
         let encrypted = match pass_domain::crypto::encrypt(
             as_str.as_bytes(),
-            &local_key,
+            local_key.as_ref(),
             EncryptionTag::Unknown,
         ) {
             Ok(encrypted) => encrypted,
