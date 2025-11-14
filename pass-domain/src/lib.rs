@@ -6,6 +6,7 @@ mod feature_flag;
 mod features;
 mod models;
 mod protos;
+pub mod telemetry;
 mod types;
 pub mod utils;
 
@@ -45,6 +46,7 @@ pub use models::item::*;
 pub use models::share::*;
 pub use models::vault::*;
 pub use protobuf;
+pub use telemetry::*;
 pub use types::*;
 
 implement_custom_methods!(protos::vault::vault_v1::Vault);

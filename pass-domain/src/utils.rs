@@ -11,3 +11,11 @@ pub fn random_string(length: usize) -> String {
 
     res
 }
+
+pub fn xor_key(key: &[u8], xor_key: u8) -> Vec<u8> {
+    let mut res = Vec::with_capacity(key.len());
+    for b in key {
+        res.push(xor_key ^ b);
+    }
+    res
+}

@@ -1,5 +1,7 @@
 use anyhow::Result;
-use pass_domain::{AccountCrypto, ClientFeatures, FsStorage, LocalKeyProvider, PgpCrypto};
+use pass_domain::{
+    AccountCrypto, ClientFeatures, FsStorage, LocalKey, LocalKeyProvider, PgpCrypto,
+};
 use pass_fs::InMemoryFsStorage;
 use pass_pgp::{NativePgpCrypto, ProtonAccountCrypto};
 use std::sync::Arc;
@@ -10,8 +12,8 @@ pub struct StaticKeyProvider {
 
 #[async_trait::async_trait]
 impl LocalKeyProvider for StaticKeyProvider {
-    async fn get_key(&self) -> Result<Vec<u8>> {
-        Ok(self.key.clone())
+    async fn get_key(&self) -> Result<LocalKey> {
+        Ok(LocalKey::new(self.key.clone()))
     }
     async fn remove_key(&self) -> Result<()> {
         Ok(())
@@ -49,5 +51,13 @@ impl ClientFeatures for TestClientFeatures {
 
     async fn get_pgp_crypto(&self) -> Arc<dyn PgpCrypto> {
         Arc::new(NativePgpCrypto)
+    }
+
+    async fn get_telemetry_handler(&self) -> Arc<dyn pass_domain::TelemetryHandler> {
+        Arc::new(pass_domain::NoopTelemetryHandler)
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
