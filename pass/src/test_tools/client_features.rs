@@ -56,8 +56,4 @@ impl ClientFeatures for TestClientFeatures {
     async fn get_telemetry_handler(&self) -> Arc<dyn pass_domain::TelemetryHandler> {
         Arc::new(pass_domain::NoopTelemetryHandler)
     }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }

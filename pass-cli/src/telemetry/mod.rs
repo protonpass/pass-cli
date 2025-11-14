@@ -33,9 +33,9 @@ impl SqliteTelemetryHandler {
             && let Err(e) = self
                 .internal_send_telemetry_if_needed(&user_id, client)
                 .await
-            {
-                warn!("Error sending telemetry data: {e:#}");
-            }
+        {
+            warn!("Error sending telemetry data: {e:#}");
+        }
     }
 
     async fn internal_send_telemetry_if_needed(
