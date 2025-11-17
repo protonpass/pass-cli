@@ -19,12 +19,17 @@ impl DatabaseManager {
             .context("Failed to create base directory")?;
 
         let db_path = base_dir.join(DATABASE_NAME);
+
+        if db_path.exists() {
+            debug!("Connecting to encrypted database at: {}", db_path.display());
+        } else {
+            debug!("Initializing encrypted database at: {}", db_path.display());
+        }
+
         let db_path_str = db_path
             .to_str()
             .context("Invalid database path")?
             .to_string();
-
-        debug!("Initializing encrypted database at: {}", db_path_str);
 
         Self::new_with_path(db_path_str, encryption_key).await
     }

@@ -1,13 +1,13 @@
+use super::secret_resolver::{PassClientResolver, SecretReference, SecretResolver};
 use anyhow::{Context, Result, anyhow};
 use pass::PassClient;
+use pass_domain::TelemetryEvent;
 use regex::Regex;
 use std::collections::HashMap;
 use std::fs;
 use std::io::{self, Read, Write};
 use std::sync::Arc;
 use tokio::sync::Mutex;
-
-use super::secret_resolver::{PassClientResolver, SecretReference, SecretResolver};
 
 fn compile_pass_uri_regex() -> Result<Regex> {
     Regex::new(r"\{\{\s*(pass://[^}]+)\s*\}\}")
@@ -61,6 +61,10 @@ pub async fn run(
             buffer
         }
     };
+
+    client
+        .emit_telemetry(TelemetryEvent::command("inject"))
+        .await;
 
     // Process the template
     let resolver = PassClientResolver::new(client);

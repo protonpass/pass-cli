@@ -7,7 +7,7 @@ use anyhow::{Context, Result, anyhow, bail};
 use clap::Subcommand;
 use key_storage::{Identity, KeyStorage};
 use pass::PassClient;
-use pass_domain::ShareId;
+use pass_domain::{ShareId, TelemetryEvent};
 use std::path::PathBuf;
 
 #[derive(Subcommand)]
@@ -94,6 +94,9 @@ async fn run_start(
     refresh_interval: u64,
     client: PassClient,
 ) -> Result<()> {
+    client
+        .emit_telemetry(TelemetryEvent::command("ssh-agent-start"))
+        .await;
     let vault_query = VaultQuery::new(share_id, vault_name)?;
 
     info!("Loading SSH keys from Proton Pass...");

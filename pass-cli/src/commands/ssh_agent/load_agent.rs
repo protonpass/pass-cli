@@ -1,11 +1,11 @@
+use super::VaultQuery;
+use super::key_load;
 use anyhow::{Context, Result, bail};
 use pass::PassClient;
+use pass_domain::TelemetryEvent;
 use ssh_agent_client_rs::Client as SshAgentClient;
 use ssh_key::private::PrivateKey as SshPrivateKey;
 use std::path::PathBuf;
-
-use super::VaultQuery;
-use super::key_load;
 
 #[cfg(unix)]
 fn get_system_agent_socket() -> Result<PathBuf> {
@@ -45,6 +45,9 @@ pub async fn run_load(
     vault_name: Option<String>,
     client: PassClient,
 ) -> Result<()> {
+    client
+        .emit_telemetry(TelemetryEvent::command("ssh-agent-load"))
+        .await;
     let vault_query = VaultQuery::new(share_id, vault_name)?;
 
     // Get system SSH agent socket

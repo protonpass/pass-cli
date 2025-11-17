@@ -8,7 +8,7 @@ pub struct TelemetryEventModel {
     pub id: i64,
     pub timestamp: i64,
     pub event_type: String,
-    pub item_type: Option<String>,
+    pub extra_data: Option<String>,
     pub user_id: Option<String>,
 }
 
@@ -35,36 +35,36 @@ impl TryFrom<TelemetryEventModel> for TelemetryEvent {
         let event = match row.event_type.as_str() {
             "item_created" => {
                 let item_type_str = row
-                    .item_type
+                    .extra_data
                     .as_deref()
-                    .ok_or_else(|| anyhow!("item_created event missing item_type"))?;
+                    .ok_or_else(|| anyhow!("item_created event missing extra_data"))?;
                 let item_type = TelemetryEventModel::parse_item_type(item_type_str)
                     .ok_or_else(|| anyhow!("unknown item_type: {}", item_type_str))?;
                 TelemetryEvent::ItemCreated { item_type }
             }
             "item_updated" => {
                 let item_type_str = row
-                    .item_type
+                    .extra_data
                     .as_deref()
-                    .ok_or_else(|| anyhow!("item_updated event missing item_type"))?;
+                    .ok_or_else(|| anyhow!("item_updated event missing extra_data"))?;
                 let item_type = TelemetryEventModel::parse_item_type(item_type_str)
                     .ok_or_else(|| anyhow!("unknown item_type: {}", item_type_str))?;
                 TelemetryEvent::ItemUpdated { item_type }
             }
             "item_deleted" => {
                 let item_type_str = row
-                    .item_type
+                    .extra_data
                     .as_deref()
-                    .ok_or_else(|| anyhow!("item_deleted event missing item_type"))?;
+                    .ok_or_else(|| anyhow!("item_deleted event missing extra_data"))?;
                 let item_type = TelemetryEventModel::parse_item_type(item_type_str)
                     .ok_or_else(|| anyhow!("unknown item_type: {}", item_type_str))?;
                 TelemetryEvent::ItemDeleted { item_type }
             }
             "item_moved" => {
                 let item_type_str = row
-                    .item_type
+                    .extra_data
                     .as_deref()
-                    .ok_or_else(|| anyhow!("item_moved event missing item_type"))?;
+                    .ok_or_else(|| anyhow!("item_moved event missing extra_data"))?;
                 let item_type = TelemetryEventModel::parse_item_type(item_type_str)
                     .ok_or_else(|| anyhow!("unknown item_type: {}", item_type_str))?;
                 TelemetryEvent::ItemMoved { item_type }
@@ -72,6 +72,12 @@ impl TryFrom<TelemetryEventModel> for TelemetryEvent {
             "vault_created" => TelemetryEvent::VaultCreated,
             "vault_updated" => TelemetryEvent::VaultUpdated,
             "vault_deleted" => TelemetryEvent::VaultDeleted,
+            "command" => {
+                let command = row
+                    .extra_data
+                    .ok_or_else(|| anyhow!("Command missing extra_data"))?;
+                TelemetryEvent::Command { command }
+            }
             other => return Err(anyhow!("unknown event_type: {}", other)),
         };
 
@@ -85,7 +91,7 @@ impl TelemetryEventModel {
             id: row.get("id")?,
             timestamp: row.get("timestamp")?,
             event_type: row.get("event_type")?,
-            item_type: row.get("item_type")?,
+            extra_data: row.get("extra_data")?,
             user_id: row.get("user_id")?,
         })
     }
@@ -109,22 +115,23 @@ impl TelemetryEventModel {
         user_id: Option<String>,
     ) -> Result<i64> {
         let event_type = event.event_type().to_string();
-        let item_type_str = match event {
+        let extra_data = match event {
             TelemetryEvent::ItemCreated { item_type }
             | TelemetryEvent::ItemUpdated { item_type }
             | TelemetryEvent::ItemDeleted { item_type }
             | TelemetryEvent::ItemMoved { item_type } => {
                 Some(Self::item_type_to_string(item_type).to_string())
             }
+            TelemetryEvent::Command { command } => Some(command.to_string()),
             _ => None,
         };
         let timestamp = chrono::Utc::now().timestamp();
 
         conn.interact(move |conn| {
             conn.execute(
-                "INSERT INTO telemetry_events (timestamp, event_type, item_type, user_id)
+                "INSERT INTO telemetry_events (timestamp, event_type, extra_data, user_id)
                  VALUES (?1, ?2, ?3, ?4)",
-                params![timestamp, event_type, item_type_str, user_id],
+                params![timestamp, event_type, extra_data, user_id],
             )?;
             Ok(conn.last_insert_rowid())
         })
@@ -134,7 +141,7 @@ impl TelemetryEventModel {
     pub async fn get_all(conn: &DbConnection) -> Result<Vec<TelemetryEventModel>> {
         conn.interact(|conn| {
             let mut stmt = conn.prepare(
-                "SELECT id, timestamp, event_type, item_type, user_id
+                "SELECT id, timestamp, event_type, extra_data, user_id
                  FROM telemetry_events
                  ORDER BY timestamp ASC",
             )?;
@@ -157,7 +164,7 @@ impl TelemetryEventModel {
         let user_id = user_id.to_string();
         conn.interact(move |conn| {
             let mut stmt = conn.prepare(
-                "SELECT id, timestamp, event_type, item_type, user_id
+                "SELECT id, timestamp, event_type, extra_data, user_id
                  FROM telemetry_events
                  WHERE user_id = ?1
                  ORDER BY timestamp ASC",
@@ -177,7 +184,7 @@ impl TelemetryEventModel {
     pub async fn get_by_id(conn: &DbConnection, id: i64) -> Result<Option<TelemetryEventModel>> {
         conn.interact(move |conn| {
             let mut stmt = conn.prepare(
-                "SELECT id, timestamp, event_type, item_type, user_id
+                "SELECT id, timestamp, event_type, extra_data, user_id
                  FROM telemetry_events
                  WHERE id = ?1",
             )?;
@@ -240,7 +247,7 @@ mod tests {
 
         assert_eq!(retrieved.id, id);
         assert_eq!(retrieved.event_type, "item_created");
-        assert_eq!(retrieved.item_type, Some("login".to_string()));
+        assert_eq!(retrieved.extra_data, Some("login".to_string()));
         assert_eq!(retrieved.user_id, user_id);
     }
 
@@ -263,7 +270,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(retrieved.event_type, "item_updated");
-        assert_eq!(retrieved.item_type, Some("note".to_string()));
+        assert_eq!(retrieved.extra_data, Some("note".to_string()));
         assert_eq!(retrieved.user_id, user_id);
     }
 
@@ -286,7 +293,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(retrieved.event_type, "item_deleted");
-        assert_eq!(retrieved.item_type, Some("credit_card".to_string()));
+        assert_eq!(retrieved.extra_data, Some("credit_card".to_string()));
         assert_eq!(retrieved.user_id, user_id);
     }
 
@@ -309,7 +316,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(retrieved.event_type, "item_moved");
-        assert_eq!(retrieved.item_type, Some("ssh_key".to_string()));
+        assert_eq!(retrieved.extra_data, Some("ssh_key".to_string()));
         assert_eq!(retrieved.user_id, user_id);
     }
 
@@ -330,7 +337,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(retrieved.event_type, "vault_created");
-        assert_eq!(retrieved.item_type, None);
+        assert_eq!(retrieved.extra_data, None);
         assert_eq!(retrieved.user_id, user_id);
     }
 
@@ -351,7 +358,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(retrieved.event_type, "vault_updated");
-        assert_eq!(retrieved.item_type, None);
+        assert_eq!(retrieved.extra_data, None);
         assert_eq!(retrieved.user_id, user_id);
     }
 
@@ -372,7 +379,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(retrieved.event_type, "vault_deleted");
-        assert_eq!(retrieved.item_type, None);
+        assert_eq!(retrieved.extra_data, None);
         assert_eq!(retrieved.user_id, user_id);
     }
 
@@ -405,7 +412,7 @@ mod tests {
                 .unwrap()
                 .unwrap();
             assert_eq!(retrieved.event_type, "item_created");
-            assert!(retrieved.item_type.is_some());
+            assert!(retrieved.extra_data.is_some());
         }
     }
 
@@ -685,7 +692,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(retrieved.event_type, "item_created");
-        assert_eq!(retrieved.item_type, Some("wifi".to_string()));
+        assert_eq!(retrieved.extra_data, Some("wifi".to_string()));
         assert_eq!(retrieved.user_id, user_id);
     }
 

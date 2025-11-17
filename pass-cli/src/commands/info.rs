@@ -1,10 +1,11 @@
+use crate::commands::update;
 use anyhow::{Context, Result};
 use pass::PassClient;
+use pass_domain::TelemetryEvent;
 use std::path::PathBuf;
 
-use crate::commands::update;
-
 pub async fn run(client: PassClient, base_dir: PathBuf) -> Result<()> {
+    client.emit_telemetry(TelemetryEvent::command("info")).await;
     let info = client.get_info().await.context("Error getting user info")?;
 
     // Only show ENV if it's not "prod"

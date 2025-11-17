@@ -51,9 +51,16 @@ pub enum TelemetryEvent {
     VaultCreated,
     VaultUpdated,
     VaultDeleted,
+    Command { command: String },
 }
 
 impl TelemetryEvent {
+    pub fn command(command: &str) -> Self {
+        Self::Command {
+            command: command.to_string(),
+        }
+    }
+
     pub fn event_type(&self) -> &'static str {
         match self {
             TelemetryEvent::ItemCreated { .. } => "item_created",
@@ -63,6 +70,7 @@ impl TelemetryEvent {
             TelemetryEvent::VaultCreated => "vault_created",
             TelemetryEvent::VaultUpdated => "vault_updated",
             TelemetryEvent::VaultDeleted => "vault_deleted",
+            TelemetryEvent::Command { .. } => "command",
         }
     }
 
@@ -74,7 +82,8 @@ impl TelemetryEvent {
             | TelemetryEvent::ItemMoved { item_type } => Some(item_type),
             TelemetryEvent::VaultCreated
             | TelemetryEvent::VaultUpdated
-            | TelemetryEvent::VaultDeleted => None,
+            | TelemetryEvent::VaultDeleted
+            | TelemetryEvent::Command { .. } => None,
         }
     }
 }

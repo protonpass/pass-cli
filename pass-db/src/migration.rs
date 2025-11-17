@@ -14,7 +14,7 @@ pub fn get_migrations() -> Vec<Migration> {
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         timestamp INTEGER NOT NULL,
                         event_type TEXT NOT NULL,
-                        item_type TEXT,
+                        extra_data TEXT,
                         user_id TEXT
                     );
                     CREATE INDEX idx_telemetry_events_user_id ON telemetry_events(user_id);
