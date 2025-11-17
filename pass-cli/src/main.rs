@@ -144,6 +144,8 @@ enum Commands {
         )]
         set_track: Option<String>,
     },
+    #[command(about = "Reach to us if you need help")]
+    Support,
 }
 
 impl Commands {
@@ -207,6 +209,9 @@ async fn main() -> Result<()> {
         }
         Commands::Update { yes, set_track } => {
             return commands::update::run(*yes, set_track.clone(), base_dir.clone()).await;
+        }
+        Commands::Support => {
+            return commands::support::run().await;
         }
         _ => {}
     };

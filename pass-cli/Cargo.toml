@@ -34,6 +34,7 @@ ssh-agent-lib = "0.5.1"
 ssh-key = { version = "0.6.7", features = ["crypto", "ed25519", "rsa", "p256", "p384", "p521", "encryption"] }
 tracing-subscriber = { version = "0.3", features = ["default"] }
 urlencoding = "2.1"
+open = "5.1"
 
 anyhow.workspace = true
 async-trait.workspace = true

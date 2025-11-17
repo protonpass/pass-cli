@@ -15,6 +15,7 @@ pub mod run;
 pub mod secret_resolver;
 pub mod share;
 pub mod ssh_agent;
+pub mod support;
 pub mod test;
 pub mod totp;
 pub mod update;
