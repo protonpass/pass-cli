@@ -32,6 +32,7 @@ mod user_keys;
 mod utils;
 mod vault;
 
+pub use account::settings::AccountUserSettings;
 pub use client::{Client, PassClient, PassSessionKeyType};
 pub use first_time_setup::FirstTimeSetupKey;
 pub use item::create::credit_card;

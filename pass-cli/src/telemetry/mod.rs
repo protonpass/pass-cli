@@ -9,11 +9,18 @@ use tokio::sync::RwLock;
 
 const TELEMETRY_SEND_INTERVAL: Duration = Duration::from_secs(3 * 24 * 60 * 60);
 const TELEMETRY_SENT_ACTIVITY: &str = "telemetry_sent";
+const TELEMETRY_DISABLED_ENV_VAR: &str = "PROTON_PASS_DISABLE_TELEMETRY";
 
 #[derive(Clone)]
 pub struct SqliteTelemetryHandler {
     db: DatabaseManager,
     user_id: Arc<RwLock<Option<String>>>,
+    telemetry_enabled: bool,
+}
+
+fn is_telemetry_enabled() -> bool {
+    // We only care about the var being defined
+    std::env::var(TELEMETRY_DISABLED_ENV_VAR).is_ok()
 }
 
 impl SqliteTelemetryHandler {
@@ -21,6 +28,7 @@ impl SqliteTelemetryHandler {
         Self {
             db,
             user_id: Arc::new(RwLock::new(None)),
+            telemetry_enabled: is_telemetry_enabled(),
         }
     }
 
@@ -52,18 +60,23 @@ impl SqliteTelemetryHandler {
             return Ok(());
         }
 
-        debug!("Fetching telemetry events for user_id {user_id}");
+        let should_send_telemetry = self.should_send_telemetry(client).await;
 
-        let events = self
-            .get_telemetry_events(user_id)
-            .await
-            .context("Error getting telemetry events")?;
+        if should_send_telemetry {
+            debug!("Fetching telemetry events for user_id {user_id}");
+            let events = self
+                .get_telemetry_events(user_id)
+                .await
+                .context("Error getting telemetry events")?;
 
-        debug!("Sending telemetry events for user_id {user_id}");
-        client
-            .send_telemetry_events(events)
-            .await
-            .context("Error sending telemetry events")?;
+            debug!("Sending telemetry events for user_id {user_id}");
+            client
+                .send_telemetry_events(events)
+                .await
+                .context("Error sending telemetry events")?;
+        } else {
+            debug!("Sending of telemetry data is disabled");
+        }
 
         debug!("Removing local telemetry events for user_id {user_id}");
         let conn = self
@@ -81,6 +94,17 @@ impl SqliteTelemetryHandler {
             .context("Error updating last send time")?;
 
         Ok(())
+    }
+
+    async fn should_send_telemetry(&self, client: &PassClient) -> bool {
+        if !self.telemetry_enabled {
+            return false;
+        }
+
+        match client.get_account_user_settings().await {
+            Ok(settings) => settings.telemetry_enabled,
+            Err(_) => false,
+        }
     }
 
     async fn get_user_id(&self) -> Option<String> {
@@ -149,6 +173,10 @@ impl SqliteTelemetryHandler {
 #[async_trait::async_trait(?Send)]
 impl TelemetryHandler for SqliteTelemetryHandler {
     async fn emit_telemetry(&self, event: TelemetryEvent) -> Result<()> {
+        if !self.telemetry_enabled {
+            debug!("TelemetryEvent not stored as telemetry is disabled");
+            return Ok(());
+        }
         let conn = self.db.get_connection().await?;
         let user_id = self.get_user_id().await;
 
