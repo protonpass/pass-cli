@@ -2,7 +2,7 @@
 extern crate tracing;
 
 use crate::features::CliClientFeatures;
-use anyhow::{Context, Result, anyhow};
+use anyhow::{anyhow, Context, Result};
 use clap::{Parser, Subcommand};
 use pass::PassClient;
 use std::sync::Arc;
@@ -144,6 +144,11 @@ enum Commands {
         )]
         set_track: Option<String>,
     },
+    #[command(about = "Help and support")]
+    Support {
+        #[command(subcommand)]
+        command: commands::support::SupportCommands,
+    },
 }
 
 impl Commands {
@@ -197,7 +202,7 @@ async fn main() -> Result<()> {
                 client_features,
                 store,
             )
-            .await;
+                .await;
         }
         Commands::Password { command } => {
             return commands::password::run(command).await;
@@ -207,6 +212,9 @@ async fn main() -> Result<()> {
         }
         Commands::Update { yes, set_track } => {
             return commands::update::run(*yes, set_track.clone(), base_dir.clone()).await;
+        }
+        Commands::Support { command } => {
+            return commands::support::run(command).await;
         }
         _ => {}
     };

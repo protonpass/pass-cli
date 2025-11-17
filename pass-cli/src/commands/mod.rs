@@ -1,6 +1,7 @@
 use clap::ValueEnum;
 use pass_domain::ShareRole;
 
+pub mod support;
 pub mod info;
 pub mod inject;
 #[cfg(feature = "internal")]
