@@ -8,10 +8,10 @@ Welcome to the Proton Pass CLI documentation. The Proton Pass CLI is a command-l
 
 ## Quick Start
 
-1. **[Install the CLI](installation.md)** - Get started with installation instructions
-2. **[Login](getting-started/login.md)** - Authenticate with your Proton account
-3. **[Configure](getting-started/configuration.md)** - Set up logging and key storage
-4. **[Start Using](usage/index.md)** - Learn how to manage vaults, items, and secrets
+- **[Installation](get-started/installation.md)** - Installation instructions for all platforms
+- **[Getting Started](get-started/login.md)** - Login and configuration guides
+- **[Pass Objects](objects/share.md)** - The different objects you can manage in Proton Pass
+- **[Usage Guide](commands/login.md)** - Comprehensive guide to using the CLI
 
 ## What is Proton Pass CLI?
 
@@ -48,16 +48,8 @@ The Proton Pass CLI allows you to:
 - Filesystem storage option for headless environments
 - Encrypted session storage
 
-## Documentation Structure
-
-- **[Installation](installation.md)** - Installation instructions for all platforms
-- **[Getting Started](getting-started/login.md)** - Login and configuration guides
-- **[Usage Guide](usage/index.md)** - Comprehensive guide to using the CLI
-
 ## Need Help?
 
 If you encounter any issues or have questions:
 
-- Check the [Usage Guide](usage/index.md) for detailed examples
-- Review the [Configuration](getting-started/configuration.md) options
-- Contact support at pass@proton.me
+- Contact [support](https://proton.me/support/contact)
