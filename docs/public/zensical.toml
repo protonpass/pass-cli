@@ -12,22 +12,22 @@ nav = [
   {"Get started" = ["get-started/installation.md", "get-started/login.md", "get-started/configuration.md"]},
   {"Object types" = ["objects/share.md", "objects/vault.md", "objects/item.md"]},
   {"Commands" = [
-        "commands/login.md",
-        "commands/logout.md",
-        "commands/info.md",
-        "commands/user.md",
-        "commands/share.md",
-        "commands/vault.md",
-        "commands/item.md",
-        "commands/invite.md",
-        "commands/password.md",
-        "commands/test.md",
-        "commands/ssh-integration.md",
-        {"Commands with field references" = [
-          "commands/references/secret-references.md",
-          "commands/references/run.md",
-          "commands/references/inject.md",
-        ]},
+    "commands/login.md",
+    "commands/logout.md",
+    "commands/info.md",
+    "commands/user.md",
+    "commands/share.md",
+    "commands/vault.md",
+    "commands/item.md",
+    "commands/invite.md",
+    "commands/password.md",
+    "commands/test.md",
+    "commands/ssh-integration.md",
+    {"Commands with field references" = [
+      "commands/references/secret-references.md",
+      "commands/references/run.md",
+      "commands/references/inject.md",
+    ]},
   ]}
 ]
 
@@ -52,12 +52,12 @@ features = [
     "navigation.path",
     "navigation.prune",
     "navigation.sections",
-     "navigation.tabs",
-     "navigation.tabs.sticky",
+    "navigation.tabs",
+    "navigation.tabs.sticky",
     "navigation.top",
     "navigation.tracking",
     "search.highlight",
-     "toc.follow",
+    "toc.follow",
 ]
 
 [[project.theme.palette]]
