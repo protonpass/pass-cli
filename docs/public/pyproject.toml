@@ -1,0 +1,9 @@
+[project]
+name = "proton-pass-cli-documentation"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "zensical>=0.0.8",
+]
