@@ -3,11 +3,12 @@ mod key_load;
 mod key_storage;
 mod load_agent;
 
+use crate::telemetry::event::CommandEvent;
 use anyhow::{Context, Result, anyhow, bail};
 use clap::Subcommand;
 use key_storage::{Identity, KeyStorage};
 use pass::PassClient;
-use pass_domain::{ShareId, TelemetryEvent};
+use pass_domain::ShareId;
 use std::path::PathBuf;
 
 #[derive(Subcommand)]
@@ -95,7 +96,7 @@ async fn run_start(
     client: PassClient,
 ) -> Result<()> {
     client
-        .emit_telemetry(TelemetryEvent::command("ssh-agent-start"))
+        .emit_telemetry(&CommandEvent::new("ssh-agent-start"))
         .await;
     let vault_query = VaultQuery::new(share_id, vault_name)?;
 

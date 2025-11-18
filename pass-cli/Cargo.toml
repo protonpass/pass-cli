@@ -18,6 +18,7 @@ ed25519-dalek = "2.2"
 futures-util = "0.3"
 handlebars = "6.3.2"
 keyring = { version = "3.6.3", features = ["apple-native", "linux-native", "windows-native"] }
+open = "5.3.2"
 p256 = { version = "0.13", features = ["ecdsa"] }
 p384 = { version = "0.13", features = ["ecdsa"] }
 p521 = { version = "0.13", features = ["ecdsa"] }
@@ -34,7 +35,6 @@ ssh-agent-lib = "0.5.1"
 ssh-key = { version = "0.6.7", features = ["crypto", "ed25519", "rsa", "p256", "p384", "p521", "encryption"] }
 tracing-subscriber = { version = "0.3", features = ["default"] }
 urlencoding = "2.1"
-open = "5.1"
 
 anyhow.workspace = true
 async-trait.workspace = true

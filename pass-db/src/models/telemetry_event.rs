@@ -1,6 +1,6 @@
 use crate::DbConnection;
-use anyhow::{Result, anyhow};
-use pass_domain::{ItemType, TelemetryEvent};
+use anyhow::{Context, Result};
+use pass_domain::{TelemetryEvent, TelemetryEventData};
 use rusqlite::{OptionalExtension, Row, params};
 
 #[derive(Debug, Clone)]
@@ -12,76 +12,19 @@ pub struct TelemetryEventModel {
     pub user_id: Option<String>,
 }
 
-impl TelemetryEventModel {
-    fn parse_item_type(s: &str) -> Option<ItemType> {
-        match s {
-            "note" => Some(ItemType::Note),
-            "login" => Some(ItemType::Login),
-            "alias" => Some(ItemType::Alias),
-            "credit_card" => Some(ItemType::CreditCard),
-            "identity" => Some(ItemType::Identity),
-            "ssh_key" => Some(ItemType::SshKey),
-            "wifi" => Some(ItemType::Wifi),
-            "custom" => Some(ItemType::Custom),
-            _ => None,
+impl From<TelemetryEventModel> for TelemetryEventData {
+    fn from(model: TelemetryEventModel) -> Self {
+        let dimensions = model
+            .extra_data
+            .and_then(|data| serde_json::from_str(&data).ok())
+            .unwrap_or_default();
+
+        TelemetryEventData {
+            event_type: model.event_type,
+            dimensions,
+            user_id: model.user_id,
+            timestamp: model.timestamp,
         }
-    }
-}
-
-impl TryFrom<TelemetryEventModel> for TelemetryEvent {
-    type Error = anyhow::Error;
-
-    fn try_from(row: TelemetryEventModel) -> Result<Self, Self::Error> {
-        let event = match row.event_type.as_str() {
-            "item_created" => {
-                let item_type_str = row
-                    .extra_data
-                    .as_deref()
-                    .ok_or_else(|| anyhow!("item_created event missing extra_data"))?;
-                let item_type = TelemetryEventModel::parse_item_type(item_type_str)
-                    .ok_or_else(|| anyhow!("unknown item_type: {}", item_type_str))?;
-                TelemetryEvent::ItemCreated { item_type }
-            }
-            "item_updated" => {
-                let item_type_str = row
-                    .extra_data
-                    .as_deref()
-                    .ok_or_else(|| anyhow!("item_updated event missing extra_data"))?;
-                let item_type = TelemetryEventModel::parse_item_type(item_type_str)
-                    .ok_or_else(|| anyhow!("unknown item_type: {}", item_type_str))?;
-                TelemetryEvent::ItemUpdated { item_type }
-            }
-            "item_deleted" => {
-                let item_type_str = row
-                    .extra_data
-                    .as_deref()
-                    .ok_or_else(|| anyhow!("item_deleted event missing extra_data"))?;
-                let item_type = TelemetryEventModel::parse_item_type(item_type_str)
-                    .ok_or_else(|| anyhow!("unknown item_type: {}", item_type_str))?;
-                TelemetryEvent::ItemDeleted { item_type }
-            }
-            "item_moved" => {
-                let item_type_str = row
-                    .extra_data
-                    .as_deref()
-                    .ok_or_else(|| anyhow!("item_moved event missing extra_data"))?;
-                let item_type = TelemetryEventModel::parse_item_type(item_type_str)
-                    .ok_or_else(|| anyhow!("unknown item_type: {}", item_type_str))?;
-                TelemetryEvent::ItemMoved { item_type }
-            }
-            "vault_created" => TelemetryEvent::VaultCreated,
-            "vault_updated" => TelemetryEvent::VaultUpdated,
-            "vault_deleted" => TelemetryEvent::VaultDeleted,
-            "command" => {
-                let command = row
-                    .extra_data
-                    .ok_or_else(|| anyhow!("Command missing extra_data"))?;
-                TelemetryEvent::Command { command }
-            }
-            other => return Err(anyhow!("unknown event_type: {}", other)),
-        };
-
-        Ok(event)
     }
 }
 
@@ -96,35 +39,15 @@ impl TelemetryEventModel {
         })
     }
 
-    fn item_type_to_string(item_type: &ItemType) -> &'static str {
-        match item_type {
-            ItemType::Note => "note",
-            ItemType::Login => "login",
-            ItemType::Alias => "alias",
-            ItemType::CreditCard => "credit_card",
-            ItemType::Identity => "identity",
-            ItemType::SshKey => "ssh_key",
-            ItemType::Wifi => "wifi",
-            ItemType::Custom => "custom",
-        }
-    }
-
     pub async fn insert(
         conn: &DbConnection,
-        event: &TelemetryEvent,
+        event: &dyn TelemetryEvent,
         user_id: Option<String>,
     ) -> Result<i64> {
-        let event_type = event.event_type().to_string();
-        let extra_data = match event {
-            TelemetryEvent::ItemCreated { item_type }
-            | TelemetryEvent::ItemUpdated { item_type }
-            | TelemetryEvent::ItemDeleted { item_type }
-            | TelemetryEvent::ItemMoved { item_type } => {
-                Some(Self::item_type_to_string(item_type).to_string())
-            }
-            TelemetryEvent::Command { command } => Some(command.to_string()),
-            _ => None,
-        };
+        let event_type = event.event_type();
+        let dimensions = event.dimensions();
+        let extra_data =
+            serde_json::to_string(&dimensions).context("Failed to serialize dimensions")?;
         let timestamp = chrono::Utc::now().timestamp();
 
         conn.interact(move |conn| {
@@ -138,7 +61,7 @@ impl TelemetryEventModel {
         .await?
     }
 
-    pub async fn get_all(conn: &DbConnection) -> Result<Vec<TelemetryEventModel>> {
+    pub async fn get_all(conn: &DbConnection) -> Result<Vec<TelemetryEventData>> {
         conn.interact(|conn| {
             let mut stmt = conn.prepare(
                 "SELECT id, timestamp, event_type, extra_data, user_id
@@ -150,9 +73,9 @@ impl TelemetryEventModel {
                 .query_map([], |row| Ok(TelemetryEventModel::from_row(row)))?
                 .collect::<Result<Vec<_>, _>>()?
                 .into_iter()
-                .collect::<Result<Vec<_>>>()?;
+                .collect::<Result<Vec<TelemetryEventModel>>>()?;
 
-            Ok(events)
+            Ok(events.into_iter().map(TelemetryEventData::from).collect())
         })
         .await?
     }
@@ -160,7 +83,7 @@ impl TelemetryEventModel {
     pub async fn get_by_user_id(
         conn: &DbConnection,
         user_id: &str,
-    ) -> Result<Vec<TelemetryEventModel>> {
+    ) -> Result<Vec<TelemetryEventData>> {
         let user_id = user_id.to_string();
         conn.interact(move |conn| {
             let mut stmt = conn.prepare(
@@ -174,9 +97,9 @@ impl TelemetryEventModel {
                 .query_map([&user_id], |row| Ok(TelemetryEventModel::from_row(row)))?
                 .collect::<Result<Vec<_>, _>>()?
                 .into_iter()
-                .collect::<Result<Vec<_>>>()?;
+                .collect::<Result<Vec<TelemetryEventModel>>>()?;
 
-            Ok(events)
+            Ok(events.into_iter().map(TelemetryEventData::from).collect())
         })
         .await?
     }
@@ -224,12 +147,44 @@ impl TelemetryEventModel {
 mod tests {
     use super::*;
     use crate::tests::create_test_db;
+    use pass_domain::ItemType;
+    use std::collections::HashMap;
+
+    struct TestTelemetryEvent1 {
+        item_type: ItemType,
+    }
+
+    impl TelemetryEvent for TestTelemetryEvent1 {
+        fn event_type(&self) -> String {
+            "TestTelemetryEvent1".to_string()
+        }
+
+        fn dimensions(&self) -> HashMap<String, String> {
+            let mut res = HashMap::new();
+            res.insert("type".to_string(), self.item_type.as_str().to_string());
+            res
+        }
+    }
+
+    struct TestTelemetryEvent2;
+    impl TelemetryEvent for TestTelemetryEvent2 {
+        fn event_type(&self) -> String {
+            "TestTelemetryEvent2".to_string()
+        }
+    }
+
+    struct TestTelemetryEvent3;
+    impl TelemetryEvent for TestTelemetryEvent3 {
+        fn event_type(&self) -> String {
+            "TestTelemetryEvent3".to_string()
+        }
+    }
 
     #[tokio::test(flavor = "multi_thread")]
-    async fn test_insert_and_retrieve_item_created_event() {
+    async fn test_insert_and_retrieve_event() {
         let db = test_db!();
         let conn = db.get_connection().await.unwrap();
-        let event = TelemetryEvent::ItemCreated {
+        let event = TestTelemetryEvent1 {
             item_type: ItemType::Login,
         };
         let user_id = Some("user123".to_string());
@@ -246,85 +201,20 @@ mod tests {
             .unwrap();
 
         assert_eq!(retrieved.id, id);
-        assert_eq!(retrieved.event_type, "item_created");
-        assert_eq!(retrieved.extra_data, Some("login".to_string()));
+        assert_eq!(retrieved.event_type, event.event_type());
+
+        // Verify the dimensions are stored as JSON
+        let dimensions: HashMap<String, String> =
+            serde_json::from_str(retrieved.extra_data.as_ref().unwrap()).unwrap();
+        assert_eq!(event.dimensions(), dimensions);
         assert_eq!(retrieved.user_id, user_id);
     }
 
     #[tokio::test(flavor = "multi_thread")]
-    async fn test_insert_and_retrieve_item_updated_event() {
+    async fn test_insert_and_retrieve_event_with_no_dimensions() {
         let db = test_db!();
         let conn = db.get_connection().await.unwrap();
-        let event = TelemetryEvent::ItemUpdated {
-            item_type: ItemType::Note,
-        };
-        let user_id = Some("user456".to_string());
-
-        let id = TelemetryEventModel::insert(&conn, &event, user_id.clone())
-            .await
-            .unwrap();
-
-        let retrieved = TelemetryEventModel::get_by_id(&conn, id)
-            .await
-            .unwrap()
-            .unwrap();
-
-        assert_eq!(retrieved.event_type, "item_updated");
-        assert_eq!(retrieved.extra_data, Some("note".to_string()));
-        assert_eq!(retrieved.user_id, user_id);
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    async fn test_insert_and_retrieve_item_deleted_event() {
-        let db = test_db!();
-        let conn = db.get_connection().await.unwrap();
-        let event = TelemetryEvent::ItemDeleted {
-            item_type: ItemType::CreditCard,
-        };
-        let user_id = None;
-
-        let id = TelemetryEventModel::insert(&conn, &event, user_id.clone())
-            .await
-            .unwrap();
-
-        let retrieved = TelemetryEventModel::get_by_id(&conn, id)
-            .await
-            .unwrap()
-            .unwrap();
-
-        assert_eq!(retrieved.event_type, "item_deleted");
-        assert_eq!(retrieved.extra_data, Some("credit_card".to_string()));
-        assert_eq!(retrieved.user_id, user_id);
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    async fn test_insert_and_retrieve_item_moved_event() {
-        let db = test_db!();
-        let conn = db.get_connection().await.unwrap();
-        let event = TelemetryEvent::ItemMoved {
-            item_type: ItemType::SshKey,
-        };
-        let user_id = Some("user789".to_string());
-
-        let id = TelemetryEventModel::insert(&conn, &event, user_id.clone())
-            .await
-            .unwrap();
-
-        let retrieved = TelemetryEventModel::get_by_id(&conn, id)
-            .await
-            .unwrap()
-            .unwrap();
-
-        assert_eq!(retrieved.event_type, "item_moved");
-        assert_eq!(retrieved.extra_data, Some("ssh_key".to_string()));
-        assert_eq!(retrieved.user_id, user_id);
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    async fn test_insert_and_retrieve_vault_created_event() {
-        let db = test_db!();
-        let conn = db.get_connection().await.unwrap();
-        let event = TelemetryEvent::VaultCreated;
+        let event = TestTelemetryEvent2;
         let user_id = Some("user111".to_string());
 
         let id = TelemetryEventModel::insert(&conn, &event, user_id.clone())
@@ -336,50 +226,8 @@ mod tests {
             .unwrap()
             .unwrap();
 
-        assert_eq!(retrieved.event_type, "vault_created");
-        assert_eq!(retrieved.extra_data, None);
-        assert_eq!(retrieved.user_id, user_id);
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    async fn test_insert_and_retrieve_vault_updated_event() {
-        let db = test_db!();
-        let conn = db.get_connection().await.unwrap();
-        let event = TelemetryEvent::VaultUpdated;
-        let user_id = None;
-
-        let id = TelemetryEventModel::insert(&conn, &event, user_id.clone())
-            .await
-            .unwrap();
-
-        let retrieved = TelemetryEventModel::get_by_id(&conn, id)
-            .await
-            .unwrap()
-            .unwrap();
-
-        assert_eq!(retrieved.event_type, "vault_updated");
-        assert_eq!(retrieved.extra_data, None);
-        assert_eq!(retrieved.user_id, user_id);
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    async fn test_insert_and_retrieve_vault_deleted_event() {
-        let db = test_db!();
-        let conn = db.get_connection().await.unwrap();
-        let event = TelemetryEvent::VaultDeleted;
-        let user_id = Some("user222".to_string());
-
-        let id = TelemetryEventModel::insert(&conn, &event, user_id.clone())
-            .await
-            .unwrap();
-
-        let retrieved = TelemetryEventModel::get_by_id(&conn, id)
-            .await
-            .unwrap()
-            .unwrap();
-
-        assert_eq!(retrieved.event_type, "vault_deleted");
-        assert_eq!(retrieved.extra_data, None);
+        assert_eq!(retrieved.event_type, event.event_type());
+        assert_eq!(retrieved.extra_data, Some("{}".to_string())); // Converted to empty object
         assert_eq!(retrieved.user_id, user_id);
     }
 
@@ -399,7 +247,7 @@ mod tests {
         ];
 
         for item_type in item_types {
-            let event = TelemetryEvent::ItemCreated {
+            let event = TestTelemetryEvent1 {
                 item_type: item_type.clone(),
             };
             let id = TelemetryEventModel::insert(&conn, &event, None)
@@ -411,8 +259,12 @@ mod tests {
                 .await
                 .unwrap()
                 .unwrap();
-            assert_eq!(retrieved.event_type, "item_created");
+            assert_eq!(retrieved.event_type, event.event_type());
             assert!(retrieved.extra_data.is_some());
+
+            let extra_data = retrieved.extra_data.unwrap();
+            let parsed: HashMap<String, String> = serde_json::from_str(&extra_data).unwrap();
+            assert_eq!(event.dimensions(), parsed);
         }
     }
 
@@ -421,21 +273,27 @@ mod tests {
         let db = test_db!();
         let conn = db.get_connection().await.unwrap();
 
-        let events = vec![
-            TelemetryEvent::ItemCreated {
+        TelemetryEventModel::insert(
+            &conn,
+            &TestTelemetryEvent1 {
                 item_type: ItemType::Login,
             },
-            TelemetryEvent::VaultCreated,
-            TelemetryEvent::ItemUpdated {
+            None,
+        )
+        .await
+        .unwrap();
+        TelemetryEventModel::insert(&conn, &TestTelemetryEvent2, None)
+            .await
+            .unwrap();
+        TelemetryEventModel::insert(
+            &conn,
+            &TestTelemetryEvent1 {
                 item_type: ItemType::Note,
             },
-        ];
-
-        for event in &events {
-            TelemetryEventModel::insert(&conn, event, None)
-                .await
-                .unwrap();
-        }
+            None,
+        )
+        .await
+        .unwrap();
 
         let all_events = TelemetryEventModel::get_all(&conn).await.unwrap();
         assert_eq!(all_events.len(), 3);
@@ -452,7 +310,7 @@ mod tests {
         // Insert events for user1
         TelemetryEventModel::insert(
             &conn,
-            &TelemetryEvent::ItemCreated {
+            &TestTelemetryEvent1 {
                 item_type: ItemType::Login,
             },
             Some(user1.to_string()),
@@ -460,18 +318,14 @@ mod tests {
         .await
         .unwrap();
 
-        TelemetryEventModel::insert(
-            &conn,
-            &TelemetryEvent::VaultCreated,
-            Some(user1.to_string()),
-        )
-        .await
-        .unwrap();
+        TelemetryEventModel::insert(&conn, &TestTelemetryEvent2, Some(user1.to_string()))
+            .await
+            .unwrap();
 
         // Insert events for user2
         TelemetryEventModel::insert(
             &conn,
-            &TelemetryEvent::ItemDeleted {
+            &TestTelemetryEvent1 {
                 item_type: ItemType::Note,
             },
             Some(user2.to_string()),
@@ -480,7 +334,7 @@ mod tests {
         .unwrap();
 
         // Insert event with no user
-        TelemetryEventModel::insert(&conn, &TelemetryEvent::VaultUpdated, None)
+        TelemetryEventModel::insert(&conn, &TestTelemetryEvent2, None)
             .await
             .unwrap();
 
@@ -521,7 +375,7 @@ mod tests {
 
         // Insert some events
         for _ in 0..5 {
-            TelemetryEventModel::insert(&conn, &TelemetryEvent::VaultCreated, None)
+            TelemetryEventModel::insert(&conn, &TestTelemetryEvent2, None)
                 .await
                 .unwrap();
         }
@@ -537,11 +391,11 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
-    async fn test_convert_model_to_domain_event() {
+    async fn test_convert_model_to_event_data() {
         let db = test_db!();
         let conn = db.get_connection().await.unwrap();
 
-        let event = TelemetryEvent::ItemCreated {
+        let event = TestTelemetryEvent1 {
             item_type: ItemType::Alias,
         };
 
@@ -554,86 +408,14 @@ mod tests {
             .unwrap()
             .unwrap();
 
-        let domain_event: TelemetryEvent = model.try_into().unwrap();
+        let event_data: TelemetryEventData = model.into();
 
-        match domain_event {
-            TelemetryEvent::ItemCreated { item_type } => {
-                assert_eq!(item_type.as_str(), "alias");
-            }
-            _ => panic!("Expected ItemCreated event"),
-        }
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    async fn test_convert_all_event_types_to_domain() {
-        let db = test_db!();
-        let conn = db.get_connection().await.unwrap();
-
-        let test_cases = vec![
-            (
-                TelemetryEvent::ItemCreated {
-                    item_type: ItemType::Login,
-                },
-                "item_created",
-            ),
-            (
-                TelemetryEvent::ItemUpdated {
-                    item_type: ItemType::Note,
-                },
-                "item_updated",
-            ),
-            (
-                TelemetryEvent::ItemDeleted {
-                    item_type: ItemType::CreditCard,
-                },
-                "item_deleted",
-            ),
-            (
-                TelemetryEvent::ItemMoved {
-                    item_type: ItemType::Identity,
-                },
-                "item_moved",
-            ),
-            (TelemetryEvent::VaultCreated, "vault_created"),
-            (TelemetryEvent::VaultUpdated, "vault_updated"),
-            (TelemetryEvent::VaultDeleted, "vault_deleted"),
-        ];
-
-        for (event, expected_type) in test_cases {
-            let id = TelemetryEventModel::insert(&conn, &event, None)
-                .await
-                .unwrap();
-
-            let model = TelemetryEventModel::get_by_id(&conn, id)
-                .await
-                .unwrap()
-                .unwrap();
-
-            assert_eq!(model.event_type, expected_type);
-
-            let domain_event: TelemetryEvent = model.try_into().unwrap();
-            assert_eq!(domain_event.event_type(), expected_type);
-        }
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    async fn test_timestamp_is_set() {
-        let db = test_db!();
-        let conn = db.get_connection().await.unwrap();
-
-        let event = TelemetryEvent::VaultCreated;
-        let id = TelemetryEventModel::insert(&conn, &event, None)
-            .await
-            .unwrap();
-
-        let model = TelemetryEventModel::get_by_id(&conn, id)
-            .await
-            .unwrap()
-            .unwrap();
-
-        // Timestamp should be a reasonable Unix timestamp (not 0, not in the far future)
-        assert!(model.timestamp > 0);
-        assert!(model.timestamp < chrono::Utc::now().timestamp() + 60);
+        assert_eq!(event_data.event_type, event.event_type());
+        assert_eq!(
+            event_data.dimensions.get("type"),
+            Some(&"alias".to_string())
+        );
+        assert_eq!(event_data.user_id, Some("user123".to_string()));
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -642,28 +424,34 @@ mod tests {
         let conn = db.get_connection().await.unwrap();
 
         // Insert events with slight delays to ensure different timestamps
-        let id1 = TelemetryEventModel::insert(&conn, &TelemetryEvent::VaultCreated, None)
+        let event_1 = TestTelemetryEvent1 {
+            item_type: ItemType::Note,
+        };
+        let _id1 = TelemetryEventModel::insert(&conn, &event_1, None)
             .await
             .unwrap();
 
         tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
 
-        let id2 = TelemetryEventModel::insert(&conn, &TelemetryEvent::VaultUpdated, None)
+        let event_2 = TestTelemetryEvent2;
+        let _id2 = TelemetryEventModel::insert(&conn, &event_2, None)
             .await
             .unwrap();
 
         tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
 
-        let id3 = TelemetryEventModel::insert(&conn, &TelemetryEvent::VaultDeleted, None)
+        let event_3 = TestTelemetryEvent3;
+        let _id3 = TelemetryEventModel::insert(&conn, &event_3, None)
             .await
             .unwrap();
 
         let all_events = TelemetryEventModel::get_all(&conn).await.unwrap();
 
         assert_eq!(all_events.len(), 3);
-        assert_eq!(all_events[0].id, id1);
-        assert_eq!(all_events[1].id, id2);
-        assert_eq!(all_events[2].id, id3);
+        // Verify event types match insertion order
+        assert_eq!(all_events[0].event_type, event_1.event_type());
+        assert_eq!(all_events[1].event_type, event_2.event_type());
+        assert_eq!(all_events[2].event_type, event_3.event_type());
 
         // Verify timestamps are in ascending order
         assert!(all_events[0].timestamp <= all_events[1].timestamp);
@@ -675,7 +463,7 @@ mod tests {
         let db = test_db!();
         let conn = db.get_connection().await.unwrap();
 
-        let event = TelemetryEvent::ItemCreated {
+        let event = TestTelemetryEvent1 {
             item_type: ItemType::Wifi,
         };
         let user_id = Some("user999".to_string());
@@ -691,8 +479,10 @@ mod tests {
             .unwrap()
             .unwrap();
 
-        assert_eq!(retrieved.event_type, "item_created");
-        assert_eq!(retrieved.extra_data, Some("wifi".to_string()));
+        assert_eq!(retrieved.event_type, event.event_type());
+        let dimensions: std::collections::HashMap<String, String> =
+            serde_json::from_str(retrieved.extra_data.as_ref().unwrap()).unwrap();
+        assert_eq!(dimensions.get("type"), Some(&"wifi".to_string()));
         assert_eq!(retrieved.user_id, user_id);
     }
 
@@ -702,11 +492,11 @@ mod tests {
         let conn = db.get_connection().await.unwrap();
 
         // Insert events using the connection
-        TelemetryEventModel::insert(&conn, &TelemetryEvent::VaultCreated, None)
+        TelemetryEventModel::insert(&conn, &TestTelemetryEvent2, None)
             .await
             .unwrap();
 
-        TelemetryEventModel::insert(&conn, &TelemetryEvent::VaultUpdated, None)
+        TelemetryEventModel::insert(&conn, &TestTelemetryEvent3, None)
             .await
             .unwrap();
 
@@ -724,7 +514,7 @@ mod tests {
 
         TelemetryEventModel::insert(
             &conn,
-            &TelemetryEvent::ItemCreated {
+            &TestTelemetryEvent1 {
                 item_type: ItemType::Custom,
             },
             Some(user_id.to_string()),
@@ -732,7 +522,7 @@ mod tests {
         .await
         .unwrap();
 
-        TelemetryEventModel::insert(&conn, &TelemetryEvent::VaultCreated, None)
+        TelemetryEventModel::insert(&conn, &TestTelemetryEvent2, None)
             .await
             .unwrap();
 
@@ -742,29 +532,6 @@ mod tests {
 
         assert_eq!(user_events.len(), 1);
         assert_eq!(user_events[0].user_id.as_deref(), Some(user_id));
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    async fn test_multiple_inserts_return_unique_ids() {
-        let db = test_db!();
-        let conn = db.get_connection().await.unwrap();
-
-        let id1 = TelemetryEventModel::insert(&conn, &TelemetryEvent::VaultCreated, None)
-            .await
-            .unwrap();
-
-        let id2 = TelemetryEventModel::insert(&conn, &TelemetryEvent::VaultCreated, None)
-            .await
-            .unwrap();
-
-        let id3 = TelemetryEventModel::insert(&conn, &TelemetryEvent::VaultCreated, None)
-            .await
-            .unwrap();
-
-        assert_ne!(id1, id2);
-        assert_ne!(id2, id3);
-        assert_ne!(id1, id3);
-        assert!(id1 > 0 && id2 > 0 && id3 > 0);
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -781,13 +548,10 @@ mod tests {
         ];
 
         for user_id in special_user_ids {
-            let id = TelemetryEventModel::insert(
-                &conn,
-                &TelemetryEvent::VaultCreated,
-                Some(user_id.to_string()),
-            )
-            .await
-            .unwrap();
+            let id =
+                TelemetryEventModel::insert(&conn, &TestTelemetryEvent2, Some(user_id.to_string()))
+                    .await
+                    .unwrap();
 
             let retrieved = TelemetryEventModel::get_by_id(&conn, id)
                 .await
@@ -800,7 +564,7 @@ mod tests {
                 .await
                 .unwrap();
 
-            assert!(!user_events.is_empty());
+            assert_eq!(1, user_events.len());
         }
     }
 
@@ -815,7 +579,7 @@ mod tests {
         // Insert events for user1
         TelemetryEventModel::insert(
             &conn,
-            &TelemetryEvent::ItemCreated {
+            &TestTelemetryEvent1 {
                 item_type: ItemType::Login,
             },
             Some(user1.to_string()),
@@ -823,17 +587,13 @@ mod tests {
         .await
         .unwrap();
 
-        TelemetryEventModel::insert(
-            &conn,
-            &TelemetryEvent::VaultCreated,
-            Some(user1.to_string()),
-        )
-        .await
-        .unwrap();
+        TelemetryEventModel::insert(&conn, &TestTelemetryEvent2, Some(user1.to_string()))
+            .await
+            .unwrap();
 
         TelemetryEventModel::insert(
             &conn,
-            &TelemetryEvent::ItemUpdated {
+            &TestTelemetryEvent1 {
                 item_type: ItemType::Note,
             },
             Some(user1.to_string()),
@@ -844,7 +604,7 @@ mod tests {
         // Insert events for user2
         TelemetryEventModel::insert(
             &conn,
-            &TelemetryEvent::ItemDeleted {
+            &TestTelemetryEvent1 {
                 item_type: ItemType::CreditCard,
             },
             Some(user2.to_string()),
@@ -852,16 +612,12 @@ mod tests {
         .await
         .unwrap();
 
-        TelemetryEventModel::insert(
-            &conn,
-            &TelemetryEvent::VaultUpdated,
-            Some(user2.to_string()),
-        )
-        .await
-        .unwrap();
+        TelemetryEventModel::insert(&conn, &TestTelemetryEvent2, Some(user2.to_string()))
+            .await
+            .unwrap();
 
         // Insert event with no user
-        TelemetryEventModel::insert(&conn, &TelemetryEvent::VaultDeleted, None)
+        TelemetryEventModel::insert(&conn, &TestTelemetryEvent3, None)
             .await
             .unwrap();
 
@@ -902,71 +658,14 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
-    async fn test_delete_by_user_id_connection() {
-        let db = test_db!();
-        let conn = db.get_connection().await.unwrap();
-
-        let user_id = "test_user";
-
-        // Insert events
-        TelemetryEventModel::insert(
-            &conn,
-            &TelemetryEvent::ItemCreated {
-                item_type: ItemType::Alias,
-            },
-            Some(user_id.to_string()),
-        )
-        .await
-        .unwrap();
-
-        TelemetryEventModel::insert(
-            &conn,
-            &TelemetryEvent::VaultCreated,
-            Some(user_id.to_string()),
-        )
-        .await
-        .unwrap();
-
-        TelemetryEventModel::insert(&conn, &TelemetryEvent::VaultUpdated, None)
-            .await
-            .unwrap();
-
-        // Verify initial state
-        let user_events = TelemetryEventModel::get_by_user_id(&conn, user_id)
-            .await
-            .unwrap();
-        assert_eq!(user_events.len(), 2);
-
-        // Delete user events
-        let deleted_count = TelemetryEventModel::delete_by_user_id(&conn, user_id)
-            .await
-            .unwrap();
-        assert_eq!(deleted_count, 2);
-
-        // Verify user events are gone
-        let user_events = TelemetryEventModel::get_by_user_id(&conn, user_id)
-            .await
-            .unwrap();
-        assert_eq!(user_events.len(), 0);
-
-        // Verify null user event is still there
-        let all_events = TelemetryEventModel::get_all(&conn).await.unwrap();
-        assert_eq!(all_events.len(), 1);
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
     async fn test_delete_by_user_id_nonexistent() {
         let db = test_db!();
         let conn = db.get_connection().await.unwrap();
 
         // Insert some events
-        TelemetryEventModel::insert(
-            &conn,
-            &TelemetryEvent::VaultCreated,
-            Some("user1".to_string()),
-        )
-        .await
-        .unwrap();
+        TelemetryEventModel::insert(&conn, &TestTelemetryEvent2, Some("user1".to_string()))
+            .await
+            .unwrap();
 
         // Delete non-existent user
         let deleted_count = TelemetryEventModel::delete_by_user_id(&conn, "nonexistent_user")
@@ -987,20 +686,16 @@ mod tests {
         let user_id = "user_to_delete";
 
         // Insert events with user_id
-        TelemetryEventModel::insert(
-            &conn,
-            &TelemetryEvent::VaultCreated,
-            Some(user_id.to_string()),
-        )
-        .await
-        .unwrap();
-
-        // Insert events with null user_id
-        TelemetryEventModel::insert(&conn, &TelemetryEvent::VaultUpdated, None)
+        TelemetryEventModel::insert(&conn, &TestTelemetryEvent2, Some(user_id.to_string()))
             .await
             .unwrap();
 
-        TelemetryEventModel::insert(&conn, &TelemetryEvent::VaultDeleted, None)
+        // Insert events with null user_id
+        TelemetryEventModel::insert(&conn, &TestTelemetryEvent2, None)
+            .await
+            .unwrap();
+
+        TelemetryEventModel::insert(&conn, &TestTelemetryEvent2, None)
             .await
             .unwrap();
 

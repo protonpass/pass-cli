@@ -4,9 +4,7 @@ use crate::utils::debug_response;
 use anyhow::{Context, Result, anyhow};
 use muon::POST;
 use pass_domain::crypto::EncryptionTag;
-use pass_domain::{
-    PlainText, ShareId, TelemetryEvent, VaultData, VaultDisplayPreferences, VaultId, crypto,
-};
+use pass_domain::{PlainText, ShareId, VaultData, VaultDisplayPreferences, VaultId, crypto};
 
 pub struct CreateVaultArgs {
     name: String,
@@ -71,8 +69,6 @@ impl PassClient {
             res.body_json().context("Failed to parse vault response")?;
 
         self.clear_shares_cache().await;
-
-        self.emit_telemetry(TelemetryEvent::VaultCreated).await;
 
         Ok((
             ShareId::new(response.share.share_id),

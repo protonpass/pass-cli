@@ -1,8 +1,9 @@
+use super::ItemCreatedEvent;
 use crate::PassClient;
 use anyhow::{Context, Result};
 use pass_domain::{
     ItemContent, ItemData, ItemExtraField, ItemExtraFieldContent, ItemId, ItemType, ShareId,
-    SshKeyItem, TelemetryEvent,
+    SshKeyItem,
 };
 
 #[derive(Clone, Debug)]
@@ -50,7 +51,7 @@ impl PassClient {
             .await
             .context("Error sending create item request")?;
 
-        self.emit_telemetry(TelemetryEvent::ItemCreated {
+        self.emit_telemetry(&ItemCreatedEvent {
             item_type: ItemType::SshKey,
         })
         .await;

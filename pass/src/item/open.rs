@@ -6,7 +6,7 @@ use bytes::Bytes;
 use chrono::{DateTime, NaiveDateTime};
 use futures::stream::{self, StreamExt};
 use pass_domain::{
-    Item, ItemData, ItemFlag, ItemId, ItemState, ShareId, ShareType, VaultId, crypto,
+    Item, ItemData, ItemFlag, ItemId, ItemState, ItemType, ShareId, ShareType, VaultId, crypto,
 };
 use std::collections::HashMap;
 
@@ -44,6 +44,22 @@ impl PassClient {
                 .open_items_with_vault_share(share.id, vault_id, items)
                 .await
                 .context("Error opening items with vault_share"),
+        }
+    }
+
+    pub(crate) async fn get_item_type(
+        &self,
+        share_id: &ShareId,
+        item_revision: &ItemRevision,
+    ) -> Result<ItemType> {
+        let opened = self
+            .open_items(share_id, vec![item_revision.clone()])
+            .await
+            .context("Error opening item")?;
+        if let Some(opened) = opened.first() {
+            Ok(ItemType::from_content(&opened.item.content.content))
+        } else {
+            Err(anyhow::anyhow!("Error getting item type"))
         }
     }
 

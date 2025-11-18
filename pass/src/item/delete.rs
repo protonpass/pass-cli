@@ -4,6 +4,7 @@ use crate::utils::debug_response;
 use anyhow::{Context, Result, anyhow};
 use muon::DELETE;
 use pass_domain::{ItemId, ItemType, ShareId, TelemetryEvent};
+use std::collections::HashMap;
 
 #[derive(Debug, serde::Serialize)]
 struct DeleteItemsRequest {
@@ -21,6 +22,23 @@ struct DeleteItemBody {
     revision: u64,
 }
 
+#[derive(Clone, Debug)]
+pub struct ItemDeletedEvent {
+    pub item_type: ItemType,
+}
+
+impl TelemetryEvent for ItemDeletedEvent {
+    fn event_type(&self) -> String {
+        "item.deletion".to_string()
+    }
+
+    fn dimensions(&self) -> HashMap<String, String> {
+        let mut map = HashMap::new();
+        map.insert("itemType".to_string(), self.item_type.as_str().to_string());
+        map
+    }
+}
+
 impl PassClient {
     pub async fn delete_item(&self, share_id: &ShareId, item_id: &ItemId) -> Result<()> {
         self.action_guard(PermissionAction::DeleteItem {
@@ -32,6 +50,12 @@ impl PassClient {
             .fetch_item_revision(share_id, item_id)
             .await
             .context("Error fetching item")?;
+
+        let item_type = self
+            .get_item_type(share_id, &item_revision)
+            .await
+            .context("Error getting item type")?;
+
         let req = DELETE!("/pass/v1/share/{share_id}/item")
             .body_json(DeleteItemsRequest {
                 items: vec![DeleteItemBody {
@@ -55,11 +79,7 @@ impl PassClient {
         // Clear the items cache for this share since we've deleted an item
         self.clear_items_cache(share_id).await;
 
-        // TODO: Fetch the item to determine item type. We are not doing it now so use Note as placeholder
-        self.emit_telemetry(TelemetryEvent::ItemDeleted {
-            item_type: ItemType::Note,
-        })
-        .await;
+        self.emit_telemetry(&ItemDeletedEvent { item_type }).await;
 
         Ok(())
     }

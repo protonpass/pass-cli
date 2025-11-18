@@ -1,7 +1,7 @@
 use super::secret_resolver::{PassClientResolver, SecretCache, SecretReference, find_pass_uris};
+use crate::telemetry::event::CommandEvent;
 use anyhow::{Context, Result, anyhow, bail};
 use pass::PassClient;
-use pass_domain::TelemetryEvent;
 use regex::Regex;
 use std::collections::HashMap;
 use std::env;
@@ -344,7 +344,7 @@ pub async fn run(
     command_args: Vec<String>,
     client: PassClient,
 ) -> Result<()> {
-    client.emit_telemetry(TelemetryEvent::command("run")).await;
+    client.emit_telemetry(&CommandEvent::new("run")).await;
     // Get all environment variables (process + .env files)
     let env_vars =
         get_environment_variables(&env_files).context("Failed to load environment variables")?;

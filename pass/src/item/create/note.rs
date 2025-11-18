@@ -1,6 +1,7 @@
+use super::ItemCreatedEvent;
 use crate::PassClient;
 use anyhow::{Context, Result};
-use pass_domain::{ItemContent, ItemId, ItemType, NoteItem, ShareId, TelemetryEvent};
+use pass_domain::{ItemContent, ItemId, ItemType, NoteItem, ShareId};
 
 #[derive(Clone, Debug)]
 pub struct NoteItemCreatePayload {
@@ -26,7 +27,7 @@ impl PassClient {
 
         let item_id = self.send_create_item_request(share_id, req).await?;
 
-        self.emit_telemetry(TelemetryEvent::ItemCreated {
+        self.emit_telemetry(&ItemCreatedEvent {
             item_type: ItemType::Note,
         })
         .await;

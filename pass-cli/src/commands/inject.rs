@@ -1,7 +1,7 @@
 use super::secret_resolver::{PassClientResolver, SecretReference, SecretResolver};
+use crate::telemetry::event::CommandEvent;
 use anyhow::{Context, Result, anyhow};
 use pass::PassClient;
-use pass_domain::TelemetryEvent;
 use regex::Regex;
 use std::collections::HashMap;
 use std::fs;
@@ -63,7 +63,9 @@ pub async fn run(
     };
 
     client
-        .emit_telemetry(TelemetryEvent::command("inject"))
+        .emit_telemetry(&CommandEvent {
+            command: "inject".to_string(),
+        })
         .await;
 
     // Process the template

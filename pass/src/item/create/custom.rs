@@ -1,9 +1,10 @@
+use super::ItemCreatedEvent;
 use crate::PassClient;
 use crate::permission::PermissionAction;
 use anyhow::{Context, Result, bail};
 use pass_domain::{
     CustomItem, CustomSection, ItemContent, ItemExtraField, ItemExtraFieldContent, ItemId,
-    ItemType, ShareId, TelemetryEvent,
+    ItemType, ShareId,
 };
 
 #[derive(Clone, Debug)]
@@ -135,7 +136,7 @@ impl PassClient {
 
         let item_id = self.send_create_item_request(share_id, req).await?;
 
-        self.emit_telemetry(TelemetryEvent::ItemCreated {
+        self.emit_telemetry(&ItemCreatedEvent {
             item_type: ItemType::Custom,
         })
         .await;

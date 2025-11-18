@@ -4,7 +4,7 @@ use crate::permission::PermissionAction;
 use crate::utils::b64_encode;
 use anyhow::{Context, Result};
 use muon::PUT;
-use pass_domain::{ItemId, ShareId, TelemetryEvent, crypto};
+use pass_domain::{ItemId, ShareId, crypto};
 
 #[derive(Debug, serde::Serialize)]
 pub(crate) struct MoveItemRequest {
@@ -75,12 +75,6 @@ impl PassClient {
 
         self.clear_items_cache(from_share_id).await;
         self.clear_items_cache(to_share_id).await;
-
-        // TODO: Fetch the item to determine item type. We are not doing it now so use Note as placeholder
-        self.emit_telemetry(TelemetryEvent::ItemMoved {
-            item_type: pass_domain::ItemType::Note,
-        })
-        .await;
 
         Ok(ItemId::new(new_item_id))
     }

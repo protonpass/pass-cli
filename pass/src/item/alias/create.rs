@@ -1,9 +1,10 @@
 use crate::PassClient;
+use crate::item::create::ItemCreatedEvent;
 use crate::item::create::common::{CreateItemRequest, CreateItemResponse};
 use crate::permission::PermissionAction;
 use anyhow::{Context, Result, anyhow};
 use muon::POST;
-use pass_domain::{AliasItem, ItemContent, ItemId, ItemType, ShareId, TelemetryEvent};
+use pass_domain::{AliasItem, ItemContent, ItemId, ItemType, ShareId};
 
 #[derive(Debug)]
 pub struct CreatedAliasItem {
@@ -52,7 +53,7 @@ impl PassClient {
 
         let item_id = ItemId::new(response.item.item_id);
 
-        self.emit_telemetry(TelemetryEvent::ItemCreated {
+        self.emit_telemetry(&ItemCreatedEvent {
             item_type: ItemType::Alias,
         })
         .await;

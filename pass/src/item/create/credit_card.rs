@@ -1,9 +1,8 @@
+use super::ItemCreatedEvent;
 use crate::PassClient;
 use crate::permission::PermissionAction;
 use anyhow::{Context, Result, bail};
-use pass_domain::{
-    CardType, CreditCardItem, ItemContent, ItemId, ItemType, ShareId, TelemetryEvent,
-};
+use pass_domain::{CardType, CreditCardItem, ItemContent, ItemId, ItemType, ShareId};
 
 #[derive(Clone, Debug)]
 pub struct CreditCardItemCreatePayload {
@@ -136,7 +135,7 @@ impl PassClient {
 
         let item_id = self.send_create_item_request(share_id, req).await?;
 
-        self.emit_telemetry(TelemetryEvent::ItemCreated {
+        self.emit_telemetry(&ItemCreatedEvent {
             item_type: ItemType::CreditCard,
         })
         .await;

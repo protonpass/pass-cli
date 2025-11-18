@@ -122,6 +122,8 @@ pub const TEST_SALT_ID: &str =
     "sMXH3WRflhDfwvU0GsWvctl0wR3NJWEqtiRs8cf2NeMdBAk8e_MTJkQtS704RfhgVRuxJ7xVV49ta-pMHXbNDg==";
 pub const TEST_SALT_VALUE: &str = "cHQscoez6Cx3YeVBbnKcwg==";
 
+pub const TEST_PLAN_NAME: &str = "testplan123";
+
 pub fn setup_user_access(server: &Arc<Server>, plan_type: PlanType) {
     setup_user_access_with_limits(server, None, None, None, plan_type)
 }
@@ -146,7 +148,7 @@ pub fn setup_user_access_with_limits(
             access: UserInfo {
                 plan: PassPlan {
                     type_: plan_type,
-                    internal_name: "testplan123".to_string(),
+                    internal_name: TEST_PLAN_NAME.to_string(),
                     display_name: "Test Plan".to_string(),
                     manage_subscription: false,
                     subscription_end: None,

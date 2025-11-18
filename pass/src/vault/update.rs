@@ -3,7 +3,7 @@ use crate::permission::PermissionAction;
 use crate::utils::debug_response;
 use anyhow::{Context, Result, anyhow};
 use muon::PUT;
-use pass_domain::{ShareId, TelemetryEvent, VaultData, crypto};
+use pass_domain::{ShareId, VaultData, crypto};
 
 pub struct UpdateVaultArgs {
     name: String,
@@ -52,8 +52,6 @@ impl PassClient {
         }
 
         self.clear_shares_cache().await;
-
-        self.emit_telemetry(TelemetryEvent::VaultUpdated).await;
 
         Ok(())
     }

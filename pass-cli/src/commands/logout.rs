@@ -1,7 +1,7 @@
+use crate::telemetry::event::CommandEvent;
 use crate::utils::get_base_dir;
 use anyhow::{Context, Result, anyhow};
 use pass::PassClient;
-use pass_domain::TelemetryEvent;
 use tracing::warn;
 
 async fn remove_local_data() -> Result<()> {
@@ -25,9 +25,7 @@ async fn remove_local_data() -> Result<()> {
 }
 
 pub async fn run(client: PassClient) -> Result<()> {
-    client
-        .emit_telemetry(TelemetryEvent::command("logout"))
-        .await;
+    client.emit_telemetry(&CommandEvent::new("logout")).await;
     if let Err(e) = client.logout().await {
         eprintln!("Error logging out: {}", e);
         eprintln!(

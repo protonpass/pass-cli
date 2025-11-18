@@ -1,8 +1,9 @@
+pub mod event;
+
 use anyhow::{Context, Result};
 use pass::PassClient;
 use pass_db::{ActivityTimeModel, DatabaseManager, TelemetryEventModel};
-use pass_domain::{TelemetryEvent, TelemetryHandler};
-use std::convert::TryFrom;
+use pass_domain::{TelemetryEvent, TelemetryEventData, TelemetryHandler};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
@@ -19,8 +20,7 @@ pub struct SqliteTelemetryHandler {
 }
 
 fn is_telemetry_enabled() -> bool {
-    // We only care about the var being defined
-    std::env::var(TELEMETRY_DISABLED_ENV_VAR).is_ok()
+    std::env::var(TELEMETRY_DISABLED_ENV_VAR).is_err()
 }
 
 impl SqliteTelemetryHandler {
@@ -154,25 +154,19 @@ impl SqliteTelemetryHandler {
         .context("Failed to update last send time")
     }
 
-    pub async fn get_telemetry_events(&self, user_id: &str) -> Result<Vec<TelemetryEvent>> {
+    pub async fn get_telemetry_events(&self, user_id: &str) -> Result<Vec<TelemetryEventData>> {
         let conn = self.db.get_connection().await?;
         let events = TelemetryEventModel::get_by_user_id(&conn, user_id)
             .await
             .context("Error retrieving telemetry events")?;
 
-        let mut res = Vec::with_capacity(events.len());
-        for event in events {
-            let mapped = TelemetryEvent::try_from(event)?;
-            res.push(mapped);
-        }
-
-        Ok(res)
+        Ok(events)
     }
 }
 
 #[async_trait::async_trait(?Send)]
 impl TelemetryHandler for SqliteTelemetryHandler {
-    async fn emit_telemetry(&self, event: TelemetryEvent) -> Result<()> {
+    async fn emit_telemetry(&self, event: &dyn TelemetryEvent) -> Result<()> {
         if !self.telemetry_enabled {
             debug!("TelemetryEvent not stored as telemetry is disabled");
             return Ok(());
@@ -180,7 +174,7 @@ impl TelemetryHandler for SqliteTelemetryHandler {
         let conn = self.db.get_connection().await?;
         let user_id = self.get_user_id().await;
 
-        TelemetryEventModel::insert(&conn, &event, user_id)
+        TelemetryEventModel::insert(&conn, event, user_id)
             .await
             .context("Failed to insert event")?;
         Ok(())

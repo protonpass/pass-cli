@@ -1,7 +1,8 @@
+use super::ItemCreatedEvent;
 use crate::PassClient;
 use crate::permission::PermissionAction;
 use anyhow::{Context, Result, bail};
-use pass_domain::{ItemContent, ItemId, ItemType, ShareId, TelemetryEvent, WifiItem, WifiSecurity};
+use pass_domain::{ItemContent, ItemId, ItemType, ShareId, WifiItem, WifiSecurity};
 
 #[derive(Clone, Debug)]
 pub struct WifiItemCreatePayload {
@@ -58,7 +59,7 @@ impl PassClient {
 
         let item_id = self.send_create_item_request(share_id, req).await?;
 
-        self.emit_telemetry(TelemetryEvent::ItemCreated {
+        self.emit_telemetry(&ItemCreatedEvent {
             item_type: ItemType::Wifi,
         })
         .await;

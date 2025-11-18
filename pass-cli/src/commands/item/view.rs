@@ -1,6 +1,7 @@
 use crate::commands::OutputFormat;
 use crate::commands::item::common::{ItemQuery, ShareQuery};
 use crate::commands::secret_resolver::ItemReference;
+use crate::telemetry::event::CommandEvent;
 use anyhow::{Context, Result, anyhow, bail};
 use pass::{FindItemQuery, PassClient};
 
@@ -54,6 +55,9 @@ pub async fn run(client: PassClient, query: ViewItemQuery, output: OutputFormat)
             item_query,
             field,
         } => {
+            client
+                .emit_telemetry(&CommandEvent::new("item-view-args"))
+                .await;
             let share_id = share_query.share_id(&client).await?;
             let item_id = item_query.item_id(&share_id, &client).await?;
             let item = client
@@ -63,6 +67,9 @@ pub async fn run(client: PassClient, query: ViewItemQuery, output: OutputFormat)
             (item, field)
         }
         ViewItemQuery::Uri(uri) => {
+            client
+                .emit_telemetry(&CommandEvent::new("item-view-uri"))
+                .await;
             let reference = ItemReference::parse(&uri).context("Invalid item reference")?;
             let item_query = FindItemQuery::new(&reference.share_id, &reference.item_id);
             let item = client

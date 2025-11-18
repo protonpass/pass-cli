@@ -1,8 +1,8 @@
 use super::VaultQuery;
 use super::key_load;
+use crate::telemetry::event::CommandEvent;
 use anyhow::{Context, Result, bail};
 use pass::PassClient;
-use pass_domain::TelemetryEvent;
 use ssh_agent_client_rs::Client as SshAgentClient;
 use ssh_key::private::PrivateKey as SshPrivateKey;
 use std::path::PathBuf;
@@ -46,7 +46,7 @@ pub async fn run_load(
     client: PassClient,
 ) -> Result<()> {
     client
-        .emit_telemetry(TelemetryEvent::command("ssh-agent-load"))
+        .emit_telemetry(&CommandEvent::new("ssh-agent-load"))
         .await;
     let vault_query = VaultQuery::new(share_id, vault_name)?;
 
