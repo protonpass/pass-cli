@@ -22,7 +22,7 @@ impl TelemetryEvent for ItemCreatedEvent {
 
     fn dimensions(&self) -> HashMap<String, String> {
         let mut map = HashMap::new();
-        map.insert("type".to_string(), self.item_type.as_str().to_string());
+        map.insert("itemType".to_string(), self.item_type.as_str().to_string());
         map
     }
 }

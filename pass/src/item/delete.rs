@@ -34,7 +34,7 @@ impl TelemetryEvent for ItemDeletedEvent {
 
     fn dimensions(&self) -> HashMap<String, String> {
         let mut map = HashMap::new();
-        map.insert("item.type".to_string(), self.item_type.as_str().to_string());
+        map.insert("itemType".to_string(), self.item_type.as_str().to_string());
         map
     }
 }
