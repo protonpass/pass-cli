@@ -12,11 +12,9 @@ The easiest way to install Proton Pass CLI is using the official installation sc
 curl -fsSL https://proton.me/download/pass-cli/install.sh | bash
 ```
 
-**Windows (PowerShell):**
+**Windows:**
 
-```powershell
-Invoke-WebRequest -Uri https://proton.me/download/pass-cli/install.ps1 -OutFile install.ps1; .\install.ps1
-```
+> A native Windows version is not yet available. See the [Windows (WSL) Installation](#windows-wsl-installation) section below for a workaround using Windows Subsystem for Linux.
 
 The installation script will:
 
@@ -39,12 +37,6 @@ export PROTON_PASS_CLI_INSTALL_DIR=/custom/path
 curl -fsSL https://proton.me/download/pass-cli/install.sh | bash
 ```
 
-**Windows:**
-
-```powershell
-$env:PROTON_PASS_CLI_INSTALL_DIR="C:\custom\path"
-Invoke-WebRequest -Uri https://proton.me/download/pass-cli/install.ps1 -OutFile install.ps1; .\install.ps1
-```
 
 ### Beta Channel
 
@@ -57,12 +49,6 @@ export PROTON_PASS_CLI_INSTALL_CHANNEL=beta
 curl -fsSL https://proton.me/download/pass-cli/install.sh | bash
 ```
 
-**Windows:**
-
-```powershell
-$env:PROTON_PASS_CLI_INSTALL_CHANNEL="beta"
-Invoke-WebRequest -Uri https://proton.me/download/pass-cli/install.ps1 -OutFile install.ps1; .\install.ps1
-```
 
 ## System Requirements
 
@@ -70,7 +56,7 @@ Invoke-WebRequest -Uri https://proton.me/download/pass-cli/install.ps1 -OutFile 
 
 - **macOS**: Intel (x86_64) and Apple Silicon (arm64)
 - **Linux**: x86_64 and aarch64 architectures
-- **Windows**: x86_64 (64-bit)
+- **Windows**: Not yet available natively (use [WSL](#windows-wsl-installation) as a workaround)
 
 ### Dependencies
 
@@ -85,7 +71,82 @@ Invoke-WebRequest -Uri https://proton.me/download/pass-cli/install.ps1 -OutFile 
 
 **Windows:**
 
-- PowerShell 5.1 or later
+- Not yet available natively. See [Windows (WSL) Installation](#windows-wsl-installation) below.
+
+## Windows (WSL) Installation
+
+While a native Windows version is not yet available, you can use Windows Subsystem for Linux (WSL) to run the Linux version of Proton Pass CLI.
+
+### Step 1: Install WSL
+
+If you don't have WSL installed, follow these steps:
+
+1. Open PowerShell or Windows Command Prompt in **Administrator mode** by right-clicking and selecting "Run as administrator"
+
+2. Install WSL with the default Ubuntu distribution:
+
+```powershell
+wsl --install
+```
+
+3. Restart your computer when prompted
+
+4. After restart, Ubuntu will open automatically and prompt you to create a username and password
+
+**Alternative: Install a Specific Distribution**
+
+To see available Linux distributions:
+
+```powershell
+wsl --list --online
+```
+
+To install a specific distribution (e.g., Ubuntu 22.04):
+
+```powershell
+wsl --install -d Ubuntu-22.04
+```
+
+### Step 2: Install Proton Pass CLI in WSL
+
+Once WSL is set up:
+
+1. Open your WSL terminal (search for "Ubuntu" or "WSL" in the Start menu)
+
+2. Update your package manager:
+
+```bash
+sudo apt update && sudo apt upgrade -y
+```
+
+3. Install required dependencies:
+
+```bash
+sudo apt install -y curl jq libdbus-1-3
+```
+
+4. Install Proton Pass CLI using the installation script:
+
+```bash
+curl -fsSL https://proton.me/download/pass-cli/install.sh | bash
+```
+
+5. Verify the installation:
+
+```bash
+pass-cli --version
+```
+
+### Accessing WSL from Windows
+
+- Open WSL terminal by searching for "Ubuntu" or "WSL" in the Start menu
+- Access your Windows files from WSL at `/mnt/c/` (C: drive), `/mnt/d/` (D: drive), etc.
+- Access your WSL files from Windows at `\\wsl$\Ubuntu\home\<username>\`
+
+### Additional Notes
+
+- You can run `pass-cli` commands directly from PowerShell/CMD using: `wsl pass-cli <command>`
+- For the best experience, we recommend using Windows Terminal (available from the Microsoft Store)
 
 ## Manual Installation
 
