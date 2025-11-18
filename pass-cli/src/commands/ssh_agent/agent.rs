@@ -87,8 +87,7 @@ pub async fn start_agent(
         use ssh_agent_lib::agent::NamedPipeListener;
 
         // On Windows, use a named pipe
-        let username = std::env::var("USERNAME").unwrap_or_else(|_| "user".to_string());
-        let pipe_name = format!(r"\\.\pipe\proton-pass-agent-{}", username);
+        let pipe_name = r"\\.\pipe\openssh-ssh-agent";
 
         info!("SSH agent listening on: {}", pipe_name);
         print_agent_startup_message(&socket_path.display().to_string(), refresh_interval);
