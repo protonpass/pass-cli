@@ -13,3 +13,4 @@ mod open;
 mod revisions;
 mod share;
 mod trash;
+mod update;

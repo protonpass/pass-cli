@@ -52,6 +52,12 @@ pub struct Item {
     pub create_time: chrono::NaiveDateTime,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum UpdateFieldResult {
+    FieldUpdated,
+    CustomFieldCreated,
+}
+
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq)]
 pub struct ItemData {
     pub title: String,
@@ -116,6 +122,305 @@ impl ItemData {
 
     pub fn generate_uuid() -> String {
         uuid::Uuid::new_v4().to_string()
+    }
+
+    /// Update a field in the item. Returns whether the field was updated or a new custom field was created.
+    pub fn update_field(
+        &mut self,
+        field_name: &str,
+        field_value: &str,
+    ) -> Result<UpdateFieldResult> {
+        let field_name_lower = field_name.to_lowercase();
+
+        // Handle basic fields
+        if field_name_lower == "title" {
+            self.title = field_value.to_string();
+            return Ok(UpdateFieldResult::FieldUpdated);
+        }
+        if field_name_lower == "note" {
+            self.note = field_value.to_string();
+            return Ok(UpdateFieldResult::FieldUpdated);
+        }
+
+        // Check if this is an existing extra field
+        for extra_field in &mut self.extra_fields {
+            if extra_field.name.to_lowercase() == field_name_lower {
+                // Don't allow updating timestamp or totp fields
+                match &extra_field.content {
+                    ItemExtraFieldContent::Timestamp(_) => {
+                        return Err(anyhow!("Cannot update timestamp field '{}'", field_name));
+                    }
+                    ItemExtraFieldContent::Totp(_) => {
+                        return Err(anyhow!("Editing TOTP fields is unsupported"));
+                    }
+                    ItemExtraFieldContent::Hidden(_) => {
+                        extra_field.content =
+                            ItemExtraFieldContent::Hidden(field_value.to_string());
+                    }
+                    ItemExtraFieldContent::Text(_) => {
+                        extra_field.content = ItemExtraFieldContent::Text(field_value.to_string());
+                    }
+                }
+                return Ok(UpdateFieldResult::FieldUpdated);
+            }
+        }
+
+        // Handle item-type-specific fields
+        match &mut self.content {
+            ItemContent::Login(login) => {
+                if Self::update_login_field(login, &field_name_lower, field_value) {
+                    return Ok(UpdateFieldResult::FieldUpdated);
+                }
+            }
+            ItemContent::CreditCard(cc) => {
+                if Self::update_credit_card_field(cc, &field_name_lower, field_value) {
+                    return Ok(UpdateFieldResult::FieldUpdated);
+                }
+            }
+            ItemContent::Identity(identity) => {
+                if Self::update_identity_field(identity, &field_name_lower, field_value) {
+                    return Ok(UpdateFieldResult::FieldUpdated);
+                }
+            }
+            ItemContent::SshKey(ssh) => {
+                if Self::update_ssh_field(ssh, &field_name_lower, field_value) {
+                    return Ok(UpdateFieldResult::FieldUpdated);
+                }
+            }
+            ItemContent::Wifi(wifi) => {
+                if Self::update_wifi_field(wifi, &field_name_lower, field_value) {
+                    return Ok(UpdateFieldResult::FieldUpdated);
+                }
+            }
+            ItemContent::Custom(custom) => {
+                if Self::update_custom_field(custom, &field_name_lower, field_value) {
+                    return Ok(UpdateFieldResult::FieldUpdated);
+                }
+            }
+            ItemContent::Note(_) | ItemContent::Alias(_) => {}
+        }
+
+        // Field not found, create a new custom field
+        self.extra_fields.push(ItemExtraField {
+            name: field_name.to_string(),
+            content: ItemExtraFieldContent::Text(field_value.to_string()),
+        });
+        Ok(UpdateFieldResult::CustomFieldCreated)
+    }
+
+    fn update_login_field(login: &mut LoginItem, field_name: &str, field_value: &str) -> bool {
+        match field_name {
+            "email" => {
+                login.email = field_value.to_string();
+                true
+            }
+            "username" => {
+                login.username = field_value.to_string();
+                true
+            }
+            "password" => {
+                login.password = field_value.to_string();
+                true
+            }
+            "totp_uri" | "totp" => {
+                // TOTP fields cannot be edited
+                false
+            }
+            "urls" => {
+                // Split by comma and trim whitespace
+                login.urls = field_value
+                    .split(',')
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect();
+                true
+            }
+            _ => false,
+        }
+    }
+
+    fn update_credit_card_field(
+        cc: &mut CreditCardItem,
+        field_name: &str,
+        field_value: &str,
+    ) -> bool {
+        match field_name {
+            "cardholder_name" => {
+                cc.cardholder_name = field_value.to_string();
+                true
+            }
+            "number" => {
+                cc.number = field_value.to_string();
+                true
+            }
+            "verification_number" | "cvv" | "cvc" => {
+                cc.verification_number = field_value.to_string();
+                true
+            }
+            "expiration_date" => {
+                cc.expiration_date = field_value.to_string();
+                true
+            }
+            "pin" => {
+                cc.pin = field_value.to_string();
+                true
+            }
+            _ => false,
+        }
+    }
+
+    fn update_identity_field(
+        identity: &mut IdentityItem,
+        field_name: &str,
+        field_value: &str,
+    ) -> bool {
+        match field_name {
+            "full_name" => {
+                identity.full_name = field_value.to_string();
+                true
+            }
+            "email" => {
+                identity.email = field_value.to_string();
+                true
+            }
+            "phone_number" => {
+                identity.phone_number = field_value.to_string();
+                true
+            }
+            "first_name" => {
+                identity.first_name = field_value.to_string();
+                true
+            }
+            "middle_name" => {
+                identity.middle_name = field_value.to_string();
+                true
+            }
+            "last_name" => {
+                identity.last_name = field_value.to_string();
+                true
+            }
+            "birthdate" => {
+                identity.birthdate = field_value.to_string();
+                true
+            }
+            "gender" => {
+                identity.gender = field_value.to_string();
+                true
+            }
+            "organization" => {
+                identity.organization = field_value.to_string();
+                true
+            }
+            "street_address" | "address" => {
+                identity.street_address = field_value.to_string();
+                true
+            }
+            "zip_or_postal_code" | "zip" | "postal_code" => {
+                identity.zip_or_postal_code = field_value.to_string();
+                true
+            }
+            "city" => {
+                identity.city = field_value.to_string();
+                true
+            }
+            "state_or_province" | "state" | "province" => {
+                identity.state_or_province = field_value.to_string();
+                true
+            }
+            "country_or_region" | "country" | "region" => {
+                identity.country_or_region = field_value.to_string();
+                true
+            }
+            "social_security_number" | "ssn" => {
+                identity.social_security_number = field_value.to_string();
+                true
+            }
+            "passport_number" | "passport" => {
+                identity.passport_number = field_value.to_string();
+                true
+            }
+            "license_number" => {
+                identity.license_number = field_value.to_string();
+                true
+            }
+            "website" => {
+                identity.website = field_value.to_string();
+                true
+            }
+            "company" => {
+                identity.company = field_value.to_string();
+                true
+            }
+            "job_title" => {
+                identity.job_title = field_value.to_string();
+                true
+            }
+            _ => false,
+        }
+    }
+
+    fn update_ssh_field(ssh: &mut SshKeyItem, field_name: &str, field_value: &str) -> bool {
+        match field_name {
+            "private_key" => {
+                ssh.private_key = field_value.to_string();
+                true
+            }
+            "public_key" => {
+                ssh.public_key = field_value.to_string();
+                true
+            }
+            _ => false,
+        }
+    }
+
+    fn update_wifi_field(wifi: &mut WifiItem, field_name: &str, field_value: &str) -> bool {
+        match field_name {
+            "ssid" => {
+                wifi.ssid = field_value.to_string();
+                true
+            }
+            "password" => {
+                wifi.password = field_value.to_string();
+                true
+            }
+            "security" => {
+                // Try to parse the security type
+                wifi.security = match field_value.to_lowercase().as_str() {
+                    "wpa" => WifiSecurity::WPA,
+                    "wpa2" => WifiSecurity::WPA2,
+                    "wpa3" => WifiSecurity::WPA3,
+                    "wep" => WifiSecurity::WEP,
+                    _ => wifi.security.clone(), // Keep existing if invalid
+                };
+                true
+            }
+            _ => false,
+        }
+    }
+
+    fn update_custom_field(custom: &mut CustomItem, field_name: &str, field_value: &str) -> bool {
+        // Search through all sections for the first matching field
+        for section in &mut custom.sections {
+            for field in &mut section.section_fields {
+                if field.name.to_lowercase() == field_name {
+                    // Update the field preserving type, but skip timestamp and totp fields
+                    match &field.content {
+                        ItemExtraFieldContent::Hidden(_) => {
+                            field.content = ItemExtraFieldContent::Hidden(field_value.to_string());
+                        }
+                        ItemExtraFieldContent::Text(_) => {
+                            field.content = ItemExtraFieldContent::Text(field_value.to_string());
+                        }
+                        ItemExtraFieldContent::Totp(_) | ItemExtraFieldContent::Timestamp(_) => {
+                            // Don't update totp or timestamp fields in custom sections
+                            continue;
+                        }
+                    }
+                    return true;
+                }
+            }
+        }
+        false
     }
 }
 
@@ -883,6 +1188,650 @@ impl From<item_v1::WifiSecurity> for WifiSecurity {
             item_v1::WifiSecurity::WPA2 => WifiSecurity::WPA2,
             item_v1::WifiSecurity::WPA3 => WifiSecurity::WPA3,
             item_v1::WifiSecurity::WEP => WifiSecurity::WEP,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_test_item_data(content: ItemContent) -> ItemData {
+        ItemData {
+            title: "Test Item".to_string(),
+            note: "Test note".to_string(),
+            item_uuid: "test-uuid".to_string(),
+            content,
+            extra_fields: vec![],
+        }
+    }
+
+    #[test]
+    fn test_update_basic_fields() {
+        let mut item = create_test_item_data(ItemContent::Note(NoteItem));
+
+        // Update title
+        let result = item.update_field("title", "New Title").unwrap();
+        assert_eq!(result, UpdateFieldResult::FieldUpdated);
+        assert_eq!(item.title, "New Title");
+
+        // Update note (case insensitive)
+        let result = item.update_field("NOTE", "New note").unwrap();
+        assert_eq!(result, UpdateFieldResult::FieldUpdated);
+        assert_eq!(item.note, "New note");
+    }
+
+    #[test]
+    fn test_update_login_fields() {
+        let mut item = create_test_item_data(ItemContent::Login(LoginItem {
+            email: "old@example.com".to_string(),
+            username: "olduser".to_string(),
+            password: "oldpass".to_string(),
+            urls: vec!["https://old.com".to_string()],
+            totp_uri: "".to_string(),
+        }));
+
+        // Update email
+        assert_eq!(
+            item.update_field("email", "new@example.com").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        if let ItemContent::Login(ref login) = item.content {
+            assert_eq!(login.email, "new@example.com");
+        } else {
+            panic!("Expected Login content");
+        }
+
+        // Update username (case insensitive)
+        assert_eq!(
+            item.update_field("USERNAME", "newuser").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        if let ItemContent::Login(ref login) = item.content {
+            assert_eq!(login.username, "newuser");
+        } else {
+            panic!("Expected Login content");
+        }
+
+        // Update password
+        assert_eq!(
+            item.update_field("password", "newpass").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        if let ItemContent::Login(ref login) = item.content {
+            assert_eq!(login.password, "newpass");
+        } else {
+            panic!("Expected Login content");
+        }
+
+        // Update urls with comma-separated values
+        assert_eq!(
+            item.update_field(
+                "urls",
+                "https://new1.com, https://new2.com,https://new3.com"
+            )
+            .unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        if let ItemContent::Login(ref login) = item.content {
+            assert_eq!(
+                login.urls,
+                vec!["https://new1.com", "https://new2.com", "https://new3.com"]
+            );
+        } else {
+            panic!("Expected Login content");
+        }
+    }
+
+    #[test]
+    fn test_update_credit_card_fields() {
+        let mut item = create_test_item_data(ItemContent::CreditCard(CreditCardItem {
+            cardholder_name: "Old Name".to_string(),
+            card_type: CardType::Visa,
+            number: "1111".to_string(),
+            verification_number: "111".to_string(),
+            expiration_date: "01/25".to_string(),
+            pin: "1111".to_string(),
+        }));
+
+        // Update cardholder_name
+        assert_eq!(
+            item.update_field("cardholder_name", "New Name").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        if let ItemContent::CreditCard(ref cc) = item.content {
+            assert_eq!(cc.cardholder_name, "New Name");
+        } else {
+            panic!("Expected CreditCard content");
+        }
+
+        // Update number
+        assert_eq!(
+            item.update_field("number", "2222").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        if let ItemContent::CreditCard(ref cc) = item.content {
+            assert_eq!(cc.number, "2222");
+        } else {
+            panic!("Expected CreditCard content");
+        }
+
+        // Update verification_number
+        assert_eq!(
+            item.update_field("verification_number", "222").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        if let ItemContent::CreditCard(ref cc) = item.content {
+            assert_eq!(cc.verification_number, "222");
+        } else {
+            panic!("Expected CreditCard content");
+        }
+
+        // Update CVV (alias)
+        assert_eq!(
+            item.update_field("cvv", "333").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        if let ItemContent::CreditCard(ref cc) = item.content {
+            assert_eq!(cc.verification_number, "333");
+        } else {
+            panic!("Expected CreditCard content");
+        }
+
+        // Update CVC (alias)
+        assert_eq!(
+            item.update_field("cvc", "444").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        if let ItemContent::CreditCard(ref cc) = item.content {
+            assert_eq!(cc.verification_number, "444");
+        } else {
+            panic!("Expected CreditCard content");
+        }
+
+        // Update expiration_date
+        assert_eq!(
+            item.update_field("expiration_date", "12/30").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        if let ItemContent::CreditCard(ref cc) = item.content {
+            assert_eq!(cc.expiration_date, "12/30");
+        } else {
+            panic!("Expected CreditCard content");
+        }
+
+        // Update pin
+        assert_eq!(
+            item.update_field("pin", "9999").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        if let ItemContent::CreditCard(ref cc) = item.content {
+            assert_eq!(cc.pin, "9999");
+        } else {
+            panic!("Expected CreditCard content");
+        }
+    }
+
+    #[test]
+    fn test_update_identity_fields() {
+        let mut item = create_test_item_data(ItemContent::Identity(Box::new(IdentityItem {
+            full_name: "Old Name".to_string(),
+            email: "old@example.com".to_string(),
+            phone_number: "+1234567890".to_string(),
+            first_name: "Old".to_string(),
+            middle_name: "M".to_string(),
+            last_name: "Name".to_string(),
+            birthdate: "1990-01-01".to_string(),
+            gender: "Male".to_string(),
+            organization: "Old Org".to_string(),
+            street_address: "123 Old St".to_string(),
+            zip_or_postal_code: "12345".to_string(),
+            city: "Old City".to_string(),
+            state_or_province: "Old State".to_string(),
+            country_or_region: "Old Country".to_string(),
+            social_security_number: "111-11-1111".to_string(),
+            passport_number: "A111111".to_string(),
+            license_number: "L111111".to_string(),
+            website: "https://old.com".to_string(),
+            company: "Old Company".to_string(),
+            job_title: "Old Title".to_string(),
+        })));
+
+        // Test a few key fields
+        assert_eq!(
+            item.update_field("full_name", "New Name").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        assert_eq!(
+            item.update_field("email", "new@example.com").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        assert_eq!(
+            item.update_field("address", "456 New St").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        assert_eq!(
+            item.update_field("zip", "54321").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        assert_eq!(
+            item.update_field("state", "New State").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        assert_eq!(
+            item.update_field("country", "New Country").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        assert_eq!(
+            item.update_field("ssn", "222-22-2222").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        assert_eq!(
+            item.update_field("passport", "A222222").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+
+        if let ItemContent::Identity(ref identity) = item.content {
+            assert_eq!(identity.full_name, "New Name");
+            assert_eq!(identity.email, "new@example.com");
+            assert_eq!(identity.street_address, "456 New St");
+            assert_eq!(identity.zip_or_postal_code, "54321");
+            assert_eq!(identity.state_or_province, "New State");
+            assert_eq!(identity.country_or_region, "New Country");
+            assert_eq!(identity.social_security_number, "222-22-2222");
+            assert_eq!(identity.passport_number, "A222222");
+        } else {
+            panic!("Expected Identity content");
+        }
+    }
+
+    #[test]
+    fn test_update_ssh_key_fields() {
+        let mut item = create_test_item_data(ItemContent::SshKey(SshKeyItem {
+            private_key: "old_private".to_string(),
+            public_key: "old_public".to_string(),
+        }));
+
+        assert_eq!(
+            item.update_field("private_key", "new_private").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        assert_eq!(
+            item.update_field("public_key", "new_public").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+
+        if let ItemContent::SshKey(ref ssh) = item.content {
+            assert_eq!(ssh.private_key, "new_private");
+            assert_eq!(ssh.public_key, "new_public");
+        } else {
+            panic!("Expected SshKey content");
+        }
+    }
+
+    #[test]
+    fn test_update_wifi_fields() {
+        let mut item = create_test_item_data(ItemContent::Wifi(WifiItem {
+            ssid: "OldNetwork".to_string(),
+            password: "oldpass".to_string(),
+            security: WifiSecurity::WPA2,
+        }));
+
+        assert_eq!(
+            item.update_field("ssid", "NewNetwork").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        assert_eq!(
+            item.update_field("password", "newpass").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        assert_eq!(
+            item.update_field("security", "WPA3").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+
+        if let ItemContent::Wifi(ref wifi) = item.content {
+            assert_eq!(wifi.ssid, "NewNetwork");
+            assert_eq!(wifi.password, "newpass");
+            assert_eq!(wifi.security, WifiSecurity::WPA3);
+        } else {
+            panic!("Expected Wifi content");
+        }
+    }
+
+    #[test]
+    fn test_update_custom_item_fields() {
+        let mut item = create_test_item_data(ItemContent::Custom(CustomItem {
+            sections: vec![
+                CustomSection {
+                    section_name: "Section 1".to_string(),
+                    section_fields: vec![
+                        ItemExtraField {
+                            name: "field1".to_string(),
+                            content: ItemExtraFieldContent::Text("old_value1".to_string()),
+                        },
+                        ItemExtraField {
+                            name: "field2".to_string(),
+                            content: ItemExtraFieldContent::Hidden("old_secret".to_string()),
+                        },
+                    ],
+                },
+                CustomSection {
+                    section_name: "Section 2".to_string(),
+                    section_fields: vec![ItemExtraField {
+                        name: "field3".to_string(),
+                        content: ItemExtraFieldContent::Text("old_value3".to_string()),
+                    }],
+                },
+            ],
+        }));
+
+        // Update first matching field
+        assert_eq!(
+            item.update_field("field1", "new_value1").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        assert_eq!(
+            item.update_field("FIELD2", "new_secret").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        assert_eq!(
+            item.update_field("field3", "new_value3").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+
+        if let ItemContent::Custom(ref custom) = item.content {
+            assert_eq!(
+                custom.sections[0].section_fields[0].content,
+                ItemExtraFieldContent::Text("new_value1".to_string())
+            );
+            assert_eq!(
+                custom.sections[0].section_fields[1].content,
+                ItemExtraFieldContent::Hidden("new_secret".to_string())
+            );
+            assert_eq!(
+                custom.sections[1].section_fields[0].content,
+                ItemExtraFieldContent::Text("new_value3".to_string())
+            );
+        } else {
+            panic!("Expected Custom content");
+        }
+    }
+
+    #[test]
+    fn test_update_extra_fields() {
+        let mut item = create_test_item_data(ItemContent::Note(NoteItem));
+        item.extra_fields = vec![
+            ItemExtraField {
+                name: "extra1".to_string(),
+                content: ItemExtraFieldContent::Text("value1".to_string()),
+            },
+            ItemExtraField {
+                name: "extra2".to_string(),
+                content: ItemExtraFieldContent::Hidden("secret".to_string()),
+            },
+            ItemExtraField {
+                name: "extra3".to_string(),
+                content: ItemExtraFieldContent::Totp("otpauth://totp/test".to_string()),
+            },
+        ];
+
+        // Update text field
+        assert_eq!(
+            item.update_field("extra1", "new_value1").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        assert_eq!(
+            item.extra_fields[0].content,
+            ItemExtraFieldContent::Text("new_value1".to_string())
+        );
+
+        // Update hidden field (preserves type)
+        assert_eq!(
+            item.update_field("EXTRA2", "new_secret").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        assert_eq!(
+            item.extra_fields[1].content,
+            ItemExtraFieldContent::Hidden("new_secret".to_string())
+        );
+
+        // Attempting to update totp field should fail
+        let result = item.update_field("extra3", "otpauth://totp/new");
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Editing TOTP fields is unsupported")
+        );
+    }
+
+    #[test]
+    fn test_update_timestamp_field_error() {
+        let mut item = create_test_item_data(ItemContent::Note(NoteItem));
+        item.extra_fields = vec![ItemExtraField {
+            name: "timestamp_field".to_string(),
+            content: ItemExtraFieldContent::Timestamp(1234567890),
+        }];
+
+        // Attempting to update a timestamp field should fail
+        let result = item.update_field("timestamp_field", "new_value");
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Cannot update timestamp field")
+        );
+    }
+
+    #[test]
+    fn test_update_totp_field_error_in_login() {
+        let mut item = create_test_item_data(ItemContent::Login(LoginItem {
+            email: "test@example.com".to_string(),
+            username: "testuser".to_string(),
+            password: "password".to_string(),
+            urls: vec![],
+            totp_uri: "otpauth://totp/test".to_string(),
+        }));
+
+        // Attempting to update totp_uri should create a custom field instead (returns CustomFieldCreated)
+        let result = item.update_field("totp_uri", "otpauth://totp/new").unwrap();
+        assert_eq!(result, UpdateFieldResult::CustomFieldCreated);
+
+        // The original totp_uri should be unchanged
+        if let ItemContent::Login(ref login) = item.content {
+            assert_eq!(login.totp_uri, "otpauth://totp/test");
+        } else {
+            panic!("Expected Login content");
+        }
+
+        // Same for totp alias
+        let result = item.update_field("totp", "otpauth://totp/new2").unwrap();
+        assert_eq!(result, UpdateFieldResult::CustomFieldCreated);
+    }
+
+    #[test]
+    fn test_update_totp_field_error_in_custom_item() {
+        let mut item = create_test_item_data(ItemContent::Custom(CustomItem {
+            sections: vec![CustomSection {
+                section_name: "Section 1".to_string(),
+                section_fields: vec![
+                    ItemExtraField {
+                        name: "totp_field".to_string(),
+                        content: ItemExtraFieldContent::Totp("otpauth://totp/test".to_string()),
+                    },
+                    ItemExtraField {
+                        name: "text_field".to_string(),
+                        content: ItemExtraFieldContent::Text("value".to_string()),
+                    },
+                ],
+            }],
+        }));
+
+        // Attempting to update totp field in custom section should create a new custom field instead
+        let result = item
+            .update_field("totp_field", "otpauth://totp/new")
+            .unwrap();
+        assert_eq!(result, UpdateFieldResult::CustomFieldCreated);
+
+        // The original totp_field should be unchanged
+        if let ItemContent::Custom(ref custom) = item.content {
+            assert_eq!(
+                custom.sections[0].section_fields[0].content,
+                ItemExtraFieldContent::Totp("otpauth://totp/test".to_string())
+            );
+        } else {
+            panic!("Expected Custom content");
+        }
+    }
+
+    #[test]
+    fn test_create_custom_field() {
+        let mut item = create_test_item_data(ItemContent::Note(NoteItem));
+
+        // Non-existent field should create a new custom field
+        assert_eq!(
+            item.update_field("new_custom_field", "custom_value")
+                .unwrap(),
+            UpdateFieldResult::CustomFieldCreated
+        );
+        assert_eq!(item.extra_fields.len(), 1);
+        assert_eq!(item.extra_fields[0].name, "new_custom_field");
+        assert_eq!(
+            item.extra_fields[0].content,
+            ItemExtraFieldContent::Text("custom_value".to_string())
+        );
+    }
+
+    #[test]
+    fn test_case_insensitive_matching() {
+        let mut item = create_test_item_data(ItemContent::Login(LoginItem {
+            email: "old@example.com".to_string(),
+            username: "olduser".to_string(),
+            password: "oldpass".to_string(),
+            urls: vec![],
+            totp_uri: "".to_string(),
+        }));
+
+        // Test case insensitive matching
+        assert_eq!(
+            item.update_field("EMAIL", "new@example.com").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        assert_eq!(
+            item.update_field("UserName", "newuser").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        assert_eq!(
+            item.update_field("PASSWORD", "newpass").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+
+        if let ItemContent::Login(ref login) = item.content {
+            assert_eq!(login.email, "new@example.com");
+            assert_eq!(login.username, "newuser");
+            assert_eq!(login.password, "newpass");
+        } else {
+            panic!("Expected Login content");
+        }
+    }
+
+    #[test]
+    fn test_field_aliases() {
+        let mut item = create_test_item_data(ItemContent::Identity(Box::new(IdentityItem {
+            full_name: "".to_string(),
+            email: "".to_string(),
+            phone_number: "".to_string(),
+            first_name: "".to_string(),
+            middle_name: "".to_string(),
+            last_name: "".to_string(),
+            birthdate: "".to_string(),
+            gender: "".to_string(),
+            organization: "".to_string(),
+            street_address: "".to_string(),
+            zip_or_postal_code: "".to_string(),
+            city: "".to_string(),
+            state_or_province: "".to_string(),
+            country_or_region: "".to_string(),
+            social_security_number: "".to_string(),
+            passport_number: "".to_string(),
+            license_number: "".to_string(),
+            website: "".to_string(),
+            company: "".to_string(),
+            job_title: "".to_string(),
+        })));
+
+        // Test various field aliases work
+        assert_eq!(
+            item.update_field("address", "123 Main St").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        assert_eq!(
+            item.update_field("zip", "12345").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        assert_eq!(
+            item.update_field("postal_code", "54321").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        assert_eq!(
+            item.update_field("state", "CA").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        assert_eq!(
+            item.update_field("province", "ON").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        assert_eq!(
+            item.update_field("country", "USA").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        assert_eq!(
+            item.update_field("region", "Americas").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        assert_eq!(
+            item.update_field("ssn", "123-45-6789").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        assert_eq!(
+            item.update_field("passport", "A1234567").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+    }
+
+    #[test]
+    fn test_empty_urls_parsing() {
+        let mut item = create_test_item_data(ItemContent::Login(LoginItem {
+            email: "".to_string(),
+            username: "".to_string(),
+            password: "".to_string(),
+            urls: vec!["https://old.com".to_string()],
+            totp_uri: "".to_string(),
+        }));
+
+        // Empty string should result in empty urls vector
+        assert_eq!(
+            item.update_field("urls", "").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        if let ItemContent::Login(ref login) = item.content {
+            assert!(login.urls.is_empty());
+        } else {
+            panic!("Expected Login content");
+        }
+
+        // Whitespace-only values should be filtered out
+        assert_eq!(
+            item.update_field("urls", "  ,  , ").unwrap(),
+            UpdateFieldResult::FieldUpdated
+        );
+        if let ItemContent::Login(ref login) = item.content {
+            assert!(login.urls.is_empty());
+        } else {
+            panic!("Expected Login content");
         }
     }
 }

@@ -17,6 +17,7 @@ pub mod share;
 pub mod totp;
 pub mod trash;
 pub mod untrash;
+pub mod update;
 pub mod view;
 
 #[derive(Subcommand)]
@@ -148,6 +149,22 @@ pub enum ItemCommands {
         #[arg(long, help = "Title of the item to restore")]
         item_title: Option<String>,
     },
+    #[command(about = "Update an item's fields")]
+    Update {
+        #[arg(long, help = "Share ID of the vault containing the item")]
+        share_id: Option<String>,
+        #[arg(long, help = "Name of the vault containing the item")]
+        vault_name: Option<String>,
+        #[arg(long, help = "ID of the item to update")]
+        item_id: Option<String>,
+        #[arg(long, help = "Title of the item to update")]
+        item_title: Option<String>,
+        #[arg(
+            long = "field",
+            help = "Field to update in format field_name=field_value (can be specified multiple times)"
+        )]
+        fields: Vec<String>,
+    },
 }
 
 pub async fn run(subcommand: ItemCommands, client: PassClient) -> Result<()> {
@@ -248,6 +265,17 @@ pub async fn run(subcommand: ItemCommands, client: PassClient) -> Result<()> {
         } => {
             let query = untrash::UntrashItemQuery::new(share_id, vault_name, item_id, item_title)?;
             untrash::run(client, query).await
+        }
+        ItemCommands::Update {
+            share_id,
+            vault_name,
+            item_id,
+            item_title,
+            fields,
+        } => {
+            let share_query = common::ShareQuery::new(share_id, vault_name)?;
+            let item_query = common::ItemQuery::new(item_id, item_title)?;
+            update::run(client, share_query, item_query, fields).await
         }
     }
 }
