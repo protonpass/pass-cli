@@ -1,4 +1,6 @@
-use anyhow::{Context, Result, anyhow};
+#[cfg(unix)]
+use anyhow::anyhow;
+use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 
 pub async fn replace_binary(new_binary: &Path) -> Result<()> {
@@ -55,7 +57,6 @@ async fn replace_binary_unix(current_exe: &Path, new_binary: &Path) -> Result<()
 
 #[cfg(windows)]
 async fn replace_binary_windows(current_exe: &Path, new_binary: &Path) -> Result<()> {
-    use std::os::windows::process::CommandExt;
     use tokio::process::Command;
 
     // On Windows, the running executable is locked. We need to use a helper script.
@@ -100,6 +101,7 @@ del "%~f0"
     Ok(())
 }
 
+#[cfg(unix)]
 fn get_backup_path(current_exe: &Path) -> PathBuf {
     let mut backup = current_exe.to_path_buf();
     let pid = std::process::id();
