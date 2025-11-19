@@ -5,12 +5,12 @@ Authenticate with Proton Pass and establish a session.
 ## Synopsis
 
 ```bash
-pass-cli login [USERNAME] [--interactive]
+pass-cli login [--interactive]
 ```
 
 ## Description
 
-The `login` command authenticates you with Proton Pass. By default, it uses web-based authentication (opens a browser). With the `--interactive` flag, it uses command-line authentication with username and password. Once authenticated, the session is stored locally and you can use other commands without re-authenticating.
+The `login` command authenticates you with Proton Pass. By default, it uses web-based authentication (prints a URL to complete the flow in your preferred browser). With the `--interactive` flag, it uses command-line authentication with username and password. Once authenticated, the session is stored locally and you can use other commands without re-authenticating.
 
 ## How it works
 
@@ -18,10 +18,9 @@ The `login` command authenticates you with Proton Pass. By default, it uses web-
 
 When run without `--interactive`, the command:
 
-1. Opens your default web browser
-2. Redirects you to Proton Pass login page
-3. After successful authentication, stores the session locally
-4. Creates a default vault named "Personal" if no vaults exist
+1. Prints a URL that you should open in your preferred browser
+2. After successful authentication, stores the session locally
+3. Creates a default vault named "Personal" if no vaults exist
 
 ### Interactive mode
 
@@ -29,10 +28,10 @@ When run with `--interactive`:
 
 1. Prompts for username (or uses provided argument)
 2. Prompts for password
-3. Handles two-factor authentication (TOTP or FIDO2)
+3. Handles two-factor authentication (Only TOTP is supported. For FIDO2 flows please use the web login)
 4. Handles extra password if required
 5. Performs first-time setup
-6. Creates default vault if needed
+6. Creates a default vault named "Personal" if no vaults exist
 
 ## Arguments
 
@@ -59,6 +58,10 @@ By default, the login process is interactive:
 For automation and scripting, you can provide credentials via environment variables:
 
 #### Password authentication
+
+!!! warning "Password in env variables"
+    Storing your password in an environment variable makes it readable by all other processes under the same
+    session. Be conscious about doing so, and clear the variable when you are done.
 
 ```bash
 # Provide password via environment variable
