@@ -9,10 +9,17 @@ pass-cli item view [OPTIONS] [URI]
 **Options:**
 
 - `--share-id SHARE_ID` - Share ID of the vault containing the item
-- `--item-id ITEM_ID` - ID of the item to view
+- `--vault-name VAULT_NAME` - Name of the vault containing the item
+- `--item-id ITEM_ID` - ID of the item to update
+- `--item-title ITEM_TITLE` - Title of the item to update
 - `URI` - Secret reference in as specified in [here](secret-references.md)
-- `--field FIELD` - Specific field to view
 - `--output FORMAT` - Output format: `human` (default) or `json`
+
+**Mutually exclusive options:**
+
+- `--share-id` and `--vault-name` are mutually exclusive. You must provide exactly one.
+- `--item-id` and `--item-title` are mutually exclusive. You must provide exactly one.
+- `id` parameters and `URI` are mutually exclusive. You must provide either both parameters or a single secret reference.
 
 **Examples:**
 
