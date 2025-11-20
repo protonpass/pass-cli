@@ -42,7 +42,7 @@ There are no mutually exclusive options. All options can be used together:
 
 The `run` command resolves secret references in environment variables. Secret references use the `pass://` URI syntax to point to secrets stored in your Proton Pass vaults.
 
-For detailed information about secret references, see the [item references](secret-references.md) documentation.
+For detailed information about secret references, see the [secret references](secret-references.md) documentation.
 
 ### Basic syntax
 
