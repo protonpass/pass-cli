@@ -24,9 +24,9 @@ The installation script will:
 - Install the binary to a directory in your PATH (or prompt you to add it)
 - Check for required system dependencies
 
-## Installation Options
+## Installation options
 
-### Custom Installation Directory
+### Custom installation directory
 
 You can specify a custom installation directory:
 
@@ -38,7 +38,7 @@ curl -fsSL https://proton.me/download/pass-cli/install.sh | bash
 ```
 
 
-### Beta Channel
+### Beta channel
 
 To install from the beta channel:
 
@@ -50,9 +50,9 @@ curl -fsSL https://proton.me/download/pass-cli/install.sh | bash
 ```
 
 
-## System Requirements
+## System requirements
 
-### Supported Platforms
+### Supported platforms
 
 - **macOS**: Intel (x86_64) and Apple Silicon (arm64)
 - **Linux**: x86_64 and aarch64 architectures
@@ -67,7 +67,6 @@ curl -fsSL https://proton.me/download/pass-cli/install.sh | bash
 **Linux:**
 
 - `curl` and `jq` for the installation script
-- System libraries: `libdbus-1-3` or `dbus-libs` (for keyring support)
 
 **Windows:**
 
@@ -93,7 +92,7 @@ wsl --install
 
 4. After restart, Ubuntu will open automatically and prompt you to create a username and password
 
-**Alternative: Install a Specific Distribution**
+**Alternative: Install a specific distribution**
 
 To see available Linux distributions:
 
@@ -143,81 +142,27 @@ pass-cli --version
 - Access your Windows files from WSL at `/mnt/c/` (C: drive), `/mnt/d/` (D: drive), etc.
 - Access your WSL files from Windows at `\\wsl$\Ubuntu\home\<username>\`
 
-### Additional Notes
+### Additional notes
 
 - You can run `pass-cli` commands directly from PowerShell/CMD using: `wsl pass-cli <command>`
 - For the best experience, we recommend using Windows Terminal (available from the Microsoft Store)
 
-## Manual Installation
+## Manual installation
 
-If you prefer to install manually, you can download the binary directly from:
+If you prefer to install manually, you can download the binary listing file directly from:
 
 ```text
-https://proton.me/download/pass-cli/
+https://proton.me/download/pass-cli/versions.json
 ```
 
-1. Download the appropriate binary for your platform
-2. Make it executable (on Unix systems): `chmod +x pass-cli`
-3. Move it to a directory in your PATH (e.g., `/usr/local/bin` on Unix, or add to PATH on Windows)
-4. Verify installation: `pass-cli --version`
+1. Download the versions listing file
+2. Download the appropriate binary for your platform
+3. (Optional but recommended): Verify the hash by running `sha256sum` on the binary you downloaded and compare it against the one listed in the versions listing file
+4. Make it executable (on Unix systems): `chmod +x pass-cli`
+5. Move it to a directory in your PATH (e.g., `/usr/local/bin` on Unix, or add to PATH on Windows)
+6. Verify installation: `pass-cli --version`
 
-## Building from Source
-
-If you want to build from source, you'll need:
-
-### Prerequisites
-
-- **Rust toolchain** (1.89 or later recommended)
-- **Cargo** (comes with Rust)
-
-**On macOS:**
-
-```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-```
-
-**On Linux (Ubuntu/Debian):**
-
-```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-sudo apt-get update
-sudo apt-get install -y pkg-config libssl-dev libdbus-1-dev
-```
-
-**On Linux (RHEL/Fedora):**
-
-```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-sudo dnf install -y pkg-config openssl-devel dbus-devel systemd-devel
-```
-
-### Build
-
-Clone the repository and build:
-
-```bash
-git clone <repository-url>
-cd proton-pass-cli
-cargo build --release
-```
-
-The binary will be located at `target/release/pass-cli`.
-
-### Build Features
-
-The project supports several build features:
-
-- `keyring` (enabled by default) - System keyring integration for secure key storage
-- `internal` - Internal testing commands (not recommended for production)
-- `no-login-restriction` - Disables login restrictions for testing
-
-To build with specific features:
-
-```bash
-cargo build --release --features no-login-restriction --features keyring
-```
-
-## Verify Installation
+## Verify installation
 
 After installation, verify that the CLI is working:
 
@@ -227,6 +172,6 @@ pass-cli --version
 
 You should see the version number. If you get a "command not found" error, make sure the installation directory is in your PATH.
 
-## Next Steps
+## Next steps
 
-Once installed, proceed to the [Getting Started](../getting-started/login.md) guide to learn how to authenticate and configure the CLI.
+Once installed, proceed to the [Getting started](../getting-started/login.md) guide to learn how to authenticate and configure the CLI.

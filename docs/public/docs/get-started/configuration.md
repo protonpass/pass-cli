@@ -67,6 +67,11 @@ This is a known limitation when running in headless Linux environments.
 
 ### 2. Filesystem storage
 
+!!! warning "Using the key filesystem storage"
+    Take into account that storing your key in the local filesystem makes the encryption key be side-by-side with the
+    encrypted data, which could make it easier for an attacker to get access to your data. By using this option you are
+    in charge of securing access to your system and your data.
+
 **Configuration:**
 
 ```bash
