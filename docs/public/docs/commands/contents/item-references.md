@@ -1,14 +1,14 @@
-# Secret References
+# Item references
 
-Secret references are a way to reference secrets stored in your Proton Pass vaults without exposing the actual values. They use a URL-like syntax (`pass://`) that can be resolved at runtime by the CLI.
+Item references are a way to reference secrets stored in your Proton Pass vaults without exposing the actual values. They use a URL-like syntax (`pass://`) that can be resolved at runtime by the CLI.
 
-## What are Secret References?
+## What are item references?
 
-Secret references are placeholders that point to specific fields in items stored in your Proton Pass vaults. Instead of hardcoding passwords, API keys, or other sensitive data, you can use a reference that the CLI will resolve to the actual secret value when needed.
+Item references are placeholders that point to specific fields in items stored in your Proton Pass vaults. Instead of hardcoding passwords, API keys, or other sensitive data, you can use a reference that the CLI will resolve to the actual secret value when needed.
 
 ## Syntax
 
-Secret references use the following format:
+Item references use the following format:
 
 ```text
 pass://<vault-identifier>/<item-identifier>/<field-name>
@@ -116,6 +116,15 @@ pass://                        # Empty reference
 ```
 
 ## Usage with commands
+
+### With `view` command
+
+The [`view`](view.md) command displays item contents:
+
+```bash
+export DB_PASSWORD='pass://Production/Database/password'
+pass-cli view $DB_PASSWORD
+```
 
 ### With `run` command
 

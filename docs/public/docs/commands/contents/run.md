@@ -40,9 +40,9 @@ There are no mutually exclusive options. All options can be used together:
 
 ## Secret reference syntax
 
-The `run` command resolves secret references in environment variables. Secret references use the `pass://` URI syntax to point to secrets stored in your Proton Pass vaults.
+The `run` command resolves item references in environment variables. Secret references use the `pass://` URI syntax to point to secrets stored in your Proton Pass vaults.
 
-For detailed information about secret references, see the [Secret References](secret-references.md) documentation.
+For detailed information about item references, see the [item references](item-references.md) documentation.
 
 ### Basic syntax
 
@@ -67,22 +67,6 @@ API_ENDPOINT="https://api.example.com?key=pass://vault/api/key"
 - It will be replaced with the actual secret value before the command runs
 - Multiple references in the same value are all resolved
 - References can be mixed with plain text
-
-### Reference format
-
-Secret references follow this format:
-
-```text
-pass://<vault-identifier>/<item-identifier>/<field-name>
-```
-
-Where:
-
-- **vault-identifier**: Vault Share ID or vault name
-- **item-identifier**: Item ID or item title  
-- **field-name**: Field name (e.g., `password`, `username`, `api_key`)
-
-See [Secret References](secret-references.md) for complete documentation on reference syntax, examples, and troubleshooting.
 
 ## Examples
 
@@ -231,8 +215,3 @@ If your application doesn't see an environment variable:
 - Verify the variable is in your `.env` file or exported
 - Check for typos in variable names
 - Ensure the `pass://` URI is correctly formatted
-
-## Related commands
-
-- **[inject](inject.md)** - Process template files with secret references
-- **[secret-references](secret-references.md)** - Complete guide to secret reference syntax and usage

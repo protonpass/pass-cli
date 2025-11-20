@@ -25,7 +25,7 @@ The `inject` command reads a template file (or stdin), finds all secret referenc
 
 The `inject` command uses handlebars-style syntax to identify secret references in templates. Secret references must be wrapped in double braces `{{ }}` to be processed.
 
-For detailed information about secret references, see the [Secret References](secret-references.md) documentation.
+For detailed information about item references, see the [item references](item-references.md) documentation.
 
 ### Basic syntax
 
@@ -40,22 +40,6 @@ Use double braces to mark secret references:
 - Only references wrapped in `{{ }}` are processed
 - Plain `pass://` URIs in comments or elsewhere are ignored
 - The double braces are required for the `inject` command (unlike `run` which processes bare `pass://` URIs)
-
-### Reference format
-
-Secret references follow this format:
-
-```text
-{{ pass://<vault-identifier>/<item-identifier>/<field-name> }}
-```
-
-Where:
-
-- **vault-identifier**: Vault Share ID or vault name
-- **item-identifier**: Item ID or item title
-- **field-name**: Field name (e.g., `password`, `username`, `api_key`)
-
-See [Secret References](secret-references.md) for complete documentation on reference syntax, examples, and troubleshooting.
 
 ## Arguments
 
@@ -150,8 +134,3 @@ pass-cli inject --in-file config.yaml.template --out-file config.yaml
 ```
 
 The resulting `config.yaml` will have actual secret values instead of references.
-
-## Related commands
-
-- **[run](run.md)** - Execute commands with secrets injected from references
-- **[secret-references](secret-references.md)** - Complete guide to secret reference syntax and usage
