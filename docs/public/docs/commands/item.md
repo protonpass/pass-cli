@@ -190,7 +190,7 @@ Standard fields for login items include: `title`, `username`, `password`, `email
 
 !!! info "Types of fields"
 
-    Item update does not allow to chate time, totp or ssh key fields. Please use other Proton Pass client to update those fields
+    Item update does not allow to change time or TOTP fields. Please use a different Proton Pass client to update those fields
 
 **Examples:**
 
