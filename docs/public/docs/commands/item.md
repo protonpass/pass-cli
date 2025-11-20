@@ -188,6 +188,10 @@ The `update` command allows you to modify fields of an existing item. You can up
 
 Standard fields for login items include: `title`, `username`, `password`, `email`, `url`, `note`. You can also create or update custom fields with any name.
 
+!!! info "Types of fields"
+
+    Item update does not allow to chate time, totp or ssh key fields. Please use other Proton Pass client to update those fields
+
 **Examples:**
 
 ### Update a single field
