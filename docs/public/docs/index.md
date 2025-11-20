@@ -1,20 +1,30 @@
 ---
 icon: lucide/rocket
+hide:
+  - toc
 ---
 
 # Overview
 
 Welcome to the Proton Pass CLI documentation. The Proton Pass CLI is a command-line interface for managing your Proton Pass vaults, items, and secrets.
 
-## Quick Start
-
 <style>
+  /* Hide left sidebar and make content full width */
+  .md-sidebar--primary {
+    display: none !important;
+  }
+  
+  .md-content__inner {
+    max-width: 100% !important;
+  }
+
   .cta-container {
     background: #f8f9fa;
     border: 1px solid #e1e4e8;
     border-radius: 6px;
     padding: 24px;
-    margin: 24px 0;
+    margin: 24px auto;
+    max-width: 800px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   }
 
@@ -179,6 +189,9 @@ Welcome to the Proton Pass CLI documentation. The Proton Pass CLI is a command-l
     });
   }
 </script>
+
+
+## Quick Start
 
 - **[Installation](get-started/installation.md)** - Installation instructions for all platforms
 - **[Getting started](get-started/login.md)** - Login and configuration guides
