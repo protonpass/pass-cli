@@ -2,15 +2,42 @@
 
 A **Share** represents the relationship between a user and a resource in Proton Pass. It defines what access a user has to either a vault or an individual item, and what permissions they have to interact with that resource.
 
-All shares have a single unique ID, which is a long identifier. Most of the Proton Pass CLI commands need to act on the share that links the user to the resource, and they always accept the share ID as an argument. However, some commands may also offer the option to type the resource name, although in case of duplicates, there is no guarantee that it will act on the one you expected. So in case of doubt, always prefer referring to resource by its corresponding ID.
+All shares have a single unique ID. Most of the Proton Pass CLI commands need to act on the share that links the user to the resource, and they always accept the share ID as an argument. However, some commands may also offer the option to type the resource name, although in case of duplicates, there is no guarantee that it will act on the one you expected. So in case of doubt, always prefer referring to resource by its corresponding ID.
 
 When sharing a resource, a new Share instance will be created for the target user. That means, if you create a vault, you will have a share with some ID, and if you share it with another user, they will also have a share pointing to that vault, but the ID will be different.
 
-## Key characteristics
+``` mermaid
+flowchart TD
+    u1("Alice")
+    u2("Bob")
+    su1v1>"Share 1 granting Alice access to Vault 1"]
+    su1i2>"Share 2 granting Alice access to item in Vault 2"]
+    su2v1>"Share 3 granting Bob access to Vault 1"]
+    su2v2>"Share 4 granting Bob access to Vault 2"]
+    subgraph g1 [ ]
+    v1[("Vault 1")]
+    i11@{ shape: notch-rect, label: "Login item in Vault 1"}
+    i12@{ shape: notch-rect, label: "Card item in Vault 1"}
+    end 
+    subgraph g2 [ ]
+    v2[("Vault 2")]
+    i2@{ shape: notch-rect, label: "Note item in Vault 2"}
+    end 
+    u1 --> su1v1
+    u1 --> su1i2
+    u2 --> su2v1
+    u2 --> su2v2
+    su1v1 --> v1
+    su1i2 --> i2
+    su2v1 --> v1
+    su2v2 --> v2
+    v1 --> i11
+    v1 --> i12
+    v2 --> i2
+```
 
-- **Access relationship**: A share grants a user access to a specific resource
-- **Permission control**: Shares define what actions the user can perform
-- **Role-based**: Each share has an associated role that determines permissions
+In the previous example there are four shares. Three shares (1,3 and 4) grant access to vaults while share 2 grants access to a single item.  Shares also grant permissions to the user over the resource they grant access to. In the previous example, shares 1 and 3 grant Alice and Bob access to Vault 1. Alice may have manager permission to vault 1 while Bob has only read permission.
+
 
 ## Types of shares
 
@@ -19,14 +46,12 @@ When sharing a resource, a new Share instance will be created for the target use
 - **Resource**: An entire vault and all items within it
 - **Scope**: Access to all current and future items in the vault
 - **Creation**: When you create a new vault, or when someone shares a vault with you
-- **Impact**: You can see and interact with the entire vault
 
 ### Item shares  
 
 - **Resource**: A single, specific item
-- **Scope**: Access only to that particular item
+- **Scope**: You can see only that item, not its parent vault nor any other item contained in that vault
 - **Creation**: When someone shares an individual item with you
-- **Impact**: You can see only that item, not its parent vault nor any other item contained in that vault
 
 ## Share roles
 
@@ -36,7 +61,6 @@ Each share has a role that determines what the user can do:
 
 - **Read access**: Can view the resource and its contents
 - **No modifications**: Cannot edit, delete, or share the resource
-- **Safe access**: Perfect for read-only access to sensitive information
 
 ### Editor
 
@@ -51,29 +75,6 @@ Each share has a role that determines what the user can do:
 - **Sharing rights**: Can share the resource with other users
 - **Member management**: Can add, remove, and change roles of other users (except for the vault owner)
 - **Administrative**: Only the vault owner (the user who created it) can delete the vault
-
-## Share lifecycle
-
-### Creation
-
-1. A user (owner or manager) decides to share a resource
-2. They specify the target user's email address
-3. They assign a role (viewer, editor, manager)
-4. An invitation is sent to the target user
-5. The target user accepts the invitation
-6. A share is created, granting access
-
-### Management
-
-- **Role changes**: Managers can modify user roles
-- **Access revocation**: Managers can remove shares
-- **Permission inheritance**: Vault shares affect all contained items
-
-### Termination
-
-- **Explicit removal**: A manager removes the share
-- **Resource deletion**: The shared resource is deleted
-- **Account changes**: User accounts are deactivated
 
 ## Examples
 
