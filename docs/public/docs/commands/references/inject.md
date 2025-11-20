@@ -1,4 +1,4 @@
-# `inject` Command
+# `inject` command
 
 The `inject` command processes template files and replaces secret references with actual values. It uses handlebars-style syntax to identify and resolve `pass://` URIs.
 
