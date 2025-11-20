@@ -2,6 +2,10 @@
 
 Manage shares in Proton Pass.
 
+!!! info "Sharing content in Proton Pass"
+    If you are looking for a way to share content in Proton Pass, please refer to the [`vault share`](./vault.md#share) and the [`item share`](./item.md#share) commands.
+
+
 ## Synopsis
 
 ```bash
@@ -11,6 +15,8 @@ pass-cli share <SUBCOMMAND>
 ## Description
 
 The `share` command provides operations for managing shares, which represent access relationships between users and resources (vaults or items). You can list and manage all types of shares you have access to.
+
+A share represents the relationship between a user and a resource. For information regarding the **Share** concept, please look at the [Share reference](../objects/share.md).
 
 ## Subcommands
 
@@ -36,54 +42,6 @@ pass-cli share list
 pass-cli share list --output json
 ```
 
-## Understanding shares
-
-A share represents the relationship between a user and a resource. There are two types of shares:
-
-### Vault shares
-
-- **Resource**: Access to an entire vault and all items within it
-- **Scope**: Current and future items in the vault
-- **Inheritance**: Items inherit vault access permissions
-
-### Item shares  
-
-- **Resource**: Access to a single, specific item
-- **Scope**: Only the shared item, not its parent vault
-- **Independence**: Separate from vault-level permissions
-
-## Share information
-
-When listing shares, you'll typically see:
-
-- **Resource type**: Whether it's a vault or item share
-- **Resource name**: The name of the vault or item
-- **Owner**: Who originally shared the resource with you
-- **Role**: Your permission level (viewer, editor, manager)
-- **Share date**: When the resource was shared with you
-
-## Share roles
-
-Each share has an associated role that determines your permissions:
-
-### Viewer
-
-- **Read access**: Can view the resource and its contents
-- **No modifications**: Cannot edit, delete, or share
-- **Safe access**: Perfect for read-only requirements
-
-### Editor
-
-- **Read and write**: Can view and modify the resource
-- **Content management**: Can create, edit, and delete items (in vault shares)
-- **Limited sharing**: Cannot share with others or manage members
-
-### Manager
-
-- **Full control**: Can perform all operations on the resource
-- **Sharing rights**: Can share the resource with other users
-- **Administrative**: Can manage members and their roles
-
 ## Examples
 
 ### List all shares
@@ -103,12 +61,15 @@ echo "=== Share Analysis ==="
 pass-cli share list --output json > shares.json
 
 # Count different types of shares
-echo "Vault shares: $(jq '[.[] | select(.type == "vault")] | length' shares.json)"
-echo "Item shares: $(jq '[.[] | select(.type == "item")] | length' shares.json)"
+echo "Vault shares: $(jq '[.shares[] | select(.share_type == "Vault")] | length' shares.json)"
+echo "Item shares: $(jq '[.shares[] | select(.share_type == "Item")] | length' shares.json)"
 
 # List manager permissions
 echo "Resources where you're a manager:"
-jq -r '.[] | select(.role == "manager") | .name' shares.json
+jq -r '.shares[] | select(.share_role == "Manager") | .name' shares.json
+
+echo "Your owned resources:"
+jq -r '.shares[] | select(.share_role == "Owner") | .name' shares.json
 
 rm shares.json
 ```
@@ -123,16 +84,17 @@ echo
 
 # List all shares
 pass-cli share list --output json | jq -r '
-  .[] | 
-  "Type: \(.type | ascii_upcase) | Name: \(.name) | Role: \(.role | ascii_upcase) | Owner: \(.owner)"
+  .shares[] |
+  "Type: \(.share_type | ascii_upcase) | Name: \(.name) | Role: \(.share_role | ascii_upcase)"
 ' | sort
 
 echo
 echo "=== Summary ==="
 pass-cli share list --output json | jq -r '
-  group_by(.type) | 
-  map("- \(.[0].type | ascii_upcase) shares: \(length)") | 
-  .[]
+  .shares
+  | group_by(.share_type)
+  | map("- \((.[0].share_type | ascii_upcase)) shares: \(length)")
+  | .[]
 '
 ```
 
@@ -147,7 +109,7 @@ Understanding what resources you have access to:
 pass-cli share list
 
 # Detailed analysis
-pass-cli share list --output json | jq '.[] | {name, type, role, owner}'
+pass-cli share list --output json | jq '.shares[] | {name, share_type, share_role}'
 ```
 
 ### Permission audit
@@ -163,75 +125,15 @@ echo "Date: $(date)"
 
 echo -e "\n=== Manager Permissions ==="
 pass-cli share list --output json | \
-  jq -r '.[] | select(.role == "manager") | "- \(.name) (\(.type))"'
+  jq -r '.shares[] | select(.share_role == "Manager") | "- \(.name) (\(.share_type))"'
 
 echo -e "\n=== Editor Permissions ==="  
 pass-cli share list --output json | \
-  jq -r '.[] | select(.role == "editor") | "- \(.name) (\(.type))"'
+  jq -r '.shares[] | select(.share_role == "Editor") | "- \(.name) (\(.share_type))"'
 
 echo -e "\n=== Viewer Permissions ==="
 pass-cli share list --output json | \
-  jq -r '.[] | select(.role == "viewer") | "- \(.name) (\(.type))"'
-```
-
-### Compliance reporting
-
-Generate reports for compliance or security reviews:
-
-```bash
-#!/bin/bash
-# Generate access report for security team
-
-OUTPUT_FILE="access_report_$(date +%Y%m%d).json"
-
-echo "Generating access report: $OUTPUT_FILE"
-
-pass-cli share list --output json | jq '{
-  report_date: now | strftime("%Y-%m-%d %H:%M:%S"),
-  user: env.USER,
-  shares: map({
-    resource_name: .name,
-    resource_type: .type,
-    permission_level: .role,
-    shared_by: .owner,
-    access_granted: .shared_date
-  })
-}' > "$OUTPUT_FILE"
-
-echo "Report saved to: $OUTPUT_FILE"
-```
-
-## Integration with other commands
-
-### Cross-reference with vaults
-
-```bash
-# Compare vault list with share list
-echo "=== Vaults you own ==="
-pass-cli vault list
-
-echo -e "\n=== Vaults shared with you ==="
-pass-cli share list --output json | \
-  jq -r '.[] | select(.type == "vault") | "- \(.name) (Role: \(.role))"'
-```
-
-### Identify accessible items
-
-```bash
-#!/bin/bash
-# Show items accessible through different share types
-
-echo "=== Items in owned vaults ==="
-pass-cli vault list --output json | \
-  jq -r '.[] | .share_id' | \
-  while read share_id; do
-    echo "Vault: $(pass-cli vault list --output json | jq -r ".[] | select(.share_id == \"$share_id\") | .name")"
-    pass-cli item list --share-id "$share_id"
-  done
-
-echo -e "\n=== Directly shared items ==="
-pass-cli share list --output json | \
-  jq -r '.[] | select(.type == "item") | "- \(.name) (Role: \(.role))"'
+  jq -r '.shares[] | select(.share_role == "Viewer") | "- \(.name) (\(.share_type))"'
 ```
 
 ## Best practices
@@ -271,14 +173,6 @@ If you can't perform expected operations:
 1. **Role verification**: Check your role in the share list
 2. **Resource type**: Verify if it's a vault or item share
 3. **Owner contact**: Contact the resource owner for permission changes
-
-### Outdated information
-
-If share information seems outdated:
-
-1. **Refresh**: Try logging out and back in
-2. **Network**: Check network connectivity
-3. **Synchronization**: Allow time for changes to propagate
 
 ## Related commands
 
