@@ -24,7 +24,7 @@ nav = [
     "commands/test.md",
     "commands/ssh-agent.md",
     {"View item contents" = [
-      "commands/contents/item-references.md",
+      "commands/contents/secret-references.md",
       "commands/contents/view.md",
       "commands/contents/run.md",
       "commands/contents/inject.md",

@@ -10,7 +10,7 @@ pass-cli item view [OPTIONS] [URI]
 
 - `--share-id SHARE_ID` - Share ID of the vault containing the item
 - `--item-id ITEM_ID` - ID of the item to view
-- `URI` - Item reference in as specified in [here](item-references.md)
+- `URI` - Secret reference in as specified in [here](secret-references.md)
 - `--field FIELD` - Specific field to view
 - `--output FORMAT` - Output format: `human` (default) or `json`
 

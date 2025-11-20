@@ -80,4 +80,4 @@ pass-cli item view "pass://vault123/item456/password"
 pass-cli item list --share-id "vault123"
 ```
 
-For detailed information about item references (uris starting with `pass://`), see the [item references](../commands/contents/item-references.md) documentation.
+For detailed information about secret references (uris starting with `pass://`), see the [item references](../commands/contents/secret-references.md) documentation.

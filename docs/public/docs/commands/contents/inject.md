@@ -25,7 +25,7 @@ The `inject` command reads a template file (or stdin), finds all secret referenc
 
 The `inject` command uses handlebars-style syntax to identify secret references in templates. Secret references must be wrapped in double braces `{{ }}` to be processed.
 
-For detailed information about item references, see the [item references](item-references.md) documentation.
+For detailed information about secret references, see the [item references](secret-references.md) documentation.
 
 ### Basic syntax
 
