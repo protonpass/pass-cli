@@ -94,6 +94,20 @@ Welcome to the Proton Pass CLI documentation. The Proton Pass CLI is a command-l
   .command-line:hover .copy-btn {
     opacity: 1;
   }
+
+  .copy-btn svg {
+    stroke: #a6adc8;
+  }
+
+  [data-md-color-scheme="slate"] .cta-container {
+    background: #1a1a1a;
+    border: 1px solid #2d2d2d;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+
+  [data-md-color-scheme="slate"] .cta-title {
+    color: #e4e4e7;
+  }
 </style>
 
 <div class="cta-container">
@@ -107,7 +121,7 @@ Welcome to the Proton Pass CLI documentation. The Proton Pass CLI is a command-l
       <div class="command-line">
         <div class="command-text">curl -fsSL https://proton.me/download/pass-cli/install.sh | bash</div>
         <button onclick="copyToClipboard('curl -fsSL https://proton.me/download/pass-cli/install.sh | bash', this)" class="copy-btn">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a6adc8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
           </svg>
@@ -120,7 +134,7 @@ Welcome to the Proton Pass CLI documentation. The Proton Pass CLI is a command-l
       <div class="command-line">
         <div class="command-text">pass-cli login</div>
         <button onclick="copyToClipboard('pass-cli login', this)" class="copy-btn">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a6adc8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
           </svg>
@@ -133,7 +147,7 @@ Welcome to the Proton Pass CLI documentation. The Proton Pass CLI is a command-l
       <div class="command-line">
         <div class="command-text">pass-cli vault list</div>
         <button onclick="copyToClipboard('pass-cli vault list', this)" class="copy-btn">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a6adc8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
           </svg>
@@ -148,10 +162,11 @@ Welcome to the Proton Pass CLI documentation. The Proton Pass CLI is a command-l
     navigator.clipboard.writeText(text).then(function() {
       const svg = button.querySelector('svg');
       const originalStroke = svg.getAttribute('stroke');
+      const checkmarkColor = '#94e2d5';
 
       // Change to checkmark
       svg.innerHTML = '<polyline points="20 6 9 17 4 12"></polyline>';
-      svg.setAttribute('stroke', '#94e2d5');
+      svg.setAttribute('stroke', checkmarkColor);
       button.style.opacity = '1';
 
       // Reset after 2 seconds
