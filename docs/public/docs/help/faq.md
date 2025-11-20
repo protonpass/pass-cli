@@ -6,11 +6,11 @@ You can run inside docker but the application will not be able to reach any keyr
 
  1. Ensure you are logged out by doing `pass-cli logout --force`
  2. Set the environment variable `PROTON_PASS_KEY_PROVIDER` to `fs`.
- 3. Login normally as you would.
+ 3. Login as you normally would.
 
 ## **Do you send any telemetry?**
 
-We send anonimized telemetry that **never** includes any personal or sensitive data. It only sends what action was done like `item created of type note` with client `X` but **never** send any contents or anything that can be used to track any data or user. We use this information to try to make the product better.
+We send anonymized telemetry that **never** includes any personal or sensitive data. It only sends what action was done (like `item created of type note` with client `X`) but **never** send any contents or anything that can be used to track any data or user. We use this information to try to make the product better.
 
 ## **Can I disable telemetry?**
 
