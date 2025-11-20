@@ -150,6 +150,126 @@ pass-cli item view --share-id "abc123def" --item-id "item456" --field "username"
 pass-cli item view --share-id "abc123def" --item-id "item456" --output json
 ```
 
+### update
+
+Update an item's fields.
+
+```bash
+pass-cli item update (--share-id SHARE_ID | --vault-name VAULT_NAME) (--item-id ITEM_ID | --item-title ITEM_TITLE) --field FIELD_NAME=FIELD_VALUE [--field FIELD_NAME=FIELD_VALUE]...
+```
+
+**Description:**
+
+The `update` command allows you to modify fields of an existing item. You can update standard fields (like `title`, `username`, `password`, `email`, `url`) or create/update custom fields. Multiple fields can be updated in a single command.
+
+**How it works:**
+
+1. **Identify the item**: The command resolves the vault and item using either IDs or names
+2. **Retrieve current item**: Fetches the current item data from Proton Pass
+3. **Update fields**: Applies each field update specified with `--field` options
+4. **Create custom fields**: If a field doesn't exist, it's created as a custom field
+5. **Save changes**: Updates the item in Proton Pass with the modified content
+
+**Options:**
+
+- `--share-id SHARE_ID` - Share ID of the vault containing the item
+- `--vault-name VAULT_NAME` - Name of the vault containing the item
+- `--item-id ITEM_ID` - ID of the item to update
+- `--item-title ITEM_TITLE` - Title of the item to update
+- `--field FIELD_NAME=FIELD_VALUE` - Field to update in format `field_name=field_value`. Can be specified multiple times to update multiple fields.
+
+**Mutually exclusive options:**
+
+- `--share-id` and `--vault-name` are mutually exclusive. You must provide exactly one.
+- `--item-id` and `--item-title` are mutually exclusive. You must provide exactly one.
+- At least one `--field` option is required.
+
+**Field names:**
+
+Standard fields for login items include: `title`, `username`, `password`, `email`, `url`, `note`. You can also create or update custom fields with any name.
+
+**Examples:**
+
+### Update a single field
+
+```bash
+# Update password by Share ID and Item ID
+pass-cli item update \
+  --share-id "abc123def" \
+  --item-id "item456" \
+  --field "password=newpassword123"
+
+# Update password by vault name and item title
+pass-cli item update \
+  --vault-name "Personal" \
+  --item-title "GitHub Account" \
+  --field "password=newpassword123"
+```
+
+### Update multiple fields
+
+```bash
+# Update multiple fields at once
+pass-cli item update \
+  --share-id "abc123def" \
+  --item-id "item456" \
+  --field "username=newusername" \
+  --field "password=newpassword" \
+  --field "email=newemail@example.com"
+```
+
+### Update title
+
+```bash
+# Rename an item
+pass-cli item update \
+  --vault-name "Work" \
+  --item-title "Old Title" \
+  --field "title=New Title"
+```
+
+### Create or update custom fields
+
+```bash
+# Create/update custom fields
+pass-cli item update \
+  --share-id "abc123def" \
+  --item-id "item456" \
+  --field "api_key=sk_live_abc123" \
+  --field "environment=production" \
+  --field "notes=Updated on 2024-01-15"
+```
+
+### Update URL
+
+```bash
+# Update URL field
+pass-cli item update \
+  --share-id "abc123def" \
+  --item-id "item456" \
+  --field "url=https://newurl.com"
+```
+
+**Field value format:**
+
+Field values are specified using the `field_name=field_value` format:
+
+- Simple values: `--field "password=mypassword"`
+- Values with spaces: `--field "title=My Account Title"`
+- Values with special characters: `--field "url=https://example.com/path?query=value"`
+- Values with equals signs: The first `=` separates the field name from the value
+
+**Output:**
+
+The command provides feedback on each field update:
+
+```text
+Updated field: password
+Updated field: username
+Created new custom field: api_key
+Item updated successfully: 2 field(s) updated, 1 custom field(s) created
+```
+
 ### delete
 
 Delete an item.
