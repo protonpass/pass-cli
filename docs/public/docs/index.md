@@ -13,7 +13,7 @@ Welcome to the Proton Pass CLI documentation. The Proton Pass CLI is a command-l
   .md-sidebar--primary {
     display: none !important;
   }
-  
+
   .md-content__inner {
     max-width: 100% !important;
   }
@@ -188,7 +188,6 @@ Welcome to the Proton Pass CLI documentation. The Proton Pass CLI is a command-l
   }
 </script>
 
-
 ## Quick Start
 
 - **[Installation](get-started/installation.md)** - Installation instructions for all platforms
@@ -198,25 +197,19 @@ Welcome to the Proton Pass CLI documentation. The Proton Pass CLI is a command-l
 
 ## What is Proton Pass CLI?
 
-The Proton Pass CLI empowers you to manage your Proton Pass vaults and items directly from the command line, bringing the power of secure secret management to your terminal workflow. With the CLI, you can create, list, view, and delete vaults and items seamlessly, making it an essential tool for developers and system administrators who prefer working in the command line.
+The Proton Pass CLI allows you to manage your Proton Pass vaults and items directly from the command line, bringing the power of secure secret management to your terminal workflow. With the CLI, you can create, list, view, and delete vaults and items seamlessly, making it an great tool for developers and system administrators who prefer working in the command line.
 
-Beyond basic vault management, the CLI excels at injecting secrets into your applications through environment variables or template files, enabling seamless integration with your development and deployment workflows. The tool also provides comprehensive SSH integration, allowing you to use Proton Pass-stored SSH keys with your existing SSH workflows without compromising security or convenience.
-
-Whether you're building automation scripts or setting up CI/CD pipelines, the Proton Pass CLI integrates smoothly into your infrastructure, enabling you to automate workflows while maintaining the highest security standards that Proton Pass is known for.
+Beyond basic vault management, the CLI allows you to inject secrets into your applications through environment variables or template files, enabling easy integration with your deployment workflows. The tool also provides comprehensive SSH integration, allowing you to use your SSH keys stored in Proton Pass with your existing SSH workflows.
 
 ## Key features
 
 ### Flexible secret management
 
-The CLI offers a flexible and intuitive approach to secret management through a simple URI syntax. You can reference any secret using the format `pass://vault/item/field`, making it easy to access specific credentials programmatically. This design allows you to inject secrets into environment variables for your applications or process template files that contain secret references, streamlining your development and deployment processes.
+The CLI offers a flexible and intuitive approach to secret management through a simple URI syntax. You can reference any secret using the format `pass://vault/item/field`, making it easy to access specific credentials programmatically. This design allows you to inject secrets into environment variables for your applications or process template files that contain secret references.
 
 ### SSH agent integration
 
-For developers working with SSH keys, the CLI provides robust SSH agent integration capabilities. You can load SSH keys stored in Proton Pass directly into your existing SSH agent, or run the Proton Pass CLI as a standalone SSH agent. The system handles automatic key refresh and management, ensuring your SSH connections remain secure and up-to-date without manual intervention.
-
-### Secure key storage
-
-Security is at the core of the Proton Pass CLI's design. The tool integrates with your system's default keyring—using macOS Keychain on Mac, the Linux kernel keyring on Linux, and Windows Credential Manager on Windows—providing seamless and secure credential storage. For headless environments where keyring access isn't available, the CLI offers a filesystem storage option while maintaining encrypted session storage to protect your sensitive data.
+For developers working with SSH keys, the CLI provides robust SSH agent integration capabilities. You can load SSH keys stored in Proton Pass directly into your existing SSH agent, or run the Proton Pass CLI as a standalone SSH agent.
 
 ## Need help?
 
