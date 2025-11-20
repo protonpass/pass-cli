@@ -22,7 +22,7 @@ nav = [
     "commands/invite.md",
     "commands/password.md",
     "commands/test.md",
-    "commands/ssh-integration.md",
+    "commands/ssh-agent.md",
     {"Commands with field references" = [
       "commands/references/secret-references.md",
       "commands/references/run.md",
