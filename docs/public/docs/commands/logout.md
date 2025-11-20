@@ -97,7 +97,7 @@ If logout fails or behaves unexpectedly:
 ```bash
 # Force logout by removing local data manually
 # (This is a last resort - normal logout should work)
-rm -rf ~/.config/pass-cli/  # Linux/macOS
+rm -rf ~/.local/share/proton-pass-cli/  # Linux/macOS
 ```
 
 ### Verification
