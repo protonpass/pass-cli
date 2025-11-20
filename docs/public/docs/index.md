@@ -23,8 +23,6 @@ Welcome to the Proton Pass CLI documentation. The Proton Pass CLI is a command-l
     border: 1px solid #e1e4e8;
     border-radius: 6px;
     padding: 24px;
-    margin: 24px auto;
-    max-width: 800px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   }
 
