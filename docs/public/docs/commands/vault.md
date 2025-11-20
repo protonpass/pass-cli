@@ -149,6 +149,9 @@ pass-cli vault member list --share-id "abc123def"
 # List vault members (by name)
 pass-cli vault member list --vault-name "Team Vault"
 
+# List vault members (with json output)
+pass-cli vault member list --vault-name "Team Vault" --output=json
+
 # Update member role
 pass-cli vault member update --share-id "abc123def" --member-share-id "member123" --role editor
 
