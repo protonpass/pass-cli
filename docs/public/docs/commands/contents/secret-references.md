@@ -1,8 +1,8 @@
-# Secret References
+# Secret references
 
 Secret references are a way to reference secrets stored in your Proton Pass vaults without exposing the actual values. They use a URL-like syntax (`pass://`) that can be resolved at runtime by the CLI.
 
-## What are Secret References?
+## What are secret references?
 
 Secret references are placeholders that point to specific fields in items stored in your Proton Pass vaults. Instead of hardcoding passwords, API keys, or other sensitive data, you can use a reference that the CLI will resolve to the actual secret value when needed.
 
@@ -23,12 +23,11 @@ Where:
 ## How it works
 
 1. **Reference creation**: You write a `pass://` URI in your configuration files or environment variables
-2. **Resolution**: When you use the [`run`](run.md) or [`inject`](inject.md) commands, the CLI:
+2. **Resolution**: When you use the [`view`](view.md), [`run`](run.md) or [`inject`](inject.md) commands, the CLI:
    - Parses the reference to identify the vault, item, and field
    - Resolves vault/item names to their IDs if needed
    - Fetches the actual secret value from Proton Pass
    - Replaces the reference with the secret value
-3. **Usage**: Your application receives the actual secret value, not the reference
 
 ## Examples
 
@@ -65,6 +64,10 @@ pass://ShareId123/ItemId456/api_key
 pass://Work/XyZ789/password          # Vault by name, item by ID
 pass://AbCdEf123456/GitHub/password  # Vault by ID, item by name
 ```
+
+!!! note "Duplicates"
+
+    If there are several objects that match the name, one of them will be used. If you want to make sure that you are referencing a unique object, please use the specific `Share ID` and `Item ID` you want to target
 
 ## Field names
 
@@ -116,6 +119,15 @@ pass://                        # Empty reference
 ```
 
 ## Usage with commands
+
+### With `view` command
+
+The [`view`](view.md) command displays item contents:
+
+```bash
+export DB_PASSWORD='pass://Production/Database/password'
+pass-cli view $DB_PASSWORD
+```
 
 ### With `run` command
 

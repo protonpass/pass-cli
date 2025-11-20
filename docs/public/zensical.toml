@@ -23,10 +23,11 @@ nav = [
     "commands/password.md",
     "commands/test.md",
     "commands/ssh-agent.md",
-    {"Commands with field references" = [
-      "commands/references/secret-references.md",
-      "commands/references/run.md",
-      "commands/references/inject.md",
+    {"View item contents" = [
+      "commands/contents/secret-references.md",
+      "commands/contents/view.md",
+      "commands/contents/run.md",
+      "commands/contents/inject.md",
     ]},
   ]},
   {"Help" = ["help/faq.md", "help/troubleshoot.md"]}
