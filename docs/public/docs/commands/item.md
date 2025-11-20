@@ -52,10 +52,6 @@ Create new items in a vault.
 pass-cli item create <ITEM_TYPE> [OPTIONS]
 ```
 
-**Item types:**
-
-- `login` - Login credentials (username/password)
-
 #### create login
 
 Create a new login item.
@@ -161,14 +157,6 @@ pass-cli item update (--share-id SHARE_ID | --vault-name VAULT_NAME) (--item-id 
 **Description:**
 
 The `update` command allows you to modify fields of an existing item. You can update standard fields (like `title`, `username`, `password`, `email`, `url`) or create/update custom fields. Multiple fields can be updated in a single command.
-
-**How it works:**
-
-1. **Identify the item**: The command resolves the vault and item using either IDs or names
-2. **Retrieve current item**: Fetches the current item data from Proton Pass
-3. **Update fields**: Applies each field update specified with `--field` options
-4. **Create custom fields**: If a field doesn't exist, it's created as a custom field
-5. **Save changes**: Updates the item in Proton Pass with the modified content
 
 **Options:**
 
@@ -294,7 +282,9 @@ pass-cli item delete --share-id SHARE_ID --item-id ITEM_ID
 pass-cli item delete --share-id "abc123def" --item-id "item456"
 ```
 
-**⚠️ Warning:** This permanently deletes the item. This action cannot be undone.
+!!! danger "Permanent deletion!"
+
+    This permanently deletes the item. This action cannot be undone.
 
 ### share
 
@@ -359,18 +349,6 @@ pass-cli item alias <ALIAS_SUBCOMMAND>
 pass-cli item alias create --share-id "abc123def" --title "Shopping Alias"
 ```
 
-## Pass URI format
-
-Items can be referenced using Pass URIs:
-
-```text
-pass://SHARE_ID/ITEM_ID[/FIELD]
-```
-
-- `SHARE_ID` - The vault's share identifier
-- `ITEM_ID` - The item's unique identifier
-- `FIELD` - Optional field name (e.g., `password`, `username`, `url`)
-
 ## Login template format
 
 When using `--get-template` or `--from-template`, the JSON structure is:
@@ -432,29 +410,6 @@ pass-cli item view --share-id "$SHARE_ID" --item-id "$ITEM_ID"
 pass-cli item view "pass://$SHARE_ID/$ITEM_ID/password"
 ```
 
-### Bulk item creation from templates
-
-```bash
-#!/bin/bash
-SHARE_ID="abc123def"
-
-# Create template file
-cat > logins.json << EOF
-{
-  "title": "Example Service",
-  "username": "myuser",
-  "password": "generated_will_be_replaced",
-  "urls": ["https://example.com"]
-}
-EOF
-
-# Create multiple items with generated passwords
-for service in "GitHub" "GitLab" "Bitbucket"; do
-  sed "s/Example Service/$service/g" logins.json | \
-    pass-cli item create login --share-id "$SHARE_ID" --from-template -
-done
-```
-
 ## Best practices
 
 ### Item organization
@@ -472,8 +427,7 @@ done
 ### Templates
 
 - Use templates for consistent item creation
-- Store template files securely
-- Validate template JSON before using
+- Validate template JSON before using them
 
 ## Troubleshooting
 
