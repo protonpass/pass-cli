@@ -59,22 +59,6 @@ Items can be shared in two ways:
 1. **Vault sharing**: When a vault is shared, all items in it are accessible to vault members
 2. **Individual item sharing**: Specific items can be shared with users who don't have access to the full vault
 
-## URI format
-
-Items can be referenced using Proton Pass URIs:
-
-```text
-pass://SHARE_ID/ITEM_ID[/FIELD]
-```
-
-- **SHARE_ID**: The unique vault share identifier, or the vault name
-- **ITEM_ID**: The item identifier, or the item name  
-- **FIELD**: Optional specific field (e.g., "password", "username")
-
-!!! note "Duplicates"
-
-    If there are several objects that match the name, one of them will be used. If you want to make sure that you are referencing a unique object, please use the specific `Vault ID` and `Item ID` you want to target
-
 ## Examples
 
 ```bash
@@ -96,3 +80,4 @@ pass-cli item view "pass://vault123/item456/password"
 pass-cli item list --share-id "vault123"
 ```
 
+For detailed information about item references (uris starting with `pass://`), see the [item references](../commands/contents/item-references.md) documentation.

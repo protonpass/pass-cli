@@ -23,12 +23,11 @@ Where:
 ## How it works
 
 1. **Reference creation**: You write a `pass://` URI in your configuration files or environment variables
-2. **Resolution**: When you use the [`run`](run.md) or [`inject`](inject.md) commands, the CLI:
+2. **Resolution**: When you use the [`view`](view.md), [`run`](run.md) or [`inject`](inject.md) commands, the CLI:
    - Parses the reference to identify the vault, item, and field
    - Resolves vault/item names to their IDs if needed
    - Fetches the actual secret value from Proton Pass
    - Replaces the reference with the secret value
-3. **Usage**: Your application receives the actual secret value, not the reference
 
 ## Examples
 
@@ -65,6 +64,10 @@ pass://ShareId123/ItemId456/api_key
 pass://Work/XyZ789/password          # Vault by name, item by ID
 pass://AbCdEf123456/GitHub/password  # Vault by ID, item by name
 ```
+
+!!! note "Duplicates"
+
+    If there are several objects that match the name, one of them will be used. If you want to make sure that you are referencing a unique object, please use the specific `Vault ID` and `Item ID` you want to target
 
 ## Field names
 
