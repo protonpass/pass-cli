@@ -75,12 +75,21 @@ Welcome to the Proton Pass CLI documentation. The Proton Pass CLI is a command-l
     align-items: center;
     justify-content: space-between;
     position: relative;
+    cursor: pointer;
+    border-radius: 4px;
+    padding: 4px 0;
+    transition: background-color 0.15s ease;
+  }
+
+  .command-line:hover {
+    background: rgba(148, 226, 213, 0.08);
   }
 
   .command-text {
     color: #94e2d5;
     font-weight: 400;
     flex: 1;
+    user-select: none;
   }
 
   .copy-btn {
@@ -95,15 +104,16 @@ Welcome to the Proton Pass CLI documentation. The Proton Pass CLI is a command-l
     display: flex;
     align-items: center;
     justify-content: center;
+    pointer-events: none;
   }
 
   .copy-btn:hover {
     background: rgba(148, 226, 213, 0.15);
-    opacity: 1;
   }
 
   .command-line:hover .copy-btn {
     opacity: 1;
+    pointer-events: auto;
   }
 
   .copy-btn svg {
@@ -129,9 +139,9 @@ Welcome to the Proton Pass CLI documentation. The Proton Pass CLI is a command-l
   <div class="terminal-box">
     <div class="command-section">
       <div class="command-label">→ Download Pass CLI</div>
-      <div class="command-line">
+      <div class="command-line" onclick="copyToClipboard('curl -fsSL https://proton.me/download/pass-cli/install.sh | bash', this)">
         <div class="command-text">curl -fsSL https://proton.me/download/pass-cli/install.sh | bash</div>
-        <button onclick="copyToClipboard('curl -fsSL https://proton.me/download/pass-cli/install.sh | bash', this)" class="copy-btn">
+        <button class="copy-btn">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -142,9 +152,9 @@ Welcome to the Proton Pass CLI documentation. The Proton Pass CLI is a command-l
 
     <div class="command-section">
       <div class="command-label">→ Log in</div>
-      <div class="command-line">
+      <div class="command-line" onclick="copyToClipboard('pass-cli login', this)">
         <div class="command-text">pass-cli login</div>
-        <button onclick="copyToClipboard('pass-cli login', this)" class="copy-btn">
+        <button class="copy-btn">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -155,9 +165,9 @@ Welcome to the Proton Pass CLI documentation. The Proton Pass CLI is a command-l
 
     <div class="command-section">
       <div class="command-label">→ Start using it</div>
-      <div class="command-line">
+      <div class="command-line" onclick="copyToClipboard('pass-cli vault list', this)">
         <div class="command-text">pass-cli vault list</div>
-        <button onclick="copyToClipboard('pass-cli vault list', this)" class="copy-btn">
+        <button class="copy-btn">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -169,16 +179,17 @@ Welcome to the Proton Pass CLI documentation. The Proton Pass CLI is a command-l
 </div>
 
 <script>
-  function copyToClipboard(text, button) {
+  function copyToClipboard(text, commandLine) {
     navigator.clipboard.writeText(text).then(function() {
-      const svg = button.querySelector('svg');
+      const copyBtn = commandLine.querySelector('.copy-btn');
+      const svg = copyBtn.querySelector('svg');
       const originalStroke = svg.getAttribute('stroke');
       const checkmarkColor = '#94e2d5';
 
       // Change to checkmark
       svg.innerHTML = '<polyline points="20 6 9 17 4 12"></polyline>';
       svg.setAttribute('stroke', checkmarkColor);
-      button.style.opacity = '1';
+      copyBtn.style.opacity = '1';
 
       // Reset after 2 seconds
       setTimeout(function() {
@@ -189,6 +200,18 @@ Welcome to the Proton Pass CLI documentation. The Proton Pass CLI is a command-l
       console.error('Failed to copy text: ', err);
     });
   }
+
+  // Prevent button clicks from triggering the command-line click
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.copy-btn').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const commandLine = btn.closest('.command-line');
+        const commandText = commandLine.querySelector('.command-text').textContent;
+        copyToClipboard(commandText, commandLine);
+      });
+    });
+  });
 </script>
 
 ## Quick Start
