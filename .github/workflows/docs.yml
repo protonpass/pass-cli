@@ -25,5 +25,5 @@ jobs:
       - run: uv run zensical build --clean 
       - uses: actions/upload-pages-artifact@v4
         with:
-          path: site
+          path: docs/public/site
       - uses: actions/deploy-pages@v4
