@@ -23,6 +23,7 @@ nav = [
     "commands/password.md",
     "commands/test.md",
     "commands/ssh-agent.md",
+    "commands/update.md",
     {"View item contents" = [
       "commands/contents/secret-references.md",
       "commands/contents/view.md",
