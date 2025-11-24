@@ -76,9 +76,11 @@ function Get-BinaryInfo {
     }
     
     # Check format version
-    if ($manifest.formatVersion -ne 1) {
-        Write-Error-Custom "Unsupported manifest format version: $($manifest.formatVersion)"
+    $formatVer = $manifest.formatVersion
+    if ($null -eq $formatVer -or $formatVer -ne 1) {
+        Write-Error-Custom "Unsupported manifest format version: $formatVer"
         Write-Error-Custom "Please upgrade your installation script or install manually."
+        Write-Error-Custom "Manifest content preview: $($manifest | ConvertTo-Json -Depth 1)"
         exit 1
     }
     
