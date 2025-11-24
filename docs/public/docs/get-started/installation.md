@@ -37,7 +37,6 @@ export PROTON_PASS_CLI_INSTALL_DIR=/custom/path
 curl -fsSL https://proton.me/download/pass-cli/install.sh | bash
 ```
 
-
 ### Beta channel
 
 To install from the beta channel:
@@ -47,7 +46,12 @@ To install from the beta channel:
 ```bash
 export PROTON_PASS_CLI_INSTALL_CHANNEL=beta
 curl -fsSL https://proton.me/download/pass-cli/install.sh | bash
+
+# Or as a one-liner
+curl -fsSL https://proton.me/download/pass-cli/install.sh | PROTON_PASS_CLI_INSTALL_CHANNEL=beta bash
 ```
+
+Take into account that if you install the Pass CLI by selecting an install channel, you will automatically be switched to that release track. In case you want to switch it later or revert to the `stable` track, you can find instructions in the [`update` command reference](../commands/update.md).
 
 
 ## System requirements
