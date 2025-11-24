@@ -3,6 +3,7 @@ use std::path::Path;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 const LAST_CHECK_FILE: &str = ".last_update_check";
+const UPDATE_DAYS_CHECK_INTERVAL: i64 = 3;
 
 pub async fn get_last_check(base_dir: &Path) -> Result<Option<chrono::DateTime<chrono::Utc>>> {
     let file_path = base_dir.join(LAST_CHECK_FILE);
@@ -58,7 +59,7 @@ pub async fn should_check_for_updates(base_dir: &Path) -> Result<bool> {
         Some(last) => {
             let now = chrono::Utc::now();
             let duration = now.signed_duration_since(last);
-            Ok(duration.num_days() >= 7)
+            Ok(duration.num_days() >= UPDATE_DAYS_CHECK_INTERVAL)
         }
     }
 }
