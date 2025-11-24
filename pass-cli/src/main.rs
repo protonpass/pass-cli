@@ -12,6 +12,7 @@ mod commands;
 mod extra_password;
 mod features;
 mod logs;
+mod storage;
 mod store;
 mod telemetry;
 mod utils;
@@ -250,10 +251,7 @@ async fn main() -> Result<()> {
         }
     };
 
-    client_features
-        .telemetry_handler
-        .set_user_id(user_id.clone())
-        .await;
+    client_features.set_user_id(user_id.clone()).await;
     let client = PassClient::new(client, client_features.clone());
     client_features
         .telemetry_handler

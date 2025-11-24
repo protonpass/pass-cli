@@ -1,10 +1,12 @@
 pub(crate) mod keyring;
 
+use crate::storage::{CliDataStorage, DatabaseShareKeyStorage};
 use crate::telemetry::SqliteTelemetryHandler;
 use anyhow::{Context, Result};
 use pass_db::DatabaseManager;
 use pass_domain::{
-    AccountCrypto, ClientFeatures, FsStorage, LocalKey, LocalKeyProvider, TelemetryHandler,
+    AccountCrypto, ClientFeatures, DataStorage, FsStorage, LocalKey, LocalKeyProvider,
+    TelemetryHandler,
 };
 use pass_fs::RealFsStorage;
 use pass_pgp::{NativePgpCrypto, ProtonAccountCrypto};
@@ -40,6 +42,8 @@ pub struct CliClientFeatures {
     pub storage: Arc<RealFsStorage>,
     pub key_provider: Arc<dyn LocalKeyProvider>,
     pub telemetry_handler: Arc<SqliteTelemetryHandler>,
+    pub data_storage: Arc<dyn DataStorage>,
+    pub share_key_storage: Arc<DatabaseShareKeyStorage>,
 
     #[allow(dead_code)]
     pub database_manager: DatabaseManager,
@@ -60,12 +64,24 @@ impl CliClientFeatures {
             .await
             .context("Failed to initialize database")?;
 
+        // Initialize storage
+        let share_key_storage = Arc::new(DatabaseShareKeyStorage::new(db.clone()));
+        let data_storage: Arc<dyn DataStorage> =
+            Arc::new(CliDataStorage::new(share_key_storage.clone()));
+
         Ok(Self {
             storage: Arc::new(RealFsStorage::new(base_dir.clone())),
             telemetry_handler: Arc::new(SqliteTelemetryHandler::new(db.clone())),
+            data_storage,
+            share_key_storage,
             database_manager: db,
             key_provider,
         })
+    }
+
+    pub async fn set_user_id(&self, user_id: Option<String>) {
+        self.telemetry_handler.set_user_id(user_id.clone()).await;
+        self.share_key_storage.set_user_id(user_id).await;
     }
 }
 
@@ -160,5 +176,9 @@ impl ClientFeatures for CliClientFeatures {
 
     async fn get_telemetry_handler(&self) -> Arc<dyn TelemetryHandler> {
         self.telemetry_handler.clone()
+    }
+
+    async fn get_data_storage(&self) -> Result<Arc<dyn DataStorage>> {
+        Ok(self.data_storage.clone())
     }
 }
