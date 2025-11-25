@@ -152,13 +152,9 @@ async fn poll_session_fork(
 
 fn build_web_login_url(env: &EnvId, user_code: &str, encryption_key: &[u8]) -> Result<String> {
     let account_url = get_account_url_for_env(env)?;
-    let version = env!("CARGO_PKG_VERSION");
 
     let encoded_key = base64::engine::general_purpose::STANDARD.encode(encryption_key);
-    let payload = format!(
-        "{}:{}:{}:{}",
-        version, user_code, encoded_key, CHILD_CLIENT_ID
-    );
+    let payload = format!("0:{}:{}:{}", user_code, encoded_key, CHILD_CLIENT_ID);
 
     let encoded_payload = urlencoding::encode(&payload);
 
