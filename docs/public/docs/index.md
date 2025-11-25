@@ -129,6 +129,83 @@ Welcome to the Proton Pass CLI documentation. The Proton Pass CLI is a command-l
   [data-md-color-scheme="slate"] .cta-title {
     color: #e4e4e7;
   }
+
+  .tabs-container {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #e1e4e8;
+    padding-bottom: 8px;
+  }
+
+  [data-md-color-scheme="slate"] .tabs-container {
+    border-bottom: 1px solid #2d2d2d;
+  }
+
+  .tab-button {
+    background: transparent;
+    border: none;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: #6e7781;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+  }
+
+  .tab-button:hover {
+    background: rgba(148, 226, 213, 0.08);
+    color: #24292f;
+  }
+
+  [data-md-color-scheme="slate"] .tab-button:hover {
+    color: #e4e4e7;
+  }
+
+  .tab-button.active {
+    background: rgba(148, 226, 213, 0.15);
+    color: #24292f;
+    font-weight: 600;
+  }
+
+  [data-md-color-scheme="slate"] .tab-button.active {
+    color: #e4e4e7;
+  }
+
+  .tooltip {
+    position: absolute;
+    background: #1e1e2e;
+    color: #cdd6f4;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateX(-50%) translateY(-100%);
+    top: -8px;
+    left: 50%;
+    transition: opacity 0.2s ease;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+    border: 1px solid #313244;
+    z-index: 10;
+  }
+
+  .command-line:hover .tooltip {
+    opacity: 0.95;
+  }
+
+  .tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: #1e1e2e;
+  }
 </style>
 
 <div class="cta-container">
@@ -136,11 +213,27 @@ Welcome to the Proton Pass CLI documentation. The Proton Pass CLI is a command-l
     <h3 class="cta-title">Get started in seconds</h3>
   </div>
 
+  <div class="tabs-container">
+    <button class="tab-button active" onclick="switchTab('unix')">Linux/macOS</button>
+    <button class="tab-button" onclick="switchTab('windows')">Windows</button>
+  </div>
+
   <div class="terminal-box">
-    <div class="command-section">
+    <div class="command-section" id="download-command">
       <div class="command-label">→ Download Pass CLI</div>
-      <div class="command-line" onclick="copyToClipboard('curl -fsSL https://proton.me/download/pass-cli/install.sh | bash', this)">
+      <div class="command-line unix-command" onclick="copyToClipboard('curl -fsSL https://proton.me/download/pass-cli/install.sh | bash', this)">
+        <span class="tooltip">Click to copy</span>
         <div class="command-text">curl -fsSL https://proton.me/download/pass-cli/install.sh | bash</div>
+        <button class="copy-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="command-line windows-command" style="display: none;" onclick="copyToClipboard('Invoke-WebRequest -Uri https://proton.me/download/pass-cli/install.ps1 -OutFile install.ps1; .\\install.ps1', this)">
+        <span class="tooltip">Click to copy</span>
+        <div class="command-text">Invoke-WebRequest -Uri https://proton.me/download/pass-cli/install.ps1 -OutFile install.ps1; .\install.ps1</div>
         <button class="copy-btn">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -153,6 +246,7 @@ Welcome to the Proton Pass CLI documentation. The Proton Pass CLI is a command-l
     <div class="command-section">
       <div class="command-label">→ Log in</div>
       <div class="command-line" onclick="copyToClipboard('pass-cli login', this)">
+        <span class="tooltip">Click to copy</span>
         <div class="command-text">pass-cli login</div>
         <button class="copy-btn">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -166,6 +260,7 @@ Welcome to the Proton Pass CLI documentation. The Proton Pass CLI is a command-l
     <div class="command-section">
       <div class="command-label">→ Start using it</div>
       <div class="command-line" onclick="copyToClipboard('pass-cli vault list', this)">
+        <span class="tooltip">Click to copy</span>
         <div class="command-text">pass-cli vault list</div>
         <button class="copy-btn">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -199,6 +294,26 @@ Welcome to the Proton Pass CLI documentation. The Proton Pass CLI is a command-l
     }).catch(function(err) {
       console.error('Failed to copy text: ', err);
     });
+  }
+
+  function switchTab(platform) {
+    // Update tab button states
+    document.querySelectorAll('.tab-button').forEach(function(btn) {
+      btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+
+    // Show/hide appropriate commands
+    const unixCommands = document.querySelectorAll('.unix-command');
+    const windowsCommands = document.querySelectorAll('.windows-command');
+
+    if (platform === 'unix') {
+      unixCommands.forEach(function(cmd) { cmd.style.display = 'flex'; });
+      windowsCommands.forEach(function(cmd) { cmd.style.display = 'none'; });
+    } else if (platform === 'windows') {
+      unixCommands.forEach(function(cmd) { cmd.style.display = 'none'; });
+      windowsCommands.forEach(function(cmd) { cmd.style.display = 'flex'; });
+    }
   }
 
   // Prevent button clicks from triggering the command-line click
