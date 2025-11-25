@@ -190,28 +190,17 @@ impl PassClient {
         share_id: &ShareId,
         item_keys: ItemKeys,
     ) -> Result<Vec<OpenedItemKey>> {
-        let share_keys = self
-            .get_share_keys(share_id)
-            .await
-            .context("Error getting share keys")?;
-
         let mut res = Vec::with_capacity(item_keys.keys.len());
         let mut cache: HashMap<u8, Bytes> = HashMap::new();
         for key in item_keys.keys {
             let opened_share_key = if let Some(key) = cache.get(&key.key_rotation) {
                 key.clone()
             } else {
-                let share_key = share_keys
-                    .find_by_rotation(key.key_rotation)
-                    .ok_or_else(|| {
-                        anyhow!("Error finding share key for rotation {}", key.key_rotation)
-                    })?
-                    .clone();
-
+                // Use the optimized method that checks DB first before fetching from API
                 let opened_share_key = self
-                    .open_share_key_for_share_id(share_id, share_key)
+                    .get_opened_share_key_by_rotation(share_id, key.key_rotation)
                     .await
-                    .context("Error opening share key")?;
+                    .context("Error getting opened share key")?;
 
                 let opened_share_key = Bytes::from(opened_share_key.value());
                 cache.insert(key.key_rotation, opened_share_key.clone());

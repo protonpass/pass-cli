@@ -85,16 +85,17 @@ impl PassClient {
         item_id: &ItemId,
         to_share_id: &ShareId,
     ) -> Result<MoveItemRequest> {
+        // Get latest key rotation from API to ensure we use the most recent
         let destination_share_keys = self
             .get_share_keys(to_share_id)
             .await
             .context("Error getting destination share keys")?;
         let destination_share_key = destination_share_keys
             .latest()
-            .context("Error getting destination share key")?
-            .clone();
+            .context("Error getting destination share key")?;
+
         let opened_destination_share_key = self
-            .open_share_key_for_share_id(to_share_id, destination_share_key)
+            .get_opened_share_key_by_rotation(to_share_id, destination_share_key.key_rotation)
             .await
             .context("Error opening destination share key")?;
 

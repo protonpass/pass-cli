@@ -99,22 +99,11 @@ impl PassClient {
         let opened_share_key = if let Some(key) = opened_share_keys.get(&item.key_rotation) {
             key.clone()
         } else {
-            let share_keys = self.get_share_keys(share_id).await.context(format!(
-                "Error retrieving share keys for share {}",
-                share_id.value()
-            ))?;
-
-            let share_key = share_keys
-                .find_by_rotation(item.key_rotation)
-                .ok_or_else(|| {
-                    anyhow!("Error finding share key for rotation {}", item.key_rotation)
-                })?
-                .clone();
-
+            // Use the optimized method that checks DB first before fetching from API
             let opened_share_key = self
-                .open_share_key_for_share_id(share_id, share_key)
+                .get_opened_share_key_by_rotation(share_id, item.key_rotation)
                 .await
-                .context("Error opening share key")?;
+                .context("Error getting opened share key")?;
 
             let opened_share_key = Bytes::from(opened_share_key.value());
             opened_share_keys.insert(item.key_rotation, opened_share_key.clone());

@@ -74,25 +74,10 @@ impl PassClient {
             None => return Err(anyhow::anyhow!("Share should have vault content")),
         };
 
-        let share_keys = self
-            .get_share_keys(share_id)
-            .await
-            .context("Error getting share keys")?;
-        let share_key = match share_keys.find_by_rotation(share_content.share_key_rotation) {
-            Some(key) => key.clone(),
-            None => {
-                return Err(anyhow::anyhow!(
-                    "Key {} for share {} not found",
-                    share_content.share_key_rotation,
-                    share_id
-                ));
-            }
-        };
-
         let opened_share_key = self
-            .open_share_key_for_share(&share, share_key)
+            .get_opened_share_key_by_rotation(share_id, share_content.share_key_rotation)
             .await
-            .context("Failed to open share key")?;
+            .context("Failed to get opened share key")?;
 
         let decrypted_content = crypto::decrypt(
             &share_content.content,
@@ -115,6 +100,11 @@ impl PassClient {
             .serialize()
             .context("Error serializing vault content")?;
 
+        // Get latest key rotation from API to ensure we use the most recent
+        let share_keys = self
+            .get_share_keys(share_id)
+            .await
+            .context("Error getting share keys")?;
         let encryption_key = match share_keys.latest() {
             Some(k) => k.clone(),
             None => return Err(anyhow::anyhow!("Error getting latest vault encryption key")),
@@ -122,7 +112,7 @@ impl PassClient {
 
         let encryption_key_rotation = encryption_key.key_rotation;
         let opened_encryption_key = self
-            .open_share_key_for_share(&share, encryption_key)
+            .get_opened_share_key_by_rotation(share_id, encryption_key_rotation)
             .await
             .context("Failed to open encryption key")?;
 

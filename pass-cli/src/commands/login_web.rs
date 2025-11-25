@@ -223,8 +223,8 @@ pub async fn run(
     let response = poll_session_fork(&session, &fork_response.selector)
         .await
         .context("Error polling for authentication")?;
+    println!("Web authentication complete, setting up your account");
 
-    info!("Web login flow completed");
     let session_payload = decrypt_payload(&encryption_key, &response.payload)?;
     info!("Payload decrypted correctly");
 

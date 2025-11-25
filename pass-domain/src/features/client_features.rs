@@ -1,4 +1,4 @@
-use crate::{AccountCrypto, FsStorage, LocalKeyProvider, PgpCrypto, TelemetryHandler};
+use crate::{AccountCrypto, DataStorage, FsStorage, LocalKeyProvider, PgpCrypto, TelemetryHandler};
 use anyhow::Result;
 use std::sync::Arc;
 
@@ -9,4 +9,5 @@ pub trait ClientFeatures: Send + Sync {
     async fn get_fs(&self) -> Arc<dyn FsStorage>;
     async fn get_pgp_crypto(&self) -> Arc<dyn PgpCrypto>;
     async fn get_telemetry_handler(&self) -> Arc<dyn TelemetryHandler>;
+    async fn get_data_storage(&self) -> Result<Arc<dyn DataStorage>>;
 }

@@ -1,10 +1,12 @@
 use crate::AddressKeyId;
 pub use key::*;
+pub use share_key::*;
 use std::collections::{BTreeMap, HashMap};
 pub use user_key::*;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 mod key;
+mod share_key;
 mod user_key;
 
 #[derive(Clone)]

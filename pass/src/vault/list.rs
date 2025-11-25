@@ -4,7 +4,7 @@ use futures::stream::{self, StreamExt};
 use pass_domain::crypto::EncryptionTag;
 use pass_domain::{ShareContent, ShareId, ShareType, Vault, VaultData, VaultId};
 
-const MAX_CONCURRENCY: usize = 10;
+const MAX_CONCURRENCY: usize = 20;
 
 struct VaultListCacheType;
 
@@ -83,26 +83,10 @@ impl PassClient {
         let content = share_content
             .ok_or_else(|| anyhow!("Share {share_id} is of type vault and should have content"))?;
 
-        let keys = self
-            .get_share_keys(share_id)
-            .await
-            .context("Error retrieving share keys")?;
-
-        let key = match keys.find_by_rotation(content.share_key_rotation) {
-            Some(key) => key.clone(),
-            None => {
-                return Err(anyhow!(
-                    "Could not find ShareKey for Share {} with rotation {}",
-                    share_id,
-                    content.share_key_rotation
-                ));
-            }
-        };
-
         let share_key = self
-            .open_share_key_for_share_id(share_id, key)
+            .get_opened_share_key_by_rotation(share_id, content.share_key_rotation)
             .await
-            .context("Error opening share key")?;
+            .context("Error getting opened share key")?;
 
         let decrypted = pass_domain::crypto::decrypt(
             &content.content,

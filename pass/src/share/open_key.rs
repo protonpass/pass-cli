@@ -2,30 +2,110 @@ use crate::PassClient;
 use crate::crypto::share_key::{OpenShareKeyFlow, OpenShareKeyForGroupFlow};
 use crate::share::ShareKey;
 use anyhow::{Context, Result, anyhow};
-use pass_domain::{AddressId, GroupId, Share, ShareId};
-use zeroize::{Zeroize, ZeroizeOnDrop};
-
-#[derive(Clone, Zeroize, ZeroizeOnDrop)]
-pub(crate) struct DecryptedShareKey(pub(crate) Vec<u8>);
-
-impl DecryptedShareKey {
-    pub fn value(self) -> Vec<u8> {
-        self.0.clone()
-    }
-}
-
-impl AsRef<[u8]> for DecryptedShareKey {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
+use pass_domain::{AddressId, DecryptedShareKey, GroupId, Share, ShareId};
 
 impl PassClient {
+    pub(crate) async fn get_all_opened_share_keys(
+        &self,
+        share_id: &ShareId,
+        force_refresh: bool,
+    ) -> Result<Vec<DecryptedShareKey>> {
+        if !force_refresh {
+            // Try to get from database first
+            if let Ok(data_storage) = self.client_features.get_data_storage().await {
+                let share_key_storage = data_storage.get_share_key_storage().await;
+
+                if let Ok(Some(cached_keys)) = share_key_storage.get_share_keys(share_id).await
+                    && !cached_keys.is_empty()
+                {
+                    trace!(
+                        "Using {} cached decrypted share keys from database",
+                        cached_keys.len()
+                    );
+                    return Ok(cached_keys);
+                }
+            }
+        }
+
+        // Not force refresh or not found in cache, fetch encrypted keys and open all of them
+        trace!("Share keys not in cache, fetching and opening all");
+        let share_keys = self.get_share_keys(share_id).await?;
+        let share = self
+            .get_share(share_id)
+            .await
+            .context("Error getting share")?;
+
+        let mut decrypted_keys = Vec::with_capacity(share_keys.keys.len());
+        for key in share_keys.keys {
+            let decrypted = self
+                .open_share_key_for_share(&share, key)
+                .await
+                .context("Error opening share key")?;
+            decrypted_keys.push(decrypted);
+        }
+
+        // Store in database for future use (best effort, do not fail in case of error)
+        if let Ok(data_storage) = self.client_features.get_data_storage().await {
+            let share_key_storage = data_storage.get_share_key_storage().await;
+            let res = share_key_storage
+                .store_share_keys(share_id, decrypted_keys.clone())
+                .await;
+            if let Err(e) = res {
+                warn!("Error storing share keys: {e:#}");
+            }
+        }
+
+        Ok(decrypted_keys)
+    }
+
+    pub(crate) async fn get_opened_share_key_by_rotation(
+        &self,
+        share_id: &ShareId,
+        key_rotation: u8,
+    ) -> Result<DecryptedShareKey> {
+        let keys = self.get_all_opened_share_keys(share_id, false).await?;
+        let key = keys.into_iter().find(|k| k.key_rotation == key_rotation);
+
+        if let Some(key) = key {
+            return Ok(key);
+        }
+
+        // Not in the cache, get share keys forcing refresh
+        trace!(
+            "Share key not in cache, re-fetching and opening for rotation {}",
+            key_rotation
+        );
+
+        let keys = self.get_all_opened_share_keys(share_id, true).await?;
+        keys.into_iter()
+            .find(|k| k.key_rotation == key_rotation)
+            .context("Could not find share key for rotation")
+    }
+
     pub(crate) async fn open_share_key_for_share_id(
         &self,
         share_id: &ShareId,
         key: ShareKey,
     ) -> Result<DecryptedShareKey> {
+        // Try to get from database first
+        if let Ok(data_storage) = self.client_features.get_data_storage().await {
+            let share_key_storage = data_storage.get_share_key_storage().await;
+
+            if let Ok(Some(cached_keys)) = share_key_storage.get_share_keys(share_id).await {
+                // Find the key with matching rotation
+                if let Some(cached_key) = cached_keys
+                    .into_iter()
+                    .find(|k| k.key_rotation == key.key_rotation)
+                {
+                    trace!(
+                        "Using cached decrypted share key from database for rotation {}",
+                        key.key_rotation
+                    );
+                    return Ok(cached_key);
+                }
+            }
+        }
+
         let share = self
             .get_share(share_id)
             .await
@@ -38,6 +118,25 @@ impl PassClient {
         share: &Share,
         key: ShareKey,
     ) -> Result<DecryptedShareKey> {
+        // Try to get from database first
+        if let Ok(data_storage) = self.client_features.get_data_storage().await {
+            let share_key_storage = data_storage.get_share_key_storage().await;
+
+            if let Ok(Some(cached_keys)) = share_key_storage.get_share_keys(&share.id).await {
+                // Find the key with matching rotation
+                if let Some(cached_key) = cached_keys
+                    .into_iter()
+                    .find(|k| k.key_rotation == key.key_rotation)
+                {
+                    trace!(
+                        "Using cached decrypted share key from database for rotation {}",
+                        key.key_rotation
+                    );
+                    return Ok(cached_key);
+                }
+            }
+        }
+
         match share.group_id {
             None => self
                 .open_share_key_for_direct_share(key)
@@ -55,8 +154,11 @@ impl PassClient {
         let pgp_crypto = self.client_features.get_pgp_crypto().await;
 
         let flow = OpenShareKeyFlow::new(pgp_crypto, uks);
-        let share_key = flow.open(key).await.context("failed to open ShareKey")?;
-        Ok(DecryptedShareKey(share_key))
+        let share_key = flow
+            .open(key.clone())
+            .await
+            .context("failed to open ShareKey")?;
+        Ok(DecryptedShareKey::new(key.key_rotation, share_key))
     }
 
     pub(crate) async fn open_share_key_from_group(
@@ -89,8 +191,11 @@ impl PassClient {
 
         let pgp_crypto = self.client_features.get_pgp_crypto().await;
         let flow = OpenShareKeyForGroupFlow::new(pgp_crypto, address_keys, group_public_keys);
-        let share_key = flow.open(key).await.context("failed to open ShareKey")?;
-        Ok(DecryptedShareKey(share_key))
+        let share_key = flow
+            .open(key.clone())
+            .await
+            .context("failed to open ShareKey")?;
+        Ok(DecryptedShareKey::new(key.key_rotation, share_key))
     }
 }
 

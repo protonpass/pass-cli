@@ -46,12 +46,14 @@ impl PassClient {
         share_id: &ShareId,
         content: ItemData,
     ) -> Result<CreateItemRequest> {
+        // Get latest key rotation from API to ensure we use the most recent
         let share_keys = self
             .get_share_keys(share_id)
             .await
             .context("Error retrieving share keys")?;
 
         let share_key = share_keys.latest_or_err()?;
+        let key_rotation = share_key.key_rotation;
 
         let item_key = crypto::generate_encryption_key();
 
@@ -69,7 +71,7 @@ impl PassClient {
         })?;
 
         let opened_share_key = self
-            .open_share_key_for_share_id(share_id, share_key.clone())
+            .get_opened_share_key_by_rotation(share_id, key_rotation)
             .await
             .context("Error opening share key")?;
 
@@ -84,7 +86,7 @@ impl PassClient {
         })?;
 
         Ok(CreateItemRequest {
-            key_rotation: share_key.key_rotation,
+            key_rotation,
             content_format_version: ITEM_CONTENT_CONTENT_FORMAT_VERSION,
             content: crate::utils::b64_encode(encrypted_item_content),
             item_key: crate::utils::b64_encode(encrypted_item_key),

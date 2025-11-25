@@ -35,10 +35,6 @@ impl ShareKeys {
         Self { keys }
     }
 
-    pub fn find_by_rotation(&self, key_rotation: u8) -> Option<&ShareKey> {
-        self.keys.iter().find(|k| k.key_rotation == key_rotation)
-    }
-
     pub fn latest(&self) -> Option<&ShareKey> {
         self.keys.iter().max_by_key(|k| k.key_rotation)
     }
