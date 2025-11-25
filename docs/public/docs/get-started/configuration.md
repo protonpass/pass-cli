@@ -117,3 +117,50 @@ This stores the encryption key in a file on disk:
 - Development/testing environments
 - When system keyring is unavailable
 
+### 3. Environment variable storage
+
+!!! warning "Using the environment variable storage"
+Take into account that storing your key in an environment variable makes it available to any other process that is under the same session / in the same container.
+By using this option you are in charge of securing access to your system and your data.
+
+**Configuration:**
+
+```bash
+export PROTON_PASS_KEY_PROVIDER=env
+export PROTON_PASS_ENCRYPTION_KEY=your-secret-key
+```
+
+This derives the encryption key from the `PROTON_PASS_ENCRYPTION_KEY` environment variable, which **must be set and non-empty**.
+
+**How it works:**
+
+1. Read the `PROTON_PASS_ENCRYPTION_KEY` environment variable (must be set and non-empty, otherwise it will error)
+2. Hash the value with SHA256 to get a consistent 256-bit key
+
+While not in use, the encryption key is obfuscated in memory, and only decrypted when it needs to be used.
+
+**Security properties:**
+
+- Key is derived from a user-provided value
+- Hashed with SHA256 for consistency and to ensure proper key length
+
+**Advantages:**
+
+- Portable across all environments
+- No dependency on filesystem or system keyring
+- User has full control over the key value
+- Works in containers, CI/CD, and headless environments
+
+**Disadvantages:**
+
+- Less secure than OS keyring solutions
+- Environment variables can be visible to other processes
+- Key security depends entirely on how the environment is managed
+
+**When to use environment variable storage:**
+
+- CI/CD pipelines and automation
+- Containerized environments where filesystem persistence is undesirable
+- Scripts where the key can be securely injected
+- When you need explicit control over the encryption key
+
