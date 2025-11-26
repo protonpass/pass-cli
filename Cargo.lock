@@ -2813,8 +2813,8 @@ dependencies = [
 
 [[package]]
 name = "muon"
-version = "1.8.0"
-source = "git+ssh://git@gitlab.protontech.ch/ProtonVPN/rust/muon.git?rev=8911035bdbaf0a41d0be4bce915c006ca2a28687#8911035bdbaf0a41d0be4bce915c006ca2a28687"
+version = "1.8.1"
+source = "git+ssh://git@gitlab.protontech.ch/cquintana/muon.git?rev=22cb3507ac32e461fe76939b0da6ef74e5a40503#22cb3507ac32e461fe76939b0da6ef74e5a40503"
 dependencies = [
  "anyhow",
  "async-channel",
