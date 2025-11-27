@@ -265,7 +265,12 @@ pub async fn run(
     println!("Login performed by {}", user_info.user.email);
 
     let passphrase = session_payload.passphrase();
-    super::login::after_login(pass_client, FirstTimeSetupKey::Passphrase(passphrase)).await?;
+    super::login::after_login(
+        pass_client,
+        FirstTimeSetupKey::Passphrase(passphrase),
+        store,
+    )
+    .await?;
 
     println!("Successfully logged in as {}", user_info.user.email);
     Ok(())
