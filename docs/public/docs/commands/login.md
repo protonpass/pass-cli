@@ -61,10 +61,7 @@ For each authentication parameter, the CLI checks for values in this order:
 ### Password
 
 !!! warning "Password in env variables"
-    Storing your password in an environment variable makes it readable by all other processes under the same
-```
-session. Be conscious about doing so, and clear the variable when you are done.
-```
+    Storing your password in an environment variable makes it readable by all other processes under the same session. Be conscious about doing so, and clear the variable when you are done.
 
 **Interactive (default):**
 
