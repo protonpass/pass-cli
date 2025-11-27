@@ -122,10 +122,18 @@ pass-cli item view [OPTIONS] [URI]
 **Options:**
 
 - `--share-id SHARE_ID` - Share ID of the vault containing the item
-- `--item-id ITEM_ID` - ID of the item to view
+- `--vault-name VAULT_NAME` - Name of the vault containing the item
+- `--item-id ITEM_ID` - ID of the item
+- `--item-title ITEM_TITLE` - Title of the item
 - `URI` - Pass URI in format `pass://SHARE_ID/ITEM_ID[/FIELD]`
 - `--field FIELD` - Specific field to view
 - `--output FORMAT` - Output format: `human` (default) or `json`
+
+**Mutually exclusive options:**
+
+- `--share-id` and `--vault-name` are mutually exclusive. You must provide exactly one.
+- `--item-id` and `--item-title` are mutually exclusive. You must provide exactly one.
+- - `--share-id/--vault-name` and `--item-id/--item-title` parameters and `URI` are mutually exclusive. You must provide either both parameters or a single secret reference.
 
 **Examples:**
 
@@ -133,8 +141,14 @@ pass-cli item view [OPTIONS] [URI]
 # View item by IDs
 pass-cli item view --share-id "abc123def" --item-id "item456"
 
+# View item by names
+pass-cli item view --vault-name "MyVault" --item-title "MyItem"
+
 # View item using Pass URI
 pass-cli item view "pass://abc123def/item456"
+
+# View item using Pass URI with names
+pass-cli item view "pass://MyVault/MyItem"
 
 # View specific field using URI
 pass-cli item view "pass://abc123def/item456/password"
@@ -170,6 +184,7 @@ The `update` command allows you to modify fields of an existing item. You can up
 
 - `--share-id` and `--vault-name` are mutually exclusive. You must provide exactly one.
 - `--item-id` and `--item-title` are mutually exclusive. You must provide exactly one.
+- `--share-id/--vault-name` and `--item-id/--item-title` parameters and `URI` are mutually exclusive. You must provide either both parameters or a single secret reference.
 - At least one `--field` option is required.
 
 **Field names:**
@@ -361,6 +376,52 @@ When using `--get-template` or `--from-template`, the JSON structure is:
   "password": "optional_password",
   "urls": ["https://example.com", "https://app.example.com"]
 }
+```
+
+### totp
+
+Generate TOTP codes for the fields of an item. If you have an item that has TOTP fields associated to it, you can get the values of the TOTPs by using `item totp`.
+
+**Options:**
+
+- `--share-id SHARE_ID` - Share ID of the vault containing the item
+- `--vault-name VAULT_NAME` - Name of the vault containing the item
+- `--item-id ITEM_ID` - ID of the item
+- `--item-title ITEM_TITLE` - Title of the item
+- `URI` - Pass URI in format `pass://SHARE_ID/ITEM_ID[/FIELD]`
+- `--field FIELD` - Specific field to view
+- `--output FORMAT` - Output format: `human` (default) or `json`
+
+**Mutually exclusive options:**
+
+- `--share-id` and `--vault-name` are mutually exclusive. You must provide exactly one.
+- `--item-id` and `--item-title` are mutually exclusive. You must provide exactly one.
+- `--share-id/--vault-name` and `--item-id/--item-title` parameters and `URI` are mutually exclusive. You must provide either both parameters or a single secret reference.
+
+**Examples:**
+
+```bash
+# Generate all TOTPs on a given item (Readable format)
+pass-cli item totp "pass://TOTP export/WithTOTPs"
+# TOTP 1: 343325
+# TOTP 2: 068223
+# totp: 639378
+
+# Generate all TOTPs on a given item (JSON format)
+pass-cli item totp "pass://TOTP export/WithTOTPs" --output=json
+# {
+#   "TOTP 2": "622653",
+#   "TOTP 1": "119533",
+#   "totp": "152470",
+# }
+
+# Generate the TOTP for a given item and field
+pass-cli item totp "pass://TOTP export/WithTOTPs/TOTP 1"
+# TOTP 1: 343325
+
+# Generate the TOTP for a given item and field and get only the value
+pass-cli item totp "pass://TOTP export/WithTOTPs/TOTP 1" --output=json | jq -r '."TOTP 1"'
+# 474540
 ```
 
 ## Password generation

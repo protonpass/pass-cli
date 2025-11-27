@@ -329,6 +329,8 @@ Welcome to the Proton Pass CLI documentation. The Proton Pass CLI is a command-l
   });
 </script>
 
+Did you have any issue during the installation? Take a look at our [Troubleshooting page](./help/troubleshoot.md).
+
 ## Quick start
 
 - **[Installation](get-started/installation.md)** - Installation instructions for all platforms

@@ -12,6 +12,26 @@ If you still want to use the app, you will need to:
  2. Set the environment variable `PROTON_PASS_KEY_PROVIDER` to `fs`.
  3. Login normally as you would.
 
+## **On Windows it complains about `install.ps1` cannot be loaded because running scripts is disabled**
+
+It's possible that your computer has a restricted script execution policy set, either by you or via a company Device Management System.
+
+In order to check if that's the case for the execution of the script, you should open `Powershell` in Administrator mode, and run:
+
+```powershell
+Get-ExecutionPolicy
+```
+
+There you will be able to check the current execution policy. In order to allow the installation of the script, you can run this command:
+
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine
+```
+
+It will only allow to run scripts that are signed, and the provided `install.ps1` is properly signed, so your computer should be able to run it without any further restrictions.
+
+Once you have successfully installed it, you can set back the execution policy to its previous value by running back again the `Set-ExecutionPolicy` command and passing the original value you got by running `Get-ExecutionPolicy`. 
+
 ## Contact support
 
  Head to our [support form](https://proton.me/support/contact) to get help from our fantastic support team.
