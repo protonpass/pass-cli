@@ -133,6 +133,7 @@ pass-cli item view [OPTIONS] [URI]
 
 - `--share-id` and `--vault-name` are mutually exclusive. You must provide exactly one.
 - `--item-id` and `--item-title` are mutually exclusive. You must provide exactly one.
+- - `--share-id/--vault-name` and `--item-id/--item-title` parameters and `URI` are mutually exclusive. You must provide either both parameters or a single secret reference.
 
 **Examples:**
 
@@ -183,6 +184,7 @@ The `update` command allows you to modify fields of an existing item. You can up
 
 - `--share-id` and `--vault-name` are mutually exclusive. You must provide exactly one.
 - `--item-id` and `--item-title` are mutually exclusive. You must provide exactly one.
+- `--share-id/--vault-name` and `--item-id/--item-title` parameters and `URI` are mutually exclusive. You must provide either both parameters or a single secret reference.
 - At least one `--field` option is required.
 
 **Field names:**
@@ -394,7 +396,7 @@ Generate TOTP codes for the fields of an item. If you have an item that has TOTP
 
 - `--share-id` and `--vault-name` are mutually exclusive. You must provide exactly one.
 - `--item-id` and `--item-title` are mutually exclusive. You must provide exactly one.
-- `--share-id/--vault-name` and `--item-id/--item-title` parameters and `URI` are mutually exclusive. You must provide either both parameters or a single secret reference.```
+- `--share-id/--vault-name` and `--item-id/--item-title` parameters and `URI` are mutually exclusive. You must provide either both parameters or a single secret reference.
 
 **Examples:**
 
