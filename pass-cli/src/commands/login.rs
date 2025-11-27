@@ -1,5 +1,6 @@
 use crate::client::{authenticate_client, get_username};
 use crate::features::CliClientFeatures;
+use crate::helpers::{PassClientExt, SessionExt};
 use crate::store::PassSessionStore;
 use anyhow::{Context, Result};
 use pass::{Client, CreateVaultArgs, FirstTimeSetupKey, PassClient};
@@ -21,7 +22,11 @@ async fn is_login_allowed(client: &PassClient) -> Result<bool> {
     Ok(can_use)
 }
 
-pub(crate) async fn after_login(client: PassClient, key: FirstTimeSetupKey) -> Result<()> {
+pub(crate) async fn after_login(
+    client: PassClient,
+    key: FirstTimeSetupKey,
+    store: Arc<RwLock<PassSessionStore>>,
+) -> Result<()> {
     let login_allowed = is_login_allowed(&client)
         .await
         .context("Error checking login permissions")?;
@@ -31,6 +36,10 @@ pub(crate) async fn after_login(client: PassClient, key: FirstTimeSetupKey) -> R
         crate::commands::logout::force_logout().await?;
         std::process::exit(1);
     }
+
+    let user_id = store.get_user_id().await?;
+    let client_features = client.get_cli_client_features()?;
+    client_features.set_user_id(Some(user_id)).await;
 
     client
         .perform_first_time_setup_with_key(key)
@@ -81,13 +90,13 @@ pub async fn run(
     }
     info!("Logging in user: {}", username);
 
-    let authenticated_client = authenticate_client(client, &username, store).await?;
+    let authenticated_client = authenticate_client(client, &username, store.clone()).await?;
 
     info!("Logged in user: {}", username);
     let client = PassClient::new(authenticated_client.client, client_features);
 
     let setup_key = FirstTimeSetupKey::UserPassword(authenticated_client.password);
-    after_login(client, setup_key).await?;
+    after_login(client, setup_key, store).await?;
 
     println!("Successfully logged in as {}", username);
     Ok(())

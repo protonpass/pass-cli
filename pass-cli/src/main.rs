@@ -11,6 +11,7 @@ mod client;
 mod commands;
 mod extra_password;
 mod features;
+mod helpers;
 mod logs;
 mod storage;
 mod store;
