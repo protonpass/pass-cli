@@ -1,9 +1,12 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
+
+#[allow(unused_imports)]
 use std::path::Path;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InstallSource {
     Standard,
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     Homebrew,
     #[cfg_attr(not(windows), allow(dead_code))]
     Chocolatey,
@@ -34,6 +37,7 @@ pub fn get_install_source() -> Result<InstallSource> {
     // Check for Homebrew installation (macOS)
     #[cfg(target_os = "macos")]
     {
+        use anyhow::Context;
         let current_exe =
             std::env::current_exe().context("Failed to get current executable path")?;
         let resolved_exe = std::fs::canonicalize(&current_exe)
@@ -46,6 +50,7 @@ pub fn get_install_source() -> Result<InstallSource> {
     // Check for Chocolatey installation (Windows)
     #[cfg(windows)]
     {
+        use anyhow::Context;
         let current_exe =
             std::env::current_exe().context("Failed to get current executable path")?;
         let resolved_exe = std::fs::canonicalize(&current_exe)
@@ -61,6 +66,7 @@ pub fn get_install_source() -> Result<InstallSource> {
     Ok(InstallSource::Standard)
 }
 
+#[cfg(target_os = "macos")]
 fn is_homebrew_install(exe_path: &Path) -> bool {
     let exe_path_str = exe_path.to_string_lossy();
 
@@ -85,7 +91,7 @@ fn is_homebrew_install(exe_path: &Path) -> bool {
             // Additional verification: check if Homebrew directory structure exists
             if let Some(homebrew_prefix) = get_homebrew_prefix(&parent_str) {
                 let cellar_path = format!("{}/Cellar/pass-cli", homebrew_prefix);
-                if std::path::Path::new(&cellar_path).exists() {
+                if Path::new(&cellar_path).exists() {
                     debug!("Detected homebrew installation using fallback strategy");
                     return true;
                 }
@@ -96,6 +102,7 @@ fn is_homebrew_install(exe_path: &Path) -> bool {
     false
 }
 
+#[cfg(target_os = "macos")]
 fn get_homebrew_prefix(path: &str) -> Option<String> {
     if path.contains("/opt/homebrew") {
         Some("/opt/homebrew".to_string())
@@ -117,7 +124,7 @@ fn is_chocolatey_install(exe_path_str: &str) -> bool {
 #[cfg(windows)]
 fn is_chocolatey_managed(exe_path_str: &str) -> bool {
     // Check if .chocolateyInstall.ps1 or similar files exist in parent directory
-    if let Some(parent_path) = std::path::Path::new(exe_path_str).parent() {
+    if let Some(parent_path) = Path::new(exe_path_str).parent() {
         let choco_marker = parent_path.join(".chocolateyInstall.ps1");
         if choco_marker.exists() {
             return true;
