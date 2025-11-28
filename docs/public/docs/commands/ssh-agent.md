@@ -4,6 +4,10 @@ The Proton Pass CLI integrates nicely with any existing SSH workflows. It can ei
 
 ## Previous considerations
 
+### SSH key management
+
+Proton Pass CLI provides SSH key management capabilities. You can create new SSH keys or import existing ones directly into your vault. For detailed information on creating and importing SSH keys, see the [`item create ssh-key`](./item.md#create-ssh-key) documentation.
+
 ### Passphrase-protected SSH keys
 
 Proton Pass allows you to generate new SSH keys, but it can also import and securely store your already-existing SSH keys.
@@ -12,6 +16,8 @@ However, if you are importing your already-existing SSH keys, probably they are 
 
 - Create a copy of your unlocked private SSH key and import it into Proton Pass. For removing the passphrase of a SSH key you can use `ssh-keygen -p -f PATH_TO_YOUR_PRIVATE_KEY -N ""` (it will prompt your for your passphrase).
 - Import your passphrase-protected private SSH key into Proton Pass and also create a custom field of type Hidden containing the passphrase. You can name it `Password` or `Passphrase`, but if you save it with any other name, Proton Pass CLI will try to use all the available `Hidden` custom fields to open it.
+
+For more details on importing passphrase-protected keys, see the [SSH key import documentation](./item.md#create-ssh-key-import).
 
 ### SSH-Agent primer
 
