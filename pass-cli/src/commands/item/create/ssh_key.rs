@@ -2,9 +2,10 @@ use anyhow::{Context, Result, anyhow};
 use clap::{Args, Subcommand};
 use pass::PassClient;
 use pass::ssh_key::SshKeyItemCreatePayload;
-use pass_domain::ShareId;
 use std::io::Read;
 use std::path::PathBuf;
+
+use crate::commands::item::common::ShareQuery;
 
 const SSH_KEY_PASSWORD_ENV_VAR: &str = "PROTON_PASS_SSH_KEY_PASSWORD";
 const SSH_KEY_PASSWORD_FILE_ENV_VAR: &str = "PROTON_PASS_SSH_KEY_PASSWORD_FILE";
@@ -29,7 +30,11 @@ enum SshKeyCommand {
 
         /// Share ID of the vault to create the SSH key item in
         #[arg(long)]
-        share_id: String,
+        share_id: Option<String>,
+
+        /// Name of the vault to create the SSH key item in
+        #[arg(long, help = "Name of the vault to create the SSH key item in")]
+        vault_name: Option<String>,
 
         /// Title of the SSH key item
         #[arg(long)]
@@ -51,7 +56,11 @@ enum SshKeyCommand {
 
         /// Share ID of the vault to create the SSH key item in
         #[arg(long)]
-        share_id: String,
+        share_id: Option<String>,
+
+        /// Name of the vault to create the SSH key item in
+        #[arg(long, help = "Name of the vault to create the SSH key item in")]
+        vault_name: Option<String>,
 
         /// Title of the SSH key item
         #[arg(long)]
@@ -82,25 +91,45 @@ pub async fn run(args: SshKeyArgs, client: PassClient) -> Result<()> {
             private_key_file,
             password,
             share_id,
+            vault_name,
             title,
-        } => run_import(private_key_file, password, share_id, title, client).await,
+        } => {
+            run_import(
+                private_key_file,
+                password,
+                share_id,
+                vault_name,
+                title,
+                client,
+            )
+            .await
+        }
         SshKeyCommand::Generate {
             comment,
             key_type,
             password,
             share_id,
+            vault_name,
             title,
-        } => run_generate(comment, key_type, password, share_id, title, client).await,
+        } => {
+            run_generate(
+                comment, key_type, password, share_id, vault_name, title, client,
+            )
+            .await
+        }
     }
 }
 
 async fn run_import(
     private_key_file: PathBuf,
     password_flag: bool,
-    share_id: String,
+    share_id: Option<String>,
+    vault_name: Option<String>,
     title: String,
     client: PassClient,
 ) -> Result<()> {
+    let share_query = ShareQuery::new(share_id, vault_name)?;
+
     let private_key_content = std::fs::read_to_string(&private_key_file)
         .with_context(|| format!("Error reading private key file: {:?}", private_key_file))?;
 
@@ -120,7 +149,7 @@ async fn run_import(
         .to_openssh()
         .context("Failed to convert public key to OpenSSH format")?;
 
-    let share_id = ShareId::new(share_id);
+    let share_id = share_query.share_id(&client).await?;
     let payload = SshKeyItemCreatePayload {
         title,
         private_key: private_key_content,
@@ -141,10 +170,13 @@ async fn run_generate(
     comment: Option<String>,
     key_type: SshKeyTypeArg,
     password_flag: bool,
-    share_id: String,
+    share_id: Option<String>,
+    vault_name: Option<String>,
     title: String,
     client: PassClient,
 ) -> Result<()> {
+    let share_query = ShareQuery::new(share_id, vault_name)?;
+
     let passphrase = get_ssh_key_password(password_flag, true)?;
     let comment = comment.unwrap_or_default();
 
@@ -154,7 +186,7 @@ async fn run_generate(
         proton_pass_common::sshkey::generate_ssh_key(comment, key_type_common, passphrase.clone())
             .map_err(|e| anyhow!("Failed to generate SSH key: {:?}", e))?;
 
-    let share_id = ShareId::new(share_id);
+    let share_id = share_query.share_id(&client).await?;
     let payload = SshKeyItemCreatePayload {
         title,
         private_key: key_pair.private_key,

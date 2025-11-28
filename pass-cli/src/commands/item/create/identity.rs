@@ -2,8 +2,9 @@ use anyhow::{Context, Result};
 use clap::Args;
 use pass::PassClient;
 use pass::identity::IdentityItemCreatePayload;
-use pass_domain::ShareId;
 use std::io::{self, Read};
+
+use crate::commands::item::common::ShareQuery;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 pub struct IdentityTemplate {
@@ -123,6 +124,10 @@ pub struct IdentityArgs {
     /// Share ID of the vault to create the identity item in
     #[arg(long)]
     share_id: Option<String>,
+
+    /// Name of the vault to create the identity item in
+    #[arg(long, help = "Name of the vault to create the identity item in")]
+    vault_name: Option<String>,
 }
 
 pub async fn run(args: IdentityArgs, client: PassClient) -> Result<()> {
@@ -140,16 +145,14 @@ pub async fn run(args: IdentityArgs, client: PassClient) -> Result<()> {
         )
     })?;
 
-    let share_id = args
-        .share_id
-        .ok_or_else(|| anyhow::anyhow!("--share-id is required with --from-template"))?;
+    let share_query = ShareQuery::new(args.share_id, args.vault_name)?;
 
-    create_identity_from_template(&template_path, share_id, client).await
+    create_identity_from_template(&template_path, share_query, client).await
 }
 
 async fn create_identity_from_template(
     template_path: &str,
-    share_id: String,
+    share_query: ShareQuery,
     client: PassClient,
 ) -> Result<()> {
     let template_json = if template_path == "-" {
@@ -168,15 +171,15 @@ async fn create_identity_from_template(
 
     let payload = template.into();
 
-    create_identity_from_payload(payload, share_id, client).await
+    create_identity_from_payload(payload, share_query, client).await
 }
 
 async fn create_identity_from_payload(
     payload: IdentityItemCreatePayload,
-    share_id: String,
+    share_query: ShareQuery,
     client: PassClient,
 ) -> Result<()> {
-    let share_id = ShareId::new(share_id);
+    let share_id = share_query.share_id(&client).await?;
     let item_id = client
         .create_identity(&share_id, payload)
         .await

@@ -2,8 +2,10 @@ use anyhow::{Context, Result, bail};
 use clap::Args;
 use pass::PassClient;
 use pass::wifi::WifiItemCreatePayload;
-use pass_domain::{ShareId, WifiSecurity};
+use pass_domain::WifiSecurity;
 use std::io::{self, Read};
+
+use crate::commands::item::common::ShareQuery;
 
 #[derive(serde::Deserialize, serde::Serialize)]
 struct WifiTemplate {
@@ -76,6 +78,10 @@ pub struct WifiArgs {
     #[arg(long, required_unless_present_any = ["get_template", "from_template"])]
     share_id: Option<String>,
 
+    /// Vault name
+    #[arg(long, help = "Name of the vault to create the WiFi item in")]
+    vault_name: Option<String>,
+
     /// Item title
     #[arg(long)]
     title: Option<String>,
@@ -107,15 +113,11 @@ pub async fn run(args: WifiArgs, client: PassClient) -> Result<()> {
     }
 
     if let Some(template_path) = args.from_template {
-        let share_id = args
-            .share_id
-            .ok_or_else(|| anyhow::anyhow!("--share-id is required with --from-template"))?;
-        return create_wifi_from_template(&template_path, share_id, client).await;
+        let share_query = ShareQuery::new(args.share_id, args.vault_name)?;
+        return create_wifi_from_template(&template_path, share_query, client).await;
     }
 
-    let share_id = args
-        .share_id
-        .ok_or_else(|| anyhow::anyhow!("--share-id is required"))?;
+    let share_query = ShareQuery::new(args.share_id, args.vault_name)?;
 
     let title = args
         .title
@@ -139,12 +141,12 @@ pub async fn run(args: WifiArgs, client: PassClient) -> Result<()> {
         note: args.note,
     };
 
-    create_wifi_from_payload(payload, share_id, client).await
+    create_wifi_from_payload(payload, share_query, client).await
 }
 
 async fn create_wifi_from_template(
     template_path: &str,
-    share_id: String,
+    share_query: ShareQuery,
     client: PassClient,
 ) -> Result<()> {
     let template_json = if template_path == "-" {
@@ -165,15 +167,15 @@ async fn create_wifi_from_template(
         .into_payload()
         .context("Error converting template to payload")?;
 
-    create_wifi_from_payload(payload, share_id, client).await
+    create_wifi_from_payload(payload, share_query, client).await
 }
 
 async fn create_wifi_from_payload(
     payload: WifiItemCreatePayload,
-    share_id: String,
+    share_query: ShareQuery,
     client: PassClient,
 ) -> Result<()> {
-    let share_id = ShareId::new(share_id);
+    let share_id = share_query.share_id(&client).await?;
     let item_id = client
         .create_wifi(&share_id, payload)
         .await

@@ -62,7 +62,8 @@ pass-cli item create login [OPTIONS]
 
 **Options:**
 
-- `--share-id SHARE_ID` - Share ID of the vault to create the item in (required)
+- `--share-id SHARE_ID` - Share ID of the vault to create the item in
+- `--vault-name VAULT_NAME` - Name of the vault to create the item in
 - `--title TITLE` - Title of the login item (required unless using template)
 - `--username USERNAME` - Username for the login (optional)
 - `--email EMAIL` - Email for the login (optional)  
@@ -73,12 +74,24 @@ pass-cli item create login [OPTIONS]
 - `--get-template` - Output a JSON template structure
 - `--from-template FILE` - Create from template file or `-` for stdin
 
+**Mutually exclusive options:**
+
+- `--share-id` and `--vault-name` are mutually exclusive. You must provide exactly one.
+
 **Examples:**
 
 ```bash
-# Create a basic login item
+# Create a basic login item using share ID
 pass-cli item create login \
   --share-id "abc123def" \
+  --title "GitHub Account" \
+  --username "myuser" \
+  --password "mypassword" \
+  --url "https://github.com"
+
+# Create a basic login item using vault name
+pass-cli item create login \
+  --vault-name "Personal" \
   --title "GitHub Account" \
   --username "myuser" \
   --password "mypassword" \
@@ -94,22 +107,214 @@ pass-cli item create login \
 
 # Create login with custom password generation
 pass-cli item create login \
-  --share-id "abc123def" \
+  --vault-name "Work" \
   --title "Secure Account" \
   --username "myuser" \
-  --generate-password="20,true,true" \
+  --generate-password="20,uppercase,symbols" \
   --url "https://example.com"
 
 # Get login template structure
 pass-cli item create login --get-template > template.json
 
-# Create from template file
+# Create from template file using share ID
 pass-cli item create login --from-template template.json --share-id "abc123def"
+
+# Create from template file using vault name
+pass-cli item create login --from-template template.json --vault-name "Personal"
 
 # Create from stdin template
 echo '{"title":"Test Login","username":"user","password":"pass","urls":["https://test.com"]}' | \
   pass-cli item create login --share-id "abc123def" --from-template -
 ```
+
+#### create ssh-key
+
+Create or import SSH key items. SSH keys can be either generated from scratch or imported from existing private key files.
+
+```bash
+pass-cli item create ssh-key <SUBCOMMAND>
+```
+
+**Subcommands:**
+
+- `generate` - Generate a new SSH key pair
+- `import` - Import an existing SSH key from a private key file
+
+##### create ssh-key generate
+
+Generate a new SSH key pair and store it in Proton Pass.
+
+```bash
+pass-cli item create ssh-key generate [OPTIONS]
+```
+
+**Options:**
+
+- `--share-id SHARE_ID` - Share ID of the vault to create the SSH key in
+- `--vault-name VAULT_NAME` - Name of the vault to create the SSH key in
+- `--title TITLE` - Title of the SSH key item (required)
+- `--key-type TYPE` - Type of SSH key to generate: `ed25519` (default), `rsa2048`, or `rsa4096`
+- `--comment COMMENT` - Comment for the SSH key (optional)
+- `--password` - Enable passphrase protection for the SSH key (optional)
+
+**Mutually exclusive options:**
+
+- `--share-id` and `--vault-name` are mutually exclusive. You must provide exactly one.
+
+**Passphrase protection:**
+
+When generating new SSH keys with `--password`, you'll be prompted to enter and confirm a passphrase. The passphrase can also be provided via environment variables:
+
+- `PROTON_PASS_SSH_KEY_PASSWORD` - Passphrase as plain text
+- `PROTON_PASS_SSH_KEY_PASSWORD_FILE` - Path to file containing the passphrase
+
+!!! note "Passphrase recommendation for generated keys"
+
+    Since generated SSH keys are already encrypted and securely stored within your Proton Pass vault, adding a passphrase is optional. However, if you plan to export the key for use outside Proton Pass, adding a passphrase provides an additional layer of security.
+
+**Examples:**
+
+```bash
+# Generate an Ed25519 key (recommended)
+pass-cli item create ssh-key generate \
+  --share-id "abc123def" \
+  --title "GitHub Deploy Key"
+
+# Generate an Ed25519 key using vault name
+pass-cli item create ssh-key generate \
+  --vault-name "Development Keys" \
+  --title "GitHub Deploy Key"
+
+# Generate an RSA 4096 key with comment
+pass-cli item create ssh-key generate \
+  --share-id "abc123def" \
+  --title "Production Server" \
+  --key-type rsa4096 \
+  --comment "prod-server-deploy"
+
+# Generate a passphrase-protected key
+pass-cli item create ssh-key generate \
+  --share-id "abc123def" \
+  --title "Secure Key" \
+  --password
+
+# Generate with passphrase from environment variable
+PROTON_PASS_SSH_KEY_PASSWORD="my-passphrase" \
+  pass-cli item create ssh-key generate \
+  --share-id "abc123def" \
+  --title "Automated Key" \
+  --password
+```
+
+##### create ssh-key import
+
+Import an existing SSH private key from a file into Proton Pass.
+
+```bash
+pass-cli item create ssh-key import [OPTIONS]
+```
+
+**Options:**
+
+- `--from-private-key PATH` - Path to the private key file (required)
+- `--share-id SHARE_ID` - Share ID of the vault to create the SSH key in
+- `--vault-name VAULT_NAME` - Name of the vault to create the SSH key in
+- `--title TITLE` - Title of the SSH key item (required)
+- `--password` - Prompt for the passphrase if the private key is encrypted (optional)
+
+**Mutually exclusive options:**
+
+- `--share-id` and `--vault-name` are mutually exclusive. You must provide exactly one.
+
+**Handling passphrase-protected SSH keys:**
+
+If you're importing an existing SSH key that's protected with a passphrase, you have several options:
+
+1. **Store the key with its passphrase protection intact:**
+   - Use the `--password` flag when importing
+   - The passphrase will be prompted interactively or read from environment variables
+   - The key will be stored in Pass with its passphrase, and you'll need to provide it when using the key
+
+2. **Remove the passphrase before importing (recommended):**
+   - Create an unencrypted copy of your key: `ssh-keygen -p -f /path/to/key -N ""`
+   - Import the unencrypted key into Proton Pass
+   - Since the key will be encrypted within your vault, an additional passphrase is unnecessary
+   - Delete the unencrypted copy after importing
+
+3. **Store the passphrase in the same item:**
+   - Import the passphrase-protected key
+   - After import, use `pass-cli item update` to add the passphrase as a custom hidden field
+   - The CLI will automatically try to use this field when loading the key into an SSH agent
+
+**Passphrase environment variables:**
+
+Similar to key generation, you can provide passphrases via:
+
+- `PROTON_PASS_SSH_KEY_PASSWORD` - Passphrase as plain text
+- `PROTON_PASS_SSH_KEY_PASSWORD_FILE` - Path to file containing the passphrase
+
+**Examples:**
+
+```bash
+# Import an unencrypted SSH key
+pass-cli item create ssh-key import \
+  --from-private-key ~/.ssh/id_ed25519 \
+  --share-id "abc123def" \
+  --title "My SSH Key"
+
+# Import using vault name
+pass-cli item create ssh-key import \
+  --from-private-key ~/.ssh/id_rsa \
+  --vault-name "Personal Keys" \
+  --title "Old RSA Key"
+
+# Import a passphrase-protected key (will prompt for passphrase)
+pass-cli item create ssh-key import \
+  --from-private-key ~/.ssh/id_ed25519 \
+  --share-id "abc123def" \
+  --title "Protected Key" \
+  --password
+
+# Import with passphrase from environment variable
+PROTON_PASS_SSH_KEY_PASSWORD="my-key-passphrase" \
+  pass-cli item create ssh-key import \
+  --from-private-key ~/.ssh/id_ed25519 \
+  --share-id "abc123def" \
+  --title "Automated Import" \
+  --password
+
+# Import with passphrase from file
+PROTON_PASS_SSH_KEY_PASSWORD_FILE="/secure/passphrase.txt" \
+  pass-cli item create ssh-key import \
+  --from-private-key ~/.ssh/id_ed25519 \
+  --share-id "abc123def" \
+  --title "Key with File Passphrase" \
+  --password
+```
+
+**Workflow for removing passphrase from existing key:**
+
+```bash
+# Step 1: Create a copy of your key without passphrase
+cp ~/.ssh/id_ed25519 /tmp/id_ed25519_temp
+ssh-keygen -p -f /tmp/id_ed25519_temp -N ""
+# (You'll be prompted for the current passphrase)
+
+# Step 2: Import the unencrypted copy
+pass-cli item create ssh-key import \
+  --from-private-key /tmp/id_ed25519_temp \
+  --share-id "abc123def" \
+  --title "My SSH Key"
+
+# Step 3: Securely delete the temporary unencrypted copy
+shred -u /tmp/id_ed25519_temp  # Linux
+# or
+rm -P /tmp/id_ed25519_temp  # macOS
+```
+
+!!! tip "Using imported SSH keys"
+
+    Once imported, your SSH keys can be loaded into any SSH agent using the [`ssh-agent load`](./ssh-agent.md#ssh-agent-integration) command or by starting Proton Pass CLI's built-in SSH agent with [`ssh-agent start`](./ssh-agent.md#proton-pass-cli-as-your-ssh-agent).
 
 ### view
 

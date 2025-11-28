@@ -1,8 +1,8 @@
+use crate::commands::item::common::ShareQuery;
 use anyhow::{Context, Result, bail};
 use clap::Args;
 use pass::PassClient;
 use pass::credit_card::CreditCardItemCreatePayload;
-use pass_domain::ShareId;
 use std::io::{self, Read};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Default)]
@@ -44,6 +44,10 @@ pub struct CreditCardArgs {
     /// Share ID of the vault to create the credit card item in
     #[arg(long, help = "Share ID of the vault to create the credit card item in")]
     share_id: Option<String>,
+
+    /// Name of the vault to create the credit card item in
+    #[arg(long, help = "Name of the vault to create the credit card item in")]
+    vault_name: Option<String>,
 
     /// Title of the credit card item (required when not using template)
     #[arg(long, help = "Title of the credit card item")]
@@ -92,9 +96,7 @@ pub async fn run(args: CreditCardArgs, client: PassClient) -> Result<()> {
 
     // Handle from-template option
     if let Some(template_source) = args.from_template {
-        let share_id = args
-            .share_id
-            .ok_or_else(|| anyhow::anyhow!("--share-id is required when using --from-template"))?;
+        let share_query = ShareQuery::new(args.share_id, args.vault_name)?;
 
         let template = if template_source == "-" {
             // Read from stdin
@@ -113,13 +115,11 @@ pub async fn run(args: CreditCardArgs, client: PassClient) -> Result<()> {
                 .with_context(|| format!("Error parsing JSON from file: {template_source}"))?
         };
 
-        return create_credit_card_from_template(template, share_id, client).await;
+        return create_credit_card_from_template(template, share_query, client).await;
     }
 
     // Handle individual field arguments
-    let share_id = args
-        .share_id
-        .ok_or_else(|| anyhow::anyhow!("--share-id is required"))?;
+    let share_query = ShareQuery::new(args.share_id, args.vault_name)?;
 
     let title = args
         .title
@@ -135,24 +135,24 @@ pub async fn run(args: CreditCardArgs, client: PassClient) -> Result<()> {
         note: args.note,
     };
 
-    create_credit_card_from_payload(payload, share_id, client).await
+    create_credit_card_from_payload(payload, share_query, client).await
 }
 
 async fn create_credit_card_from_template(
     template: CreditCardTemplate,
-    share_id: String,
+    share_query: ShareQuery,
     client: PassClient,
 ) -> Result<()> {
     let payload = template.into_payload();
-    create_credit_card_from_payload(payload, share_id, client).await
+    create_credit_card_from_payload(payload, share_query, client).await
 }
 
 async fn create_credit_card_from_payload(
     payload: CreditCardItemCreatePayload,
-    share_id: String,
+    share_query: ShareQuery,
     client: PassClient,
 ) -> Result<()> {
-    let share_id = ShareId::new(share_id);
+    let share_id = share_query.share_id(&client).await?;
     let res = client
         .create_credit_card(&share_id, payload)
         .await

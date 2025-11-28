@@ -7,6 +7,8 @@ use pass::{
 };
 use std::io::{self, Read};
 
+use crate::commands::item::common::ShareQuery;
+
 #[derive(Debug, serde::Deserialize, serde::Serialize, Default)]
 pub struct LoginTemplate {
     pub title: String,
@@ -42,6 +44,10 @@ pub struct LoginArgs {
     /// Share ID of the vault to create the login item in
     #[arg(long, help = "Share ID of the vault to create the login item in")]
     share_id: Option<String>,
+
+    /// Name of the vault to create the login item in
+    #[arg(long, help = "Name of the vault to create the login item in")]
+    vault_name: Option<String>,
 
     /// Title of the login item (required when not using template)
     #[arg(long, help = "Title of the login item")]
@@ -93,9 +99,7 @@ pub async fn run(args: LoginArgs, client: PassClient) -> Result<()> {
 
     // Handle from-template option
     if let Some(template_source) = args.from_template {
-        let share_id = args
-            .share_id
-            .ok_or_else(|| anyhow::anyhow!("--share-id is required when using --from-template"))?;
+        let share_query = ShareQuery::new(args.share_id, args.vault_name)?;
 
         let template = if template_source == "-" {
             // Read from stdin
@@ -114,13 +118,11 @@ pub async fn run(args: LoginArgs, client: PassClient) -> Result<()> {
                 .with_context(|| format!("Error parsing JSON from file: {template_source}"))?
         };
 
-        return create_login_from_template(template, share_id, client).await;
+        return create_login_from_template(template, share_query, client).await;
     }
 
     // Handle individual field arguments
-    let share_id = args
-        .share_id
-        .ok_or_else(|| anyhow::anyhow!("--share-id is required"))?;
+    let share_query = ShareQuery::new(args.share_id, args.vault_name)?;
 
     let title = args
         .title
@@ -151,16 +153,15 @@ pub async fn run(args: LoginArgs, client: PassClient) -> Result<()> {
         urls: args.url,
     };
 
-    create_login_from_template(template, share_id, client).await
+    create_login_from_template(template, share_query, client).await
 }
 
 async fn create_login_from_template(
     template: LoginTemplate,
-    share_id: String,
+    share_query: ShareQuery,
     client: PassClient,
 ) -> Result<()> {
-    use pass_domain::ShareId;
-    let share_id = ShareId::new(share_id);
+    let share_id = share_query.share_id(&client).await?;
     let res = client
         .create_login(&share_id, template.into())
         .await

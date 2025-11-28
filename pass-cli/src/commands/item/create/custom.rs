@@ -4,8 +4,9 @@ use pass::PassClient;
 use pass::custom::{
     CustomFieldContentPayload, CustomFieldPayload, CustomItemCreatePayload, CustomSectionPayload,
 };
-use pass_domain::ShareId;
 use std::io::{self, Read};
+
+use crate::commands::item::common::ShareQuery;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 pub struct CustomTemplate {
@@ -126,6 +127,10 @@ pub struct CustomArgs {
     /// Share ID of the vault to create the custom item in
     #[arg(long)]
     share_id: Option<String>,
+
+    /// Name of the vault to create the custom item in
+    #[arg(long, help = "Name of the vault to create the custom item in")]
+    vault_name: Option<String>,
 }
 
 pub async fn run(args: CustomArgs, client: PassClient) -> Result<()> {
@@ -141,16 +146,14 @@ pub async fn run(args: CustomArgs, client: PassClient) -> Result<()> {
         .from_template
         .ok_or_else(|| anyhow::anyhow!("--from-template is required when not using --get-template. Use --get-template to see the JSON structure."))?;
 
-    let share_id = args
-        .share_id
-        .ok_or_else(|| anyhow::anyhow!("--share-id is required with --from-template"))?;
+    let share_query = ShareQuery::new(args.share_id, args.vault_name)?;
 
-    create_custom_from_template(&template_path, share_id, client).await
+    create_custom_from_template(&template_path, share_query, client).await
 }
 
 async fn create_custom_from_template(
     template_path: &str,
-    share_id: String,
+    share_query: ShareQuery,
     client: PassClient,
 ) -> Result<()> {
     let template_json = if template_path == "-" {
@@ -171,15 +174,15 @@ async fn create_custom_from_template(
         .into_payload()
         .context("Error converting template to payload")?;
 
-    create_custom_from_payload(payload, share_id, client).await
+    create_custom_from_payload(payload, share_query, client).await
 }
 
 async fn create_custom_from_payload(
     payload: CustomItemCreatePayload,
-    share_id: String,
+    share_query: ShareQuery,
     client: PassClient,
 ) -> Result<()> {
-    let share_id = ShareId::new(share_id);
+    let share_id = share_query.share_id(&client).await?;
     let item_id = client
         .create_custom(&share_id, payload)
         .await
