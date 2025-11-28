@@ -1,9 +1,9 @@
+use crate::commands::item::common::ShareQuery;
 use anyhow::{Context, Result, bail};
 use clap::Args;
 use pass::PassClient;
 use pass::credit_card::CreditCardItemCreatePayload;
 use std::io::{self, Read};
-use crate::commands::item::common::ShareQuery;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Default)]
 pub struct CreditCardTemplate {
