@@ -1,4 +1,5 @@
 use crate::commands::update;
+use crate::commands::update::InstallSource;
 use crate::telemetry::event::CommandEvent;
 use anyhow::{Context, Result};
 use pass::PassClient;
@@ -23,5 +24,11 @@ pub async fn run(client: PassClient, base_dir: PathBuf) -> Result<()> {
     println!("- ID: {}", info.user.id);
     println!("- Username: {}", info.user.name);
     println!("- Email: {}", info.user.email);
+
+    let install_source = update::get_install_source()?;
+    if install_source != InstallSource::Standard {
+        println!("- Install source: {:?}", install_source);
+    }
+
     Ok(())
 }
