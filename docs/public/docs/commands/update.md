@@ -12,6 +12,9 @@ pass-cli update [--yes] [--set-track TRACK]
 
 The `update` command keeps your Proton Pass CLI up to date with the latest features, improvements, and security patches. It automatically downloads and installs the newest version available for your platform. You can also use this command to switch between different release tracks (stable and beta).
 
+!!! warning "Manual installation only"
+    **The `update` command and track switching only work if you installed Proton Pass CLI manually** (using the installation script or manual download). If you installed via a package manager (e.g., Homebrew), you must use that package manager's update mechanism instead. Track switching is not available for package manager installations.
+
 ## How to update
 
 To update the CLI to the latest version:
@@ -38,6 +41,9 @@ pass-cli update --yes
 ## Release tracks
 
 The Proton Pass CLI supports different release tracks, allowing you to choose between stability and early access to new features.
+
+!!! warning "Track switching availability"
+    Release track switching is **only available for manual installations**. If you installed Proton Pass CLI via a package manager (e.g., Homebrew), you cannot switch tracks using the `--set-track` option.
 
 ### Available tracks
 
