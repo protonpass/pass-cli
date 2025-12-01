@@ -21,6 +21,15 @@ Welcome to the Proton Pass CLI documentation. The Proton Pass CLI is a command-l
     max-width: 100% !important;
   }
 
+  /* Hide mobile hamburger menu icon */
+  .md-header__button.md-logo {
+    display: none !important;
+  }
+
+  .md-header__button[for="__drawer"] {
+    display: none !important;
+  }
+
   .cta-container {
     background: #f8f9fa;
     border: 1px solid #e1e4e8;
