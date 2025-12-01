@@ -9,7 +9,7 @@ repo_url = "https://github.com/protonpass/pass-cli"
 
 nav = [
   {"Overview" = "index.md"},
-  {"Get started" = ["get-started/installation.md", "get-started/login.md", "get-started/configuration.md"]},
+  {"Installation" = ["get-started/installation.md", "get-started/configuration.md"]},
   {"Object types" = ["objects/share.md", "objects/vault.md", "objects/item.md"]},
   {"Commands" = [
     "commands/login.md",
