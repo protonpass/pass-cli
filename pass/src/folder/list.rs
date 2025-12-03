@@ -69,10 +69,11 @@ fn topological_sort_folders(revisions: &[FolderRevision]) -> Vec<String> {
 
         // Check if parent exists (if it should have one)
         if let Some(ref parent) = parent_id
-            && !revision_map.contains_key(parent) {
-                // Dangling folder - parent doesn't exist, skip it
-                continue;
-            }
+            && !revision_map.contains_key(parent)
+        {
+            // Dangling folder - parent doesn't exist, skip it
+            continue;
+        }
 
         children.entry(parent_id).or_default().push(folder_id);
     }
@@ -132,10 +133,11 @@ impl PassClient {
             let cached: Option<FoldersForShareCache> =
                 self.cache.get(FoldersForShareCacheType).await;
             if let Some(cached) = cached
-                && let Some(cached_folders) = cached.get(share_id) {
-                    trace!("Returning cached folder revisions for share {share_id}");
-                    return Ok(cached_folders.clone());
-                }
+                && let Some(cached_folders) = cached.get(share_id)
+            {
+                trace!("Returning cached folder revisions for share {share_id}");
+                return Ok(cached_folders.clone());
+            }
         }
 
         // Not in cache or force refresh, fetch from API
