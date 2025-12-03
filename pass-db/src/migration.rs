@@ -49,5 +49,22 @@ pub fn get_migrations() -> Vec<Migration> {
                     CREATE INDEX idx_share_keys_lookup ON share_keys(user_id, share_id);
                 ",
         },
+        Migration {
+            id: 4,
+            description: "Create folder_keys table",
+            sql: "
+                    CREATE TABLE folder_keys (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id TEXT NOT NULL,
+                        share_id TEXT NOT NULL,
+                        folder_id TEXT NOT NULL,
+                        key_rotation INTEGER NOT NULL,
+                        folder_key BLOB NOT NULL,
+                        created_at INTEGER NOT NULL
+                    );
+                    CREATE UNIQUE INDEX idx_folder_keys_unique ON folder_keys(user_id, share_id, folder_id, key_rotation);
+                    CREATE INDEX idx_folder_keys_lookup ON folder_keys(user_id, share_id, folder_id);
+                ",
+        },
     ]
 }
