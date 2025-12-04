@@ -198,7 +198,7 @@ impl PassClient {
             .context("Error building folder structure")
     }
 
-    pub(crate) async fn get_folder_revision(
+    pub(crate) async fn get_folder_data(
         &self,
         share_id: &ShareId,
         folder_id: &FolderId,
@@ -279,7 +279,7 @@ impl PassClient {
         // Try to fetch missing parents
         for parent_id in missing_parents {
             match self
-                .get_folder_revision(share_id, &FolderId::new(parent_id.clone()))
+                .get_folder_data(share_id, &FolderId::new(parent_id.clone()))
                 .await
             {
                 Ok(parent_rev) => {

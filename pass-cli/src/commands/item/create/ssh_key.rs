@@ -39,6 +39,11 @@ enum SshKeyCommand {
         /// Title of the SSH key item
         #[arg(long)]
         title: String,
+
+        /// Folder ID to create the item in
+        #[cfg(feature = "internal")]
+        #[arg(long, help = "Folder ID to create the item in")]
+        folder_id: Option<String>,
     },
     /// Generate a new SSH key
     Generate {
@@ -65,6 +70,11 @@ enum SshKeyCommand {
         /// Title of the SSH key item
         #[arg(long)]
         title: String,
+
+        /// Folder ID to create the item in
+        #[cfg(feature = "internal")]
+        #[arg(long, help = "Folder ID to create the item in")]
+        folder_id: Option<String>,
     },
 }
 
@@ -93,13 +103,23 @@ pub async fn run(args: SshKeyArgs, client: PassClient) -> Result<()> {
             share_id,
             vault_name,
             title,
+            #[cfg(feature = "internal")]
+            folder_id,
         } => {
+            #[cfg(feature = "internal")]
+            let folder_id = folder_id
+                .as_ref()
+                .map(|id| pass_domain::FolderId::new(id.clone()));
+            #[cfg(not(feature = "internal"))]
+            let folder_id = None;
+
             run_import(
                 private_key_file,
                 password,
                 share_id,
                 vault_name,
                 title,
+                folder_id,
                 client,
             )
             .await
@@ -111,9 +131,18 @@ pub async fn run(args: SshKeyArgs, client: PassClient) -> Result<()> {
             share_id,
             vault_name,
             title,
+            #[cfg(feature = "internal")]
+            folder_id,
         } => {
+            #[cfg(feature = "internal")]
+            let folder_id = folder_id
+                .as_ref()
+                .map(|id| pass_domain::FolderId::new(id.clone()));
+            #[cfg(not(feature = "internal"))]
+            let folder_id = None;
+
             run_generate(
-                comment, key_type, password, share_id, vault_name, title, client,
+                comment, key_type, password, share_id, vault_name, title, folder_id, client,
             )
             .await
         }
@@ -126,6 +155,7 @@ async fn run_import(
     share_id: Option<String>,
     vault_name: Option<String>,
     title: String,
+    folder_id: Option<pass_domain::FolderId>,
     client: PassClient,
 ) -> Result<()> {
     let share_query = ShareQuery::new(share_id, vault_name)?;
@@ -158,7 +188,7 @@ async fn run_import(
     };
 
     let item_id = client
-        .create_ssh_key(&share_id, payload)
+        .create_ssh_key(&share_id, payload, folder_id.as_ref())
         .await
         .context("Error creating SSH key item")?;
 
@@ -166,6 +196,7 @@ async fn run_import(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn run_generate(
     comment: Option<String>,
     key_type: SshKeyTypeArg,
@@ -173,6 +204,7 @@ async fn run_generate(
     share_id: Option<String>,
     vault_name: Option<String>,
     title: String,
+    folder_id: Option<pass_domain::FolderId>,
     client: PassClient,
 ) -> Result<()> {
     let share_query = ShareQuery::new(share_id, vault_name)?;
@@ -195,7 +227,7 @@ async fn run_generate(
     };
 
     let item_id = client
-        .create_ssh_key(&share_id, payload)
+        .create_ssh_key(&share_id, payload, folder_id.as_ref())
         .await
         .context("Error creating SSH key item")?;
 

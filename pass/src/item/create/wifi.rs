@@ -2,7 +2,7 @@ use super::ItemCreatedEvent;
 use crate::PassClient;
 use crate::permission::PermissionAction;
 use anyhow::{Context, Result, bail};
-use pass_domain::{ItemContent, ItemId, ItemType, ShareId, WifiItem, WifiSecurity};
+use pass_domain::{FolderId, ItemContent, ItemId, ItemType, ShareId, WifiItem, WifiSecurity};
 
 #[derive(Clone, Debug)]
 pub struct WifiItemCreatePayload {
@@ -32,6 +32,7 @@ impl PassClient {
         &self,
         share_id: &ShareId,
         payload: WifiItemCreatePayload,
+        folder_id: Option<&FolderId>,
     ) -> Result<ItemId> {
         // Check if user can create WiFi
         self.action_guard(PermissionAction::CreateWifi {
@@ -53,6 +54,7 @@ impl PassClient {
                     password: payload.password.unwrap_or_default(),
                     security: payload.security.unwrap_or_default(),
                 }),
+                folder_id,
             )
             .await
             .context("Error creating wifi item request")?;
@@ -158,6 +160,7 @@ mod tests {
                     security: Some(WifiSecurity::WPA2),
                     note: Some(NOTE.to_string()),
                 },
+                None,
             )
             .await
             .expect("Should be able to create the wifi item");
@@ -245,6 +248,7 @@ mod tests {
                     security: None,
                     note: None,
                 },
+                None,
             )
             .await
             .expect("Should be able to create the wifi item");
@@ -332,6 +336,7 @@ mod tests {
                     security: Some(WifiSecurity::WPA3),
                     note: None,
                 },
+                None,
             )
             .await
             .expect("Should be able to create wifi with WPA3");
@@ -387,6 +392,7 @@ mod tests {
                     security: None,
                     note: None,
                 },
+                None,
             )
             .await;
 
@@ -423,6 +429,7 @@ mod tests {
                     security: None,
                     note: None,
                 },
+                None,
             )
             .await;
 
@@ -481,6 +488,7 @@ mod tests {
                     security: Some(WifiSecurity::WPA2),
                     note: None,
                 },
+                None,
             )
             .await
             .expect("Should be able to create wifi with unicode SSID");

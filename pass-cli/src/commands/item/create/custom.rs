@@ -131,6 +131,11 @@ pub struct CustomArgs {
     /// Name of the vault to create the custom item in
     #[arg(long, help = "Name of the vault to create the custom item in")]
     vault_name: Option<String>,
+
+    /// Folder ID to create the item in
+    #[cfg(feature = "internal")]
+    #[arg(long, help = "Folder ID to create the item in")]
+    folder_id: Option<String>,
 }
 
 pub async fn run(args: CustomArgs, client: PassClient) -> Result<()> {
@@ -148,12 +153,21 @@ pub async fn run(args: CustomArgs, client: PassClient) -> Result<()> {
 
     let share_query = ShareQuery::new(args.share_id, args.vault_name)?;
 
-    create_custom_from_template(&template_path, share_query, client).await
+    #[cfg(feature = "internal")]
+    let folder_id = args
+        .folder_id
+        .as_ref()
+        .map(|id| pass_domain::FolderId::new(id.clone()));
+    #[cfg(not(feature = "internal"))]
+    let folder_id = None;
+
+    create_custom_from_template(&template_path, share_query, folder_id, client).await
 }
 
 async fn create_custom_from_template(
     template_path: &str,
     share_query: ShareQuery,
+    folder_id: Option<pass_domain::FolderId>,
     client: PassClient,
 ) -> Result<()> {
     let template_json = if template_path == "-" {
@@ -174,17 +188,18 @@ async fn create_custom_from_template(
         .into_payload()
         .context("Error converting template to payload")?;
 
-    create_custom_from_payload(payload, share_query, client).await
+    create_custom_from_payload(payload, share_query, folder_id, client).await
 }
 
 async fn create_custom_from_payload(
     payload: CustomItemCreatePayload,
     share_query: ShareQuery,
+    folder_id: Option<pass_domain::FolderId>,
     client: PassClient,
 ) -> Result<()> {
     let share_id = share_query.share_id(&client).await?;
     let item_id = client
-        .create_custom(&share_id, payload)
+        .create_custom(&share_id, payload, folder_id.as_ref())
         .await
         .context("Error creating custom item")?;
 

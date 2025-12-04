@@ -2,7 +2,7 @@ use super::ItemCreatedEvent;
 use crate::PassClient;
 use crate::permission::PermissionAction;
 use anyhow::{Context, Result, bail};
-use pass_domain::{CardType, CreditCardItem, ItemContent, ItemId, ItemType, ShareId};
+use pass_domain::{CardType, CreditCardItem, FolderId, ItemContent, ItemId, ItemType, ShareId};
 
 #[derive(Clone, Debug)]
 pub struct CreditCardItemCreatePayload {
@@ -98,6 +98,7 @@ impl PassClient {
         &self,
         share_id: &ShareId,
         payload: CreditCardItemCreatePayload,
+        folder_id: Option<&FolderId>,
     ) -> Result<ItemId> {
         // Check if user has a paid plan
         self.action_guard(PermissionAction::CreateCreditCard {
@@ -129,6 +130,7 @@ impl PassClient {
                     expiration_date: expiration_date.to_string(),
                     pin: payload.pin.unwrap_or_default(),
                 }),
+                folder_id,
             )
             .await
             .context("Error creating credit card item request")?;
@@ -341,6 +343,7 @@ mod tests {
                     pin: Some(PIN.to_string()),
                     note: Some(NOTE.to_string()),
                 },
+                None,
             )
             .await
             .expect("Should be able to create the credit card item");
@@ -437,6 +440,7 @@ mod tests {
                     pin: None,
                     note: None,
                 },
+                None,
             )
             .await
             .expect("Should be able to create the credit card item with minimal data");
@@ -509,6 +513,7 @@ mod tests {
                     pin: None,
                     note: None,
                 },
+                None,
             )
             .await;
 
@@ -574,6 +579,7 @@ mod tests {
                     pin: None,
                     note: None,
                 },
+                None,
             )
             .await
             .expect("Should be able to create the credit card item");
@@ -667,6 +673,7 @@ mod tests {
                     pin: None,
                     note: None,
                 },
+                None,
             )
             .await
             .expect("Should be able to create the credit card item");

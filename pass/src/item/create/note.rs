@@ -1,7 +1,7 @@
 use super::ItemCreatedEvent;
 use crate::PassClient;
 use anyhow::{Context, Result};
-use pass_domain::{ItemContent, ItemId, ItemType, NoteItem, ShareId};
+use pass_domain::{FolderId, ItemContent, ItemId, ItemType, NoteItem, ShareId};
 
 #[derive(Clone, Debug)]
 pub struct NoteItemCreatePayload {
@@ -14,6 +14,7 @@ impl PassClient {
         &self,
         share_id: &ShareId,
         payload: NoteItemCreatePayload,
+        folder_id: Option<&FolderId>,
     ) -> Result<ItemId> {
         let req = self
             .create_item_request(
@@ -21,6 +22,7 @@ impl PassClient {
                 &payload.title,
                 &payload.note.unwrap_or_default(),
                 ItemContent::Note(NoteItem),
+                folder_id,
             )
             .await
             .context("Error creating note item request")?;
@@ -89,6 +91,7 @@ mod tests {
                     title: ITEM_TITLE.to_string(),
                     note: Some(ITEM_NOTE.to_string()),
                 },
+                None,
             )
             .await
             .expect("Should be able to create the item");
@@ -170,6 +173,7 @@ mod tests {
                     title: ITEM_TITLE.to_string(),
                     note: None,
                 },
+                None,
             )
             .await
             .expect("Should be able to create the item");

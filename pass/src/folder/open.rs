@@ -12,7 +12,7 @@ impl PassClient {
     ) -> Result<String> {
         // Get the folder revision (may hit API)
         let folder_rev = self
-            .get_folder_revision(share_id, folder_id)
+            .get_folder_data(share_id, folder_id)
             .await
             .context("Error getting folder revision")?;
 
@@ -73,7 +73,7 @@ impl PassClient {
         );
 
         let folder_rev = self
-            .get_folder_revision(share_id, folder_id)
+            .get_folder_data(share_id, folder_id)
             .await
             .context("Error getting folder revision")?;
 

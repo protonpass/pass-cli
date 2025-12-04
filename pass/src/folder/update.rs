@@ -29,7 +29,7 @@ impl PassClient {
     ) -> Result<()> {
         // Get the folder revision
         let folder_rev = self
-            .get_folder_revision(share_id, folder_id)
+            .get_folder_data(share_id, folder_id)
             .await
             .context("Error getting folder revision")?;
 

@@ -60,7 +60,7 @@ impl PassClient {
             if let Some(ref parent_folder_id) = payload.parent_folder_id {
                 // Folder has a parent, encrypt with parent's folder key
                 let parent_rev = self
-                    .get_folder_revision(share_id, parent_folder_id)
+                    .get_folder_data(share_id, parent_folder_id)
                     .await
                     .context("Error getting parent folder")?;
 

@@ -2,7 +2,7 @@ use super::ItemCreatedEvent;
 use crate::PassClient;
 use crate::permission::PermissionAction;
 use anyhow::{Context, Result};
-use pass_domain::{IdentityItem, ItemContent, ItemId, ItemType, ShareId};
+use pass_domain::{FolderId, IdentityItem, ItemContent, ItemId, ItemType, ShareId};
 
 #[derive(Clone, Debug)]
 pub struct IdentityItemCreatePayload {
@@ -40,6 +40,7 @@ impl PassClient {
         &self,
         share_id: &ShareId,
         payload: IdentityItemCreatePayload,
+        folder_id: Option<&FolderId>,
     ) -> Result<ItemId> {
         // Check if user can create Identity
         self.action_guard(PermissionAction::CreateIdentity {
@@ -75,6 +76,7 @@ impl PassClient {
                     company: trim_value(&payload.company.unwrap_or_default()),
                     job_title: trim_value(&payload.job_title.unwrap_or_default()),
                 })),
+                folder_id,
             )
             .await
             .context("Error creating identity item request")?;
@@ -186,6 +188,7 @@ mod tests {
                     company: Some(COMPANY.to_string()),
                     job_title: Some(JOB_TITLE.to_string()),
                 },
+                None,
             )
             .await
             .expect("Should be able to create the identity item");
@@ -300,6 +303,7 @@ mod tests {
                     company: None,
                     job_title: None,
                 },
+                None,
             )
             .await
             .expect("Should be able to create identity with minimal data");
@@ -393,6 +397,7 @@ mod tests {
                     company: None,
                     job_title: None,
                 },
+                None,
             )
             .await
             .expect("Should trim all values");
