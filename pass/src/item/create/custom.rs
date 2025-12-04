@@ -3,8 +3,8 @@ use crate::PassClient;
 use crate::permission::PermissionAction;
 use anyhow::{Context, Result, bail};
 use pass_domain::{
-    CustomItem, CustomSection, ItemContent, ItemExtraField, ItemExtraFieldContent, ItemId,
-    ItemType, ShareId,
+    CustomItem, CustomSection, FolderId, ItemContent, ItemExtraField, ItemExtraFieldContent,
+    ItemId, ItemType, ShareId,
 };
 
 #[derive(Clone, Debug)]
@@ -111,6 +111,7 @@ impl PassClient {
         &self,
         share_id: &ShareId,
         payload: CustomItemCreatePayload,
+        folder_id: Option<&FolderId>,
     ) -> Result<ItemId> {
         self.action_guard(PermissionAction::CreateCustomItem {
             share_id: share_id.clone(),
@@ -130,6 +131,7 @@ impl PassClient {
                 &payload.title,
                 payload.note.as_deref().unwrap_or(""),
                 ItemContent::Custom(CustomItem { sections }),
+                folder_id,
             )
             .await
             .context("Error creating custom item request")?;
@@ -257,6 +259,7 @@ mod tests {
                         ],
                     }],
                 },
+                None,
             )
             .await
             .expect("Should be able to create the custom item");
@@ -353,6 +356,7 @@ mod tests {
                     note: None,
                     sections: vec![],
                 },
+                None,
             )
             .await
             .expect("Should be able to create custom item with empty sections");
@@ -403,6 +407,7 @@ mod tests {
                         }],
                     }],
                 },
+                None,
             )
             .await
             .expect("Should trim names and values");
@@ -463,6 +468,7 @@ mod tests {
                         section_fields: vec![],
                     }],
                 },
+                None,
             )
             .await;
 
@@ -499,6 +505,7 @@ mod tests {
                         }],
                     }],
                 },
+                None,
             )
             .await;
 
@@ -565,6 +572,7 @@ mod tests {
                         },
                     ],
                 },
+                None,
             )
             .await
             .expect("Should create item with multiple sections");

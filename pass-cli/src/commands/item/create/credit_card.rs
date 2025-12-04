@@ -76,6 +76,11 @@ pub struct CreditCardArgs {
     /// Note content
     #[arg(long, help = "Note content")]
     note: Option<String>,
+
+    /// Folder ID to create the item in
+    #[cfg(feature = "internal")]
+    #[arg(long, help = "Folder ID to create the item in")]
+    folder_id: Option<String>,
 }
 
 pub async fn run(args: CreditCardArgs, client: PassClient) -> Result<()> {
@@ -115,7 +120,15 @@ pub async fn run(args: CreditCardArgs, client: PassClient) -> Result<()> {
                 .with_context(|| format!("Error parsing JSON from file: {template_source}"))?
         };
 
-        return create_credit_card_from_template(template, share_query, client).await;
+        #[cfg(feature = "internal")]
+        let folder_id = args
+            .folder_id
+            .as_ref()
+            .map(|id| pass_domain::FolderId::new(id.clone()));
+        #[cfg(not(feature = "internal"))]
+        let folder_id = None;
+
+        return create_credit_card_from_template(template, share_query, folder_id, client).await;
     }
 
     // Handle individual field arguments
@@ -135,26 +148,36 @@ pub async fn run(args: CreditCardArgs, client: PassClient) -> Result<()> {
         note: args.note,
     };
 
-    create_credit_card_from_payload(payload, share_query, client).await
+    #[cfg(feature = "internal")]
+    let folder_id = args
+        .folder_id
+        .as_ref()
+        .map(|id| pass_domain::FolderId::new(id.clone()));
+    #[cfg(not(feature = "internal"))]
+    let folder_id = None;
+
+    create_credit_card_from_payload(payload, share_query, folder_id, client).await
 }
 
 async fn create_credit_card_from_template(
     template: CreditCardTemplate,
     share_query: ShareQuery,
+    folder_id: Option<pass_domain::FolderId>,
     client: PassClient,
 ) -> Result<()> {
     let payload = template.into_payload();
-    create_credit_card_from_payload(payload, share_query, client).await
+    create_credit_card_from_payload(payload, share_query, folder_id, client).await
 }
 
 async fn create_credit_card_from_payload(
     payload: CreditCardItemCreatePayload,
     share_query: ShareQuery,
+    folder_id: Option<pass_domain::FolderId>,
     client: PassClient,
 ) -> Result<()> {
     let share_id = share_query.share_id(&client).await?;
     let res = client
-        .create_credit_card(&share_id, payload)
+        .create_credit_card(&share_id, payload, folder_id.as_ref())
         .await
         .context("Error creating credit card item")?;
     println!("{res}");

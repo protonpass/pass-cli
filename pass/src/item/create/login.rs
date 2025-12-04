@@ -1,7 +1,7 @@
 use super::ItemCreatedEvent;
 use crate::PassClient;
 use anyhow::{Context, Result};
-use pass_domain::{ItemContent, ItemId, ItemType, LoginItem, ShareId};
+use pass_domain::{FolderId, ItemContent, ItemId, ItemType, LoginItem, ShareId};
 
 #[derive(Clone, Debug)]
 pub struct LoginItemCreatePayload {
@@ -17,6 +17,7 @@ impl PassClient {
         &self,
         share_id: &ShareId,
         payload: LoginItemCreatePayload,
+        folder_id: Option<&FolderId>,
     ) -> Result<ItemId> {
         let req = self
             .create_item_request(
@@ -30,6 +31,7 @@ impl PassClient {
                     urls: payload.urls,
                     totp_uri: String::new(),
                 }),
+                folder_id,
             )
             .await
             .context("Error creating login item request")?;
@@ -104,6 +106,7 @@ mod tests {
                     password: Some(ITEM_PASSWORD.to_string()),
                     urls: vec![ITEM_WEBSITE.to_string()],
                 },
+                None,
             )
             .await
             .expect("Should be able to create the item");

@@ -79,7 +79,7 @@ impl PassClient {
 
         let title = format!("Alias for {prefix}");
         let item = self
-            .create_item_request(share_id, &title, "", ItemContent::Alias(AliasItem))
+            .create_item_request(share_id, &title, "", ItemContent::Alias(AliasItem), None)
             .await
             .context("Error creating create_alias_item request")?;
 

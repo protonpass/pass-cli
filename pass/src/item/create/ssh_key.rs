@@ -2,8 +2,8 @@ use super::ItemCreatedEvent;
 use crate::PassClient;
 use anyhow::{Context, Result};
 use pass_domain::{
-    ItemContent, ItemData, ItemExtraField, ItemExtraFieldContent, ItemId, ItemType, ShareId,
-    SshKeyItem,
+    FolderId, ItemContent, ItemData, ItemExtraField, ItemExtraFieldContent, ItemId, ItemType,
+    ShareId, SshKeyItem,
 };
 
 #[derive(Clone, Debug)]
@@ -19,6 +19,7 @@ impl PassClient {
         &self,
         share_id: &ShareId,
         payload: SshKeyItemCreatePayload,
+        folder_id: Option<&FolderId>,
     ) -> Result<ItemId> {
         let mut extra_fields = vec![];
 
@@ -42,7 +43,7 @@ impl PassClient {
         };
 
         let req = self
-            .create_item_request_from_data(share_id, content)
+            .create_item_request_from_data(share_id, content, folder_id)
             .await
             .context("Error creating item request")?;
 
@@ -117,6 +118,7 @@ mod tests {
                     public_key: PUBLIC_KEY.to_string(),
                     passphrase: Some(PASSPHRASE.to_string()),
                 },
+                None,
             )
             .await
             .expect("Should be able to create the SSH key item");
@@ -214,6 +216,7 @@ mod tests {
                     public_key: PUBLIC_KEY.to_string(),
                     passphrase: None,
                 },
+                None,
             )
             .await
             .expect("Should be able to create the SSH key item");

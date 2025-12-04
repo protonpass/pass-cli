@@ -101,6 +101,11 @@ pub struct WifiArgs {
     /// Note
     #[arg(long)]
     note: Option<String>,
+
+    /// Folder ID to create the item in
+    #[cfg(feature = "internal")]
+    #[arg(long, help = "Folder ID to create the item in")]
+    folder_id: Option<String>,
 }
 
 pub async fn run(args: WifiArgs, client: PassClient) -> Result<()> {
@@ -114,7 +119,15 @@ pub async fn run(args: WifiArgs, client: PassClient) -> Result<()> {
 
     if let Some(template_path) = args.from_template {
         let share_query = ShareQuery::new(args.share_id, args.vault_name)?;
-        return create_wifi_from_template(&template_path, share_query, client).await;
+        #[cfg(feature = "internal")]
+        let folder_id = args
+            .folder_id
+            .as_ref()
+            .map(|id| pass_domain::FolderId::new(id.clone()));
+        #[cfg(not(feature = "internal"))]
+        let folder_id = None;
+
+        return create_wifi_from_template(&template_path, share_query, folder_id, client).await;
     }
 
     let share_query = ShareQuery::new(args.share_id, args.vault_name)?;
@@ -141,12 +154,21 @@ pub async fn run(args: WifiArgs, client: PassClient) -> Result<()> {
         note: args.note,
     };
 
-    create_wifi_from_payload(payload, share_query, client).await
+    #[cfg(feature = "internal")]
+    let folder_id = args
+        .folder_id
+        .as_ref()
+        .map(|id| pass_domain::FolderId::new(id.clone()));
+    #[cfg(not(feature = "internal"))]
+    let folder_id = None;
+
+    create_wifi_from_payload(payload, share_query, folder_id, client).await
 }
 
 async fn create_wifi_from_template(
     template_path: &str,
     share_query: ShareQuery,
+    folder_id: Option<pass_domain::FolderId>,
     client: PassClient,
 ) -> Result<()> {
     let template_json = if template_path == "-" {
@@ -167,17 +189,18 @@ async fn create_wifi_from_template(
         .into_payload()
         .context("Error converting template to payload")?;
 
-    create_wifi_from_payload(payload, share_query, client).await
+    create_wifi_from_payload(payload, share_query, folder_id, client).await
 }
 
 async fn create_wifi_from_payload(
     payload: WifiItemCreatePayload,
     share_query: ShareQuery,
+    folder_id: Option<pass_domain::FolderId>,
     client: PassClient,
 ) -> Result<()> {
     let share_id = share_query.share_id(&client).await?;
     let item_id = client
-        .create_wifi(&share_id, payload)
+        .create_wifi(&share_id, payload, folder_id.as_ref())
         .await
         .context("Error creating WiFi item")?;
 
