@@ -8,6 +8,7 @@ pub(crate) mod item_keys;
 pub(crate) mod list;
 mod members;
 mod r#move;
+mod move_to_folder;
 mod open;
 #[allow(dead_code)]
 mod revisions;
