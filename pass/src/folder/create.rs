@@ -1,5 +1,5 @@
 use crate::PassClient;
-use crate::folder::list::FolderRevision;
+use crate::folder::list::FolderResponse;
 use anyhow::{Context, Result, anyhow};
 use muon::POST;
 use pass_domain::{FolderData, FolderId, ShareId, crypto};
@@ -26,7 +26,7 @@ struct CreateFolderRequest {
 #[derive(serde::Deserialize)]
 struct CreateFolderResponse {
     #[serde(rename = "Folder")]
-    folder: FolderRevision,
+    folder: FolderResponse,
 }
 
 impl PassClient {

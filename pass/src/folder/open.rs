@@ -1,5 +1,5 @@
 use crate::PassClient;
-use crate::folder::list::FolderRevision;
+use crate::folder::list::FolderResponse;
 use anyhow::{Context, Result, anyhow};
 use pass_domain::{DecryptedFolderKey, FolderId, ShareId, crypto};
 
@@ -99,7 +99,7 @@ impl PassClient {
     async fn open_folder_key_from_api(
         &self,
         share_id: &ShareId,
-        folder_rev: &FolderRevision,
+        folder_rev: &FolderResponse,
     ) -> Result<DecryptedFolderKey> {
         use std::collections::HashMap;
 
@@ -110,7 +110,7 @@ impl PassClient {
             .context("Error fetching all folder revisions")?;
 
         // Build a map for quick lookup
-        let revision_map: HashMap<String, &FolderRevision> = all_revisions
+        let revision_map: HashMap<String, &FolderResponse> = all_revisions
             .iter()
             .map(|r| (r.folder_id.clone(), r))
             .collect();

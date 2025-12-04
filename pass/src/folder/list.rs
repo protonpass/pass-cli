@@ -7,10 +7,10 @@ use std::collections::{HashMap, HashSet, VecDeque};
 const PAGE_SIZE: usize = 100;
 
 struct FoldersForShareCacheType;
-type FoldersForShareCache = HashMap<ShareId, Vec<FolderRevision>>;
+type FoldersForShareCache = HashMap<ShareId, Vec<FolderResponse>>;
 
 #[derive(Debug, Clone, serde::Deserialize)]
-pub(crate) struct FolderRevision {
+pub(crate) struct FolderResponse {
     #[serde(rename = "VaultID")]
     #[allow(dead_code)]
     pub vault_id: String,
@@ -32,7 +32,7 @@ pub(crate) struct FolderRevision {
 #[derive(Debug, serde::Deserialize)]
 struct FoldersWrapper {
     #[serde(rename = "Folders")]
-    folders: Vec<FolderRevision>,
+    folders: Vec<FolderResponse>,
     #[serde(rename = "LastToken")]
     last_token: Option<String>,
 }
@@ -46,18 +46,18 @@ struct ListFoldersResponse {
 #[derive(Debug, serde::Deserialize)]
 struct GetFolderResponse {
     #[serde(rename = "Folder")]
-    pub folder: FolderRevision,
+    pub folder: FolderResponse,
 }
 
 // Performs topological sort on folder revisions, filtering out dangling folders.
 // Returns folder IDs in topological order (parents before children).
-fn topological_sort_folders(revisions: &[FolderRevision]) -> Vec<String> {
+fn topological_sort_folders(revisions: &[FolderResponse]) -> Vec<String> {
     if revisions.is_empty() {
         return Vec::new();
     }
 
     // Build map for quick lookup
-    let revision_map: HashMap<String, &FolderRevision> =
+    let revision_map: HashMap<String, &FolderResponse> =
         revisions.iter().map(|r| (r.folder_id.clone(), r)).collect();
 
     // Build adjacency list for topological sort (parent -> children)
@@ -107,7 +107,7 @@ impl PassClient {
     pub(crate) async fn list_all_folder_revisions(
         &self,
         share_id: &ShareId,
-    ) -> Result<Vec<FolderRevision>> {
+    ) -> Result<Vec<FolderResponse>> {
         self.list_all_folder_revisions_impl(share_id, false).await
     }
 
@@ -115,7 +115,7 @@ impl PassClient {
     pub(crate) async fn list_all_folder_revisions_force_refresh(
         &self,
         share_id: &ShareId,
-    ) -> Result<Vec<FolderRevision>> {
+    ) -> Result<Vec<FolderResponse>> {
         self.list_all_folder_revisions_impl(share_id, true).await
     }
 
@@ -123,7 +123,7 @@ impl PassClient {
         &self,
         share_id: &ShareId,
         force_refresh: bool,
-    ) -> Result<Vec<FolderRevision>> {
+    ) -> Result<Vec<FolderResponse>> {
         // Check cache first (unless force_refresh is set)
         if !force_refresh {
             self.cache
@@ -201,7 +201,7 @@ impl PassClient {
         &self,
         share_id: &ShareId,
         folder_id: &FolderId,
-    ) -> Result<FolderRevision> {
+    ) -> Result<FolderResponse> {
         // Try to get from cache first by fetching all folders (which may be cached)
         match self.list_all_folder_revisions(share_id).await {
             Ok(revisions) => {
@@ -253,14 +253,14 @@ impl PassClient {
     async fn build_folder_structure(
         &self,
         share_id: &ShareId,
-        mut revisions: Vec<FolderRevision>,
+        mut revisions: Vec<FolderResponse>,
     ) -> Result<Vec<Folder>> {
         if revisions.is_empty() {
             return Ok(Vec::new());
         }
 
         // Build maps for quick lookup
-        let mut revision_map: HashMap<String, FolderRevision> = revisions
+        let mut revision_map: HashMap<String, FolderResponse> = revisions
             .iter()
             .map(|r| (r.folder_id.clone(), r.clone()))
             .collect();
@@ -318,7 +318,7 @@ impl PassClient {
         Ok(opened_folders)
     }
 
-    async fn open_folder(&self, folder_rev: &FolderRevision, share_id: &ShareId) -> Result<Folder> {
+    async fn open_folder(&self, folder_rev: &FolderResponse, share_id: &ShareId) -> Result<Folder> {
         // Open the folder key
         let folder_key = self
             .get_opened_folder_key(
@@ -349,7 +349,7 @@ impl PassClient {
     async fn open_folder_content(
         &self,
         folder_key: &[u8],
-        folder_rev: &FolderRevision,
+        folder_rev: &FolderResponse,
     ) -> Result<FolderData> {
         match folder_rev.content_format_version {
             1 => {
@@ -400,8 +400,8 @@ impl PassClient {
 mod tests {
     use super::*;
 
-    fn make_folder_revision(folder_id: &str, parent_folder_id: Option<&str>) -> FolderRevision {
-        FolderRevision {
+    fn make_folder_revision(folder_id: &str, parent_folder_id: Option<&str>) -> FolderResponse {
+        FolderResponse {
             vault_id: "vault1".to_string(),
             folder_id: folder_id.to_string(),
             parent_folder_id: parent_folder_id.map(|s| s.to_string()),
@@ -414,7 +414,7 @@ mod tests {
 
     #[test]
     fn test_topological_sort_empty() {
-        let revisions: Vec<FolderRevision> = vec![];
+        let revisions: Vec<FolderResponse> = vec![];
         let result = topological_sort_folders(&revisions);
         assert_eq!(result, Vec::<String>::new());
     }
