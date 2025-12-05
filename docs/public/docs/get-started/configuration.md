@@ -120,8 +120,8 @@ This stores the encryption key in a file on disk:
 ### 3. Environment variable storage
 
 !!! warning "Using the environment variable storage"
-Take into account that storing your key in an environment variable makes it available to any other process that is under the same session / in the same container.
-By using this option you are in charge of securing access to your system and your data.
+    Take into account that storing your key in an environment variable makes it available to any other process that is under the same session / in the same container.
+    By using this option you are in charge of securing access to your system and your data.
 
 **Configuration:**
 
@@ -131,6 +131,12 @@ export PROTON_PASS_ENCRYPTION_KEY=your-secret-key
 ```
 
 This derives the encryption key from the `PROTON_PASS_ENCRYPTION_KEY` environment variable, which **must be set and non-empty**.
+
+If you don't want to think about an encryption key yourself, you can generate one by doing something like:
+
+```bash
+dd if=/dev/urandom bs=1 count=2048 2>/dev/null | sha256sum | awk '{print $1}'
+```
 
 **How it works:**
 
