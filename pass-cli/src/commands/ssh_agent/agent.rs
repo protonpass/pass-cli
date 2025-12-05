@@ -150,7 +150,7 @@ where
             _ = async {
                 loop {
                     refresh_interval_timer.tick().await;
-                    refresh_keys_periodically(client, vault_query, &key_storage, refresh_interval).await;
+                    refresh_keys_periodically(client, vault_query, &key_storage).await;
                 }
             } => {}
             _ = tokio::signal::ctrl_c() => {
