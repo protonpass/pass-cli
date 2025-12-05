@@ -170,7 +170,7 @@ impl PassClient {
         Ok(items)
     }
 
-    pub(crate) async fn clear_items_cache(&self, share_id: &ShareId) {
+    pub async fn clear_items_cache(&self, share_id: &ShareId) {
         self.cache
             .update(ItemsForShareCacheType, |cache: &mut ItemsForShareCache| {
                 cache.remove(share_id);
