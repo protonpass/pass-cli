@@ -94,6 +94,10 @@ impl LocalKeyProvider for KeyringKeyProvider {
         } else {
             drop(key_guard);
             let mut write_key_guard = self.key.write().await;
+            if let Some(key) = &*write_key_guard {
+                return Ok(LocalKey::new(xor_key(key, self.xor_key)));
+            }
+
             let key = self
                 .get_local_key()
                 .await
