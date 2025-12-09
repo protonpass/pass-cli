@@ -9,16 +9,18 @@ use pass_domain::{FolderId, ItemId, ShareId, crypto};
 struct MoveItemKeyItem {
     #[serde(rename = "KeyRotation")]
     key_rotation: u8,
-    #[serde(rename = "Key")]
-    key: String,
+    #[serde(rename = "FolderKey")]
+    folder_key: String,
 }
 
 #[derive(serde::Serialize)]
 struct MoveItemToFolderItem {
     #[serde(rename = "ItemID")]
     item_id: String,
-    #[serde(rename = "ItemKeys")]
-    item_keys: Vec<MoveItemKeyItem>,
+    #[serde(rename = "Revision")]
+    revision: u64,
+    #[serde(rename = "FolderKeys")]
+    folder_keys: Vec<MoveItemKeyItem>,
 }
 
 #[derive(serde::Serialize)]
@@ -36,17 +38,18 @@ impl PassClient {
         item_id: &ItemId,
         target_folder_id: Option<&FolderId>,
     ) -> Result<()> {
-        // Get the item's current keys
-        let item_keys = self
-            .get_item_keys(share_id, item_id)
+        // Fetch the item revision to know its current folder (if inside a folder)
+        let item_revision = self
+            .fetch_item_revision(share_id, item_id)
             .await
-            .context("Error getting item keys")?;
+            .context("Error fetching item revision")?;
 
-        // Open all rotations of the item keys
-        let opened_item_keys = self
-            .open_item_keys(share_id, item_keys)
+        // Get the item key
+        let opened_item_key = self
+            .get_item_key(share_id, &item_revision)
             .await
-            .context("Error opening item keys")?;
+            .context("Error getting item key")?;
+        let opened_item_keys = vec![opened_item_key];
 
         // Re-encrypt the item keys with the target folder key or share key
         let migrated_item_keys = if let Some(folder_id) = target_folder_id {
@@ -83,7 +86,8 @@ impl PassClient {
             folder_id: target_folder_id.map(|id| id.to_string()),
             items: vec![MoveItemToFolderItem {
                 item_id: item_id.to_string(),
-                item_keys: migrated_item_keys,
+                revision: item_revision.revision,
+                folder_keys: migrated_item_keys,
             }],
         };
 
@@ -125,7 +129,7 @@ impl PassClient {
 
             migrated_keys.push(MoveItemKeyItem {
                 key_rotation: item_key.key_rotation,
-                key: crate::utils::b64_encode(&reencrypted),
+                folder_key: crate::utils::b64_encode(&reencrypted),
             });
         }
 
