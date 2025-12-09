@@ -346,6 +346,7 @@ mod tests {
                 "https://test.com".to_string(),
             ],
             totp_uri: "otpauth://totp/test".to_string(),
+            passkeys: vec![],
         }
     }
 
@@ -370,18 +371,35 @@ mod tests {
             last_name: "Doe".to_string(),
             birthdate: "1990-01-01".to_string(),
             gender: "Male".to_string(),
+            extra_personal_details: vec![],
             organization: "Test Corp".to_string(),
             street_address: "123 Main St".to_string(),
             zip_or_postal_code: "12345".to_string(),
             city: "Test City".to_string(),
             state_or_province: "Test State".to_string(),
             country_or_region: "Test Country".to_string(),
+            floor: String::new(),
+            county: String::new(),
+            extra_address_details: vec![],
             social_security_number: "123-45-6789".to_string(),
             passport_number: "A1234567".to_string(),
             license_number: "D123456789".to_string(),
             website: "https://johndoe.com".to_string(),
+            x_handle: String::new(),
+            second_phone_number: String::new(),
+            linkedin: String::new(),
+            reddit: String::new(),
+            facebook: String::new(),
+            yahoo: String::new(),
+            instagram: String::new(),
+            extra_contact_details: vec![],
             company: "Acme Inc".to_string(),
             job_title: "Software Engineer".to_string(),
+            personal_website: String::new(),
+            work_phone_number: String::new(),
+            work_email: String::new(),
+            extra_work_details: vec![],
+            extra_sections: vec![],
         })
     }
 
@@ -389,6 +407,7 @@ mod tests {
         SshKeyItem {
             private_key: "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBg...".to_string(),
             public_key: "ssh-rsa AAAAB3NzaC1yc2E...".to_string(),
+            sections: vec![],
         }
     }
 
@@ -397,6 +416,7 @@ mod tests {
             ssid: "TestNetwork".to_string(),
             password: "wifipass123".to_string(),
             security: WifiSecurity::WPA2,
+            sections: vec![],
         }
     }
 
@@ -433,6 +453,7 @@ mod tests {
                     name: "extra_field".to_string(),
                     content: ItemExtraFieldContent::Text("extra_value".to_string()),
                 }],
+                platform_specific: None,
             },
             flags: vec![],
             create_time: chrono::DateTime::from_timestamp(1234567890, 0)

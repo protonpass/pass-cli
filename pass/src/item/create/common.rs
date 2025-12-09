@@ -40,6 +40,7 @@ impl PassClient {
             item_uuid: ItemData::generate_uuid(),
             content: item_content,
             extra_fields: vec![],
+            platform_specific: None,
         };
         self.create_item_request_from_data(share_id, content, folder_id)
             .await

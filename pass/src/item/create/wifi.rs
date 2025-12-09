@@ -53,6 +53,7 @@ impl PassClient {
                     ssid: ssid.to_string(),
                     password: payload.password.unwrap_or_default(),
                     security: payload.security.unwrap_or_default(),
+                    sections: vec![],
                 }),
                 folder_id,
             )

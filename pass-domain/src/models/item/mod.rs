@@ -60,6 +60,23 @@ pub enum UpdateFieldResult {
     CustomFieldCreated,
 }
 
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq, Default)]
+pub struct AllowedAndroidApp {
+    pub package_name: String,
+    pub hashes: Vec<String>,
+    pub app_name: String,
+}
+
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq, Default)]
+pub struct AndroidSpecific {
+    pub allowed_apps: Vec<AllowedAndroidApp>,
+}
+
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq, Default)]
+pub struct PlatformSpecific {
+    pub android: Option<AndroidSpecific>,
+}
+
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq)]
 pub struct ItemData {
     pub title: String,
@@ -67,6 +84,8 @@ pub struct ItemData {
     pub item_uuid: String,
     pub content: ItemContent,
     pub extra_fields: Vec<ItemExtraField>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub platform_specific: Option<PlatformSpecific>,
 }
 
 impl ItemData {
@@ -87,6 +106,7 @@ impl ItemData {
             item_uuid,
             content,
             extra_fields,
+            platform_specific: None,
         })
     }
 
@@ -426,6 +446,72 @@ impl ItemData {
     }
 }
 
+impl From<AllowedAndroidApp> for item_v1::AllowedAndroidApp {
+    fn from(value: AllowedAndroidApp) -> Self {
+        item_v1::AllowedAndroidApp {
+            package_name: value.package_name,
+            hashes: value.hashes,
+            app_name: value.app_name,
+            ..Default::default()
+        }
+    }
+}
+
+impl From<item_v1::AllowedAndroidApp> for AllowedAndroidApp {
+    fn from(value: item_v1::AllowedAndroidApp) -> Self {
+        Self {
+            package_name: value.package_name,
+            hashes: value.hashes,
+            app_name: value.app_name,
+        }
+    }
+}
+
+impl From<AndroidSpecific> for item_v1::AndroidSpecific {
+    fn from(value: AndroidSpecific) -> Self {
+        item_v1::AndroidSpecific {
+            allowed_apps: value
+                .allowed_apps
+                .into_iter()
+                .map(item_v1::AllowedAndroidApp::from)
+                .collect(),
+            ..Default::default()
+        }
+    }
+}
+
+impl From<item_v1::AndroidSpecific> for AndroidSpecific {
+    fn from(value: item_v1::AndroidSpecific) -> Self {
+        Self {
+            allowed_apps: value
+                .allowed_apps
+                .into_iter()
+                .map(AllowedAndroidApp::from)
+                .collect(),
+        }
+    }
+}
+
+impl From<PlatformSpecific> for item_v1::PlatformSpecific {
+    fn from(value: PlatformSpecific) -> Self {
+        item_v1::PlatformSpecific {
+            android: value
+                .android
+                .map(|a| protobuf::MessageField::some(item_v1::AndroidSpecific::from(a)))
+                .unwrap_or_default(),
+            ..Default::default()
+        }
+    }
+}
+
+impl From<item_v1::PlatformSpecific> for PlatformSpecific {
+    fn from(value: item_v1::PlatformSpecific) -> Self {
+        Self {
+            android: value.android.into_option().map(AndroidSpecific::from),
+        }
+    }
+}
+
 impl From<ItemData> for item_v1::Item {
     fn from(value: ItemData) -> Self {
         let metadata = item_v1::Metadata {
@@ -448,6 +534,10 @@ impl From<ItemData> for item_v1::Item {
                 .into_iter()
                 .map(item_v1::ExtraField::from)
                 .collect(),
+            platform_specific: value
+                .platform_specific
+                .map(|ps| protobuf::MessageField::some(item_v1::PlatformSpecific::from(ps)))
+                .unwrap_or_default(),
             ..Default::default()
         }
     }
@@ -468,6 +558,10 @@ impl From<item_v1::Item> for ItemData {
                 .into_iter()
                 .map(ItemExtraField::from)
                 .collect(),
+            platform_specific: value
+                .platform_specific
+                .into_option()
+                .map(PlatformSpecific::from),
         }
     }
 }
@@ -672,12 +766,38 @@ impl From<item_v1::ItemNote> for NoteItem {
 }
 
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq)]
+pub struct PasskeyCreationData {
+    pub os_name: String,
+    pub os_version: String,
+    pub device_name: String,
+    pub app_version: String,
+}
+
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq)]
+pub struct Passkey {
+    pub key_id: String,
+    pub content: Vec<u8>,
+    pub domain: String,
+    pub rp_id: String,
+    pub rp_name: String,
+    pub user_name: String,
+    pub user_display_name: String,
+    pub user_id: Vec<u8>,
+    pub create_time: u32,
+    pub note: String,
+    pub credential_id: Vec<u8>,
+    pub user_handle: Vec<u8>,
+    pub creation_data: Option<PasskeyCreationData>,
+}
+
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize, PartialEq, Eq)]
 pub struct LoginItem {
     pub email: String,
     pub username: String,
     pub password: String,
     pub urls: Vec<String>,
     pub totp_uri: String,
+    pub passkeys: Vec<Passkey>,
 }
 
 impl LoginItem {
@@ -707,6 +827,76 @@ impl LoginItem {
     }
 }
 
+impl From<PasskeyCreationData> for item_v1::PasskeyCreationData {
+    fn from(value: PasskeyCreationData) -> Self {
+        item_v1::PasskeyCreationData {
+            os_name: value.os_name,
+            os_version: value.os_version,
+            device_name: value.device_name,
+            app_version: value.app_version,
+            ..Default::default()
+        }
+    }
+}
+
+impl From<item_v1::PasskeyCreationData> for PasskeyCreationData {
+    fn from(value: item_v1::PasskeyCreationData) -> Self {
+        Self {
+            os_name: value.os_name,
+            os_version: value.os_version,
+            device_name: value.device_name,
+            app_version: value.app_version,
+        }
+    }
+}
+
+impl From<Passkey> for item_v1::Passkey {
+    fn from(value: Passkey) -> Self {
+        item_v1::Passkey {
+            key_id: value.key_id,
+            content: value.content,
+            domain: value.domain,
+            rp_id: value.rp_id,
+            rp_name: value.rp_name,
+            user_name: value.user_name,
+            user_display_name: value.user_display_name,
+            user_id: value.user_id,
+            create_time: value.create_time,
+            note: value.note,
+            credential_id: value.credential_id,
+            user_handle: value.user_handle,
+            creation_data: value
+                .creation_data
+                .map(|data| protobuf::MessageField::some(item_v1::PasskeyCreationData::from(data)))
+                .unwrap_or_default(),
+            ..Default::default()
+        }
+    }
+}
+
+impl From<item_v1::Passkey> for Passkey {
+    fn from(value: item_v1::Passkey) -> Self {
+        Self {
+            key_id: value.key_id,
+            content: value.content,
+            domain: value.domain,
+            rp_id: value.rp_id,
+            rp_name: value.rp_name,
+            user_name: value.user_name,
+            user_display_name: value.user_display_name,
+            user_id: value.user_id,
+            create_time: value.create_time,
+            note: value.note,
+            credential_id: value.credential_id,
+            user_handle: value.user_handle,
+            creation_data: value
+                .creation_data
+                .into_option()
+                .map(PasskeyCreationData::from),
+        }
+    }
+}
+
 impl From<LoginItem> for item_v1::ItemLogin {
     fn from(value: LoginItem) -> Self {
         item_v1::ItemLogin {
@@ -715,6 +905,11 @@ impl From<LoginItem> for item_v1::ItemLogin {
             password: value.password,
             urls: value.urls,
             totp_uri: value.totp_uri,
+            passkeys: value
+                .passkeys
+                .into_iter()
+                .map(item_v1::Passkey::from)
+                .collect(),
             ..Default::default()
         }
     }
@@ -728,6 +923,7 @@ impl From<item_v1::ItemLogin> for LoginItem {
             password: value.password,
             urls: value.urls,
             totp_uri: value.totp_uri,
+            passkeys: value.passkeys.into_iter().map(Passkey::from).collect(),
         }
     }
 }
@@ -822,18 +1018,35 @@ pub struct IdentityItem {
     pub last_name: String,
     pub birthdate: String,
     pub gender: String,
+    pub extra_personal_details: Vec<ItemExtraField>,
     pub organization: String,
     pub street_address: String,
     pub zip_or_postal_code: String,
     pub city: String,
     pub state_or_province: String,
     pub country_or_region: String,
+    pub floor: String,
+    pub county: String,
+    pub extra_address_details: Vec<ItemExtraField>,
     pub social_security_number: String,
     pub passport_number: String,
     pub license_number: String,
     pub website: String,
+    pub x_handle: String,
+    pub second_phone_number: String,
+    pub linkedin: String,
+    pub reddit: String,
+    pub facebook: String,
+    pub yahoo: String,
+    pub instagram: String,
+    pub extra_contact_details: Vec<ItemExtraField>,
     pub company: String,
     pub job_title: String,
+    pub personal_website: String,
+    pub work_phone_number: String,
+    pub work_email: String,
+    pub extra_work_details: Vec<ItemExtraField>,
+    pub extra_sections: Vec<CustomSection>,
 }
 
 impl IdentityItem {
@@ -863,6 +1076,18 @@ impl IdentityItem {
         if !self.gender.is_empty() {
             out.push_str(format!("\n- Gender: {}", self.gender).as_str());
         }
+        if !self.extra_personal_details.is_empty() {
+            out.push_str(
+                format!(
+                    "\n- Extra personal details: {}",
+                    self.extra_personal_details
+                        .iter()
+                        .map(|d| format!("\n  - {}:{:#?}", d.name, d.content))
+                        .collect::<String>()
+                )
+                .as_str(),
+            );
+        }
         if !self.organization.is_empty() {
             out.push_str(format!("\n- Organization: {}", self.organization).as_str());
         }
@@ -880,6 +1105,24 @@ impl IdentityItem {
         }
         if !self.country_or_region.is_empty() {
             out.push_str(format!("\n- Country or region: {}", self.country_or_region).as_str());
+        }
+        if !self.floor.is_empty() {
+            out.push_str(format!("\n- Floor: {}", self.floor).as_str());
+        }
+        if !self.county.is_empty() {
+            out.push_str(format!("\n- County: {}", self.county).as_str());
+        }
+        if !self.extra_address_details.is_empty() {
+            out.push_str(
+                format!(
+                    "\n- Extra address details: {}",
+                    self.extra_address_details
+                        .iter()
+                        .map(|d| format!("\n  - {}:{:#?}", d.name, d.content))
+                        .collect::<String>()
+                )
+                .as_str(),
+            );
         }
         if !self.social_security_number.is_empty() {
             out.push_str(
@@ -899,12 +1142,77 @@ impl IdentityItem {
         if !self.website.is_empty() {
             out.push_str(format!("\n- Website: {}", self.website).as_str());
         }
+        if !self.x_handle.is_empty() {
+            out.push_str(format!("\n - X handle: {}", self.x_handle).as_str());
+        }
+        if !self.second_phone_number.is_empty() {
+            out.push_str(
+                format!("\n - Second phone number: {}", self.second_phone_number).as_str(),
+            );
+        }
+        if !self.linkedin.is_empty() {
+            out.push_str(format!("\n - LinkedIn: {}", self.linkedin).as_str());
+        }
+        if !self.reddit.is_empty() {
+            out.push_str(format!("\n - Reddit: {}", self.reddit).as_str());
+        }
+        if !self.facebook.is_empty() {
+            out.push_str(format!("\n - Facebook: {}", self.facebook).as_str());
+        }
+        if !self.yahoo.is_empty() {
+            out.push_str(format!("\n - Yahoo: {}", self.yahoo).as_str());
+        }
+        if !self.instagram.is_empty() {
+            out.push_str(format!("\n - Instagram: {}", self.instagram).as_str());
+        }
         if !self.company.is_empty() {
             out.push_str(format!("\n- Company: {}", self.company).as_str());
+        }
+        if !self.extra_contact_details.is_empty() {
+            out.push_str(
+                format!(
+                    "\n- Extra contact details: {}",
+                    self.extra_contact_details
+                        .iter()
+                        .map(|d| format!("\n  - {}:{:#?}", d.name, d.content))
+                        .collect::<String>()
+                )
+                .as_str(),
+            );
         }
         if !self.job_title.is_empty() {
             out.push_str(format!("\n- Job title: {}", self.job_title).as_str());
         }
+        if !self.personal_website.is_empty() {
+            out.push_str(format!("\n- Personal website: {}", self.personal_website).as_str());
+        }
+        if !self.work_phone_number.is_empty() {
+            out.push_str(format!("\n- Work phone number: {}", self.work_phone_number).as_str());
+        }
+        if !self.work_email.is_empty() {
+            out.push_str(format!("\n- Work email: {}", self.work_email).as_str());
+        }
+        if !self.extra_work_details.is_empty() {
+            out.push_str(
+                format!(
+                    "\n- Extra work details: {}",
+                    self.extra_work_details
+                        .iter()
+                        .map(|d| format!("\n  - {}:{:#?}", d.name, d.content))
+                        .collect::<String>()
+                )
+                .as_str(),
+            );
+        }
+        if !self.extra_sections.is_empty() {
+            for section in self.extra_sections.iter() {
+                out.push_str(format!("\n- Section: {}", section.section_name).as_str());
+                for field in section.section_fields.iter() {
+                    out.push_str(format!("\n  - {}: {:#?}", field.name, field.content).as_str());
+                }
+            }
+        }
+
         out
     }
 }
@@ -920,18 +1228,55 @@ impl From<IdentityItem> for item_v1::ItemIdentity {
             last_name: value.last_name,
             birthdate: value.birthdate,
             gender: value.gender,
+            extra_personal_details: value
+                .extra_personal_details
+                .into_iter()
+                .map(item_v1::ExtraField::from)
+                .collect(),
             organization: value.organization,
             street_address: value.street_address,
             zip_or_postal_code: value.zip_or_postal_code,
             city: value.city,
             state_or_province: value.state_or_province,
             country_or_region: value.country_or_region,
+            floor: value.floor,
+            county: value.county,
+            extra_address_details: value
+                .extra_address_details
+                .into_iter()
+                .map(item_v1::ExtraField::from)
+                .collect(),
             social_security_number: value.social_security_number,
             passport_number: value.passport_number,
             license_number: value.license_number,
             website: value.website,
+            x_handle: value.x_handle,
+            second_phone_number: value.second_phone_number,
+            linkedin: value.linkedin,
+            reddit: value.reddit,
+            facebook: value.facebook,
+            yahoo: value.yahoo,
+            instagram: value.instagram,
+            extra_contact_details: value
+                .extra_contact_details
+                .into_iter()
+                .map(item_v1::ExtraField::from)
+                .collect(),
             company: value.company,
             job_title: value.job_title,
+            personal_website: value.personal_website,
+            work_phone_number: value.work_phone_number,
+            work_email: value.work_email,
+            extra_work_details: value
+                .extra_work_details
+                .into_iter()
+                .map(item_v1::ExtraField::from)
+                .collect(),
+            extra_sections: value
+                .extra_sections
+                .into_iter()
+                .map(item_v1::CustomSection::from)
+                .collect(),
             ..Default::default()
         }
     }
@@ -948,18 +1293,55 @@ impl From<item_v1::ItemIdentity> for IdentityItem {
             last_name: value.last_name,
             birthdate: value.birthdate,
             gender: value.gender,
+            extra_personal_details: value
+                .extra_personal_details
+                .into_iter()
+                .map(ItemExtraField::from)
+                .collect(),
             organization: value.organization,
             street_address: value.street_address,
             zip_or_postal_code: value.zip_or_postal_code,
             city: value.city,
             state_or_province: value.state_or_province,
             country_or_region: value.country_or_region,
+            floor: value.floor,
+            county: value.county,
+            extra_address_details: value
+                .extra_address_details
+                .into_iter()
+                .map(ItemExtraField::from)
+                .collect(),
             social_security_number: value.social_security_number,
             passport_number: value.passport_number,
             license_number: value.license_number,
             website: value.website,
+            x_handle: value.x_handle,
+            second_phone_number: value.second_phone_number,
+            linkedin: value.linkedin,
+            reddit: value.reddit,
+            facebook: value.facebook,
+            yahoo: value.yahoo,
+            instagram: value.instagram,
+            extra_contact_details: value
+                .extra_contact_details
+                .into_iter()
+                .map(ItemExtraField::from)
+                .collect(),
             company: value.company,
             job_title: value.job_title,
+            personal_website: value.personal_website,
+            work_phone_number: value.work_phone_number,
+            work_email: value.work_email,
+            extra_work_details: value
+                .extra_work_details
+                .into_iter()
+                .map(ItemExtraField::from)
+                .collect(),
+            extra_sections: value
+                .extra_sections
+                .into_iter()
+                .map(CustomSection::from)
+                .collect(),
         }
     }
 }
@@ -968,6 +1350,7 @@ impl From<item_v1::ItemIdentity> for IdentityItem {
 pub struct SshKeyItem {
     pub private_key: String,
     pub public_key: String,
+    pub sections: Vec<CustomSection>,
 }
 
 impl SshKeyItem {
@@ -988,6 +1371,11 @@ impl From<SshKeyItem> for item_v1::ItemSSHKey {
         item_v1::ItemSSHKey {
             private_key: value.private_key,
             public_key: value.public_key,
+            sections: value
+                .sections
+                .into_iter()
+                .map(item_v1::CustomSection::from)
+                .collect(),
             ..Default::default()
         }
     }
@@ -998,6 +1386,11 @@ impl From<item_v1::ItemSSHKey> for SshKeyItem {
         Self {
             private_key: value.private_key,
             public_key: value.public_key,
+            sections: value
+                .sections
+                .into_iter()
+                .map(CustomSection::from)
+                .collect(),
         }
     }
 }
@@ -1007,6 +1400,7 @@ pub struct WifiItem {
     pub ssid: String,
     pub password: String,
     pub security: WifiSecurity,
+    pub sections: Vec<CustomSection>,
 }
 
 impl WifiItem {
@@ -1031,6 +1425,11 @@ impl From<WifiItem> for item_v1::ItemWifi {
             ssid: value.ssid,
             password: value.password,
             security: item_v1::WifiSecurity::from(value.security).into(),
+            sections: value
+                .sections
+                .into_iter()
+                .map(item_v1::CustomSection::from)
+                .collect(),
             ..Default::default()
         }
     }
@@ -1042,6 +1441,11 @@ impl From<item_v1::ItemWifi> for WifiItem {
             ssid: value.ssid,
             password: value.password,
             security: WifiSecurity::from(value.security.enum_value_or_default()),
+            sections: value
+                .sections
+                .into_iter()
+                .map(CustomSection::from)
+                .collect(),
         }
     }
 }
@@ -1205,6 +1609,7 @@ mod tests {
             item_uuid: "test-uuid".to_string(),
             content,
             extra_fields: vec![],
+            platform_specific: None,
         }
     }
 
@@ -1231,6 +1636,7 @@ mod tests {
             password: "oldpass".to_string(),
             urls: vec!["https://old.com".to_string()],
             totp_uri: "".to_string(),
+            passkeys: vec![],
         }));
 
         // Update email
@@ -1385,18 +1791,35 @@ mod tests {
             last_name: "Name".to_string(),
             birthdate: "1990-01-01".to_string(),
             gender: "Male".to_string(),
+            extra_personal_details: vec![],
             organization: "Old Org".to_string(),
             street_address: "123 Old St".to_string(),
             zip_or_postal_code: "12345".to_string(),
             city: "Old City".to_string(),
             state_or_province: "Old State".to_string(),
             country_or_region: "Old Country".to_string(),
+            floor: String::new(),
+            county: String::new(),
+            extra_address_details: vec![],
             social_security_number: "111-11-1111".to_string(),
             passport_number: "A111111".to_string(),
             license_number: "L111111".to_string(),
             website: "https://old.com".to_string(),
+            x_handle: String::new(),
+            second_phone_number: String::new(),
+            linkedin: String::new(),
+            reddit: String::new(),
+            facebook: String::new(),
+            yahoo: String::new(),
+            instagram: String::new(),
+            extra_contact_details: vec![],
             company: "Old Company".to_string(),
             job_title: "Old Title".to_string(),
+            personal_website: String::new(),
+            work_phone_number: String::new(),
+            work_email: String::new(),
+            extra_work_details: vec![],
+            extra_sections: vec![],
         })));
 
         // Test a few key fields
@@ -1452,6 +1875,7 @@ mod tests {
         let mut item = create_test_item_data(ItemContent::SshKey(SshKeyItem {
             private_key: "old_private".to_string(),
             public_key: "old_public".to_string(),
+            sections: vec![],
         }));
 
         assert_eq!(
@@ -1477,6 +1901,7 @@ mod tests {
             ssid: "OldNetwork".to_string(),
             password: "oldpass".to_string(),
             security: WifiSecurity::WPA2,
+            sections: vec![],
         }));
 
         assert_eq!(
@@ -1636,6 +2061,7 @@ mod tests {
             password: "password".to_string(),
             urls: vec![],
             totp_uri: "otpauth://totp/test".to_string(),
+            passkeys: vec![],
         }));
 
         // Attempting to update totp_uri should create a custom field instead (returns CustomFieldCreated)
@@ -1715,6 +2141,7 @@ mod tests {
             password: "oldpass".to_string(),
             urls: vec![],
             totp_uri: "".to_string(),
+            passkeys: vec![],
         }));
 
         // Test case insensitive matching
@@ -1751,18 +2178,35 @@ mod tests {
             last_name: "".to_string(),
             birthdate: "".to_string(),
             gender: "".to_string(),
+            extra_personal_details: vec![],
             organization: "".to_string(),
             street_address: "".to_string(),
             zip_or_postal_code: "".to_string(),
             city: "".to_string(),
             state_or_province: "".to_string(),
             country_or_region: "".to_string(),
+            floor: String::new(),
+            county: String::new(),
+            extra_address_details: vec![],
             social_security_number: "".to_string(),
             passport_number: "".to_string(),
             license_number: "".to_string(),
             website: "".to_string(),
+            x_handle: String::new(),
+            second_phone_number: String::new(),
+            linkedin: String::new(),
+            reddit: String::new(),
+            facebook: String::new(),
+            yahoo: String::new(),
+            instagram: String::new(),
+            extra_contact_details: vec![],
             company: "".to_string(),
             job_title: "".to_string(),
+            personal_website: String::new(),
+            work_phone_number: String::new(),
+            work_email: String::new(),
+            extra_work_details: vec![],
+            extra_sections: vec![],
         })));
 
         // Test various field aliases work
@@ -1812,6 +2256,7 @@ mod tests {
             password: "".to_string(),
             urls: vec!["https://old.com".to_string()],
             totp_uri: "".to_string(),
+            passkeys: vec![],
         }));
 
         // Empty string should result in empty urls vector

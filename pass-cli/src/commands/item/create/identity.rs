@@ -40,6 +40,10 @@ pub struct IdentityTemplate {
     #[serde(default)]
     pub country_or_region: Option<String>,
     #[serde(default)]
+    pub floor: Option<String>,
+    #[serde(default)]
+    pub county: Option<String>,
+    #[serde(default)]
     pub social_security_number: Option<String>,
     #[serde(default)]
     pub passport_number: Option<String>,
@@ -48,9 +52,29 @@ pub struct IdentityTemplate {
     #[serde(default)]
     pub website: Option<String>,
     #[serde(default)]
+    pub x_handle: Option<String>,
+    #[serde(default)]
+    pub second_phone_number: Option<String>,
+    #[serde(default)]
+    pub linkedin: Option<String>,
+    #[serde(default)]
+    pub reddit: Option<String>,
+    #[serde(default)]
+    pub facebook: Option<String>,
+    #[serde(default)]
+    pub yahoo: Option<String>,
+    #[serde(default)]
+    pub instagram: Option<String>,
+    #[serde(default)]
     pub company: Option<String>,
     #[serde(default)]
     pub job_title: Option<String>,
+    #[serde(default)]
+    pub personal_website: Option<String>,
+    #[serde(default)]
+    pub work_phone_number: Option<String>,
+    #[serde(default)]
+    pub work_email: Option<String>,
 }
 
 impl Default for IdentityTemplate {
@@ -72,12 +96,24 @@ impl Default for IdentityTemplate {
             city: Some("".to_string()),
             state_or_province: Some("".to_string()),
             country_or_region: Some("".to_string()),
+            floor: Some("".to_string()),
+            county: Some("".to_string()),
             social_security_number: Some("".to_string()),
             passport_number: Some("".to_string()),
             license_number: Some("".to_string()),
             website: Some("".to_string()),
+            x_handle: Some("".to_string()),
+            second_phone_number: Some("".to_string()),
+            linkedin: Some("".to_string()),
+            reddit: Some("".to_string()),
+            facebook: Some("".to_string()),
+            yahoo: Some("".to_string()),
+            instagram: Some("".to_string()),
             company: Some("".to_string()),
             job_title: Some("".to_string()),
+            personal_website: Some("".to_string()),
+            work_phone_number: Some("".to_string()),
+            work_email: Some("".to_string()),
         }
     }
 }
@@ -101,12 +137,24 @@ impl From<IdentityTemplate> for IdentityItemCreatePayload {
             city: value.city,
             state_or_province: value.state_or_province,
             country_or_region: value.country_or_region,
+            floor: value.floor,
+            county: value.county,
             social_security_number: value.social_security_number,
             passport_number: value.passport_number,
             license_number: value.license_number,
             website: value.website,
+            x_handle: value.x_handle,
+            second_phone_number: value.second_phone_number,
+            linkedin: value.linkedin,
+            reddit: value.reddit,
+            facebook: value.facebook,
+            yahoo: value.yahoo,
+            instagram: value.instagram,
             company: value.company,
             job_title: value.job_title,
+            personal_website: value.personal_website,
+            work_phone_number: value.work_phone_number,
+            work_email: value.work_email,
         }
     }
 }

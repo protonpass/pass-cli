@@ -38,8 +38,10 @@ impl PassClient {
             content: ItemContent::SshKey(SshKeyItem {
                 private_key: payload.private_key,
                 public_key: payload.public_key,
+                sections: vec![],
             }),
             extra_fields,
+            platform_specific: None,
         };
 
         let req = self

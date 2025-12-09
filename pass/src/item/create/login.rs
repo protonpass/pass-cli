@@ -30,6 +30,7 @@ impl PassClient {
                     password: payload.password.unwrap_or_default(),
                     urls: payload.urls,
                     totp_uri: String::new(),
+                    passkeys: vec![],
                 }),
                 folder_id,
             )
