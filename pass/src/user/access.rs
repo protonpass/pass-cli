@@ -1,5 +1,5 @@
 use crate::PassClient;
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Result};
 use muon::GET;
 
 // Example enum for PlanType
@@ -119,11 +119,11 @@ pub struct GetUserInfoResponse {
 
 impl PassClient {
     pub async fn get_user_access(&self) -> Result<UserInfo> {
-        let res = self.send(GET!("/pass/v1/user/access")).await?;
+        let res = self
+            .send(GET!("/pass/v1/user/access"))
+            .await
+            .context("Error retrieving user info")?;
 
-        if !res.status().is_success() {
-            return Err(anyhow!("HTTP Status: {:?}", res.status()));
-        }
         let response: GetUserInfoResponse = assert_response!(res);
         Ok(response.access)
     }
