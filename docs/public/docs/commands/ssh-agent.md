@@ -117,3 +117,36 @@ In order to use the ssh-agent, you need to run the `export` command that appears
 export SSH_AUTH_SOCK=/Users/youruser/.ssh/proton-pass-agent.sock
 ```
 
+## Troubleshooting
+
+### `ssh-copy-id` fails due to having many ssh keys loaded and doesn't prompt for a password
+
+A usual flow with a SSH agent is making sure we can log in with our SSH keys onto a new server, which is usually either done by:
+
+1. The sysadmin adding our public SSH key for the desired remote user.
+2. Ourselves performing a `ssh-copy-id` identifying with password for the first time in order to copy our SSH keys into the `authorized_keys` file.
+
+For the second case, in case our SSH agent holds many SSH keys, when performing `ssh-copy-id` it will first try to authenticate using the SSH keys it holds.
+If the remote server has a limit on the maximum number of authentication attempts, it's possible that we don't even get to the step where we are prompted for our password.
+Take into account that, from the server's point of view, each SSH key the SSH Agent holds just looks like an authentication attempt, so it's like we are just trying to brute-force the login.
+
+In order to force the `ssh-copy-id` command not to use the SSH keys of the agent, we can do it with the following command:
+
+```bash
+ssh-copy-id -o PreferredAuthentications=password -o PubkeyAuthentication=no [rest of arguments]
+```
+
+With these configurations, we explicitly say that we want to use password-based authentication and that public-key authentication should not be performed.
+
+An example of a complete command could be something like:
+
+```bash
+ssh-copy-id -o PreferredAuthentications=password -o PubkeyAuthentication=no -p 2222 user@server
+```
+
+### Identities removed from the SSH agent keep reappearing
+
+If you are using our SSH agent and you run `ssh-add -L` you will be able to see all the SSH keys that are loaded into the agent.
+Our SSH agent supports **some of the `ssh-add` commands**. You can run commands like `ssh-add -D` to remove all the loaded SSH keys from the agent.
+However, take into account that our SSH agent periodically refreshes the available SSH keys, so in case you run `ssh-add -L` from time to time, you would see them reappearing.
+If that's a common flow you use, you should probably take a look at our [`ssh-agent load`](./ssh-agent.md#ssh-agent-integration) command to load your SSH keys stored in Proton Pass into your already-existing SSH agent.
