@@ -117,6 +117,41 @@ In order to use the ssh-agent, you need to run the `export` command that appears
 export SSH_AUTH_SOCK=/Users/youruser/.ssh/proton-pass-agent.sock
 ```
 
+### Creating new SSH key items automatically
+
+!!! info "Feature available sinc version 1.3.0"
+
+When using Proton Pass CLI as your SSH agent, you can enable automatic creation of new SSH key items. This feature is particularly useful if you want to import an existing SSH key using `ssh-add` and have it automatically stored in your Proton Pass vault.
+
+To enable this feature, use the `--create-new-identities` flag followed by either a vault name or share ID:
+
+```bash
+pass-cli ssh-agent start --create-new-identities MySshKeysVault
+pass-cli ssh-agent start --create-new-identities MY_SHARE_ID
+```
+
+When this option is enabled:
+
+- Any SSH key you add using `ssh-add` will be automatically saved to the specified vault in Proton Pass (if it was not already loaded in the SSH agent)
+- The new item will be created with a title based on the SSH key's comment (if available) or a shortened fingerprint
+- You must have create permissions in the specified vault for this to work
+- User-added identities are preserved when the agent periodically refreshes keys from Proton Pass
+
+Example workflow:
+
+```bash
+# Start the agent with auto-creation enabled
+pass-cli ssh-agent start --create-new-identities MySshKeysVault
+
+# In another terminal, export the socket path
+export SSH_AUTH_SOCK=$HOME/.ssh/proton-pass-agent.sock
+
+# Add a new SSH key
+ssh-add ~/.ssh/my_new_key
+
+# The key is now automatically stored in your Proton Pass vault!
+```
+
 ## Troubleshooting
 
 ### `ssh-copy-id` fails due to having many ssh keys loaded and doesn't prompt for a password
