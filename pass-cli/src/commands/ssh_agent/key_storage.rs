@@ -1,6 +1,7 @@
 use anyhow::anyhow;
 use ssh_agent_lib::error::AgentError;
 use ssh_key::{private::PrivateKey as SshPrivateKey, public::PublicKey as SshPublicKey};
+use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::sync::mpsc::UnboundedSender;
@@ -99,8 +100,27 @@ impl KeyStorage {
     }
 
     pub async fn replace_all_identities(&self, new_identities: Vec<Identity>) {
-        let mut identities = self.identities.lock().await;
-        *identities = new_identities;
+        let mut self_identities = self.identities.lock().await;
+
+        let mut final_identities = HashMap::new();
+
+        // Keep identities added manually by the user
+        let user_added_identities: Vec<Identity> = self_identities
+            .iter()
+            .filter(|i| i.source == IdentitySource::User)
+            .cloned()
+            .collect();
+        for identity in user_added_identities {
+            final_identities.insert(identity.public_key.key_data().clone(), identity);
+        }
+
+        // Add the new identities, using the hashmap to ensure we don't duplicate them
+        for identity in new_identities {
+            final_identities.insert(identity.public_key.key_data().clone(), identity);
+        }
+
+        let identities: Vec<Identity> = final_identities.into_values().collect();
+        *self_identities = identities;
     }
 
     fn identity_index_from_pubkey(identities: &[Identity], pubkey: &SshPublicKey) -> Option<usize> {

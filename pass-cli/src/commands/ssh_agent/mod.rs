@@ -211,20 +211,19 @@ async fn inner_create_item_for_identity(
     let private_key = identity
         .decrypt_private_key()
         .context("Error decrypting private key")?;
-    let public_key = private_key.public_key();
+    let public_key = &identity.public_key;
 
-    let comment = public_key.comment();
-    let title = if comment.is_empty() {
+    let title = if identity.comment.is_empty() {
         let fingerprint = public_key.fingerprint(HashAlg::Sha256).to_string();
-        let display_fingerprint = fingerprint
+        fingerprint
             .replace("SHA256:", "")
             .chars()
             .take(16)
-            .collect::<String>();
-        format!("SSH Key {}", display_fingerprint)
+            .collect::<String>()
     } else {
-        comment.to_string()
+        identity.comment.to_string()
     };
+    let title = format!("SSH Key {}", title);
 
     let private_key_as_openssh = private_key
         .to_openssh(LineEnding::CRLF)
