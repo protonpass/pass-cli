@@ -4,7 +4,7 @@ mod key_storage;
 mod load_agent;
 
 use crate::telemetry::event::CommandEvent;
-use anyhow::{Context, Result, anyhow, bail};
+use anyhow::{Context, Result, anyhow};
 use clap::Subcommand;
 use key_storage::{Identity, KeyStorage};
 use pass::PassClient;
@@ -101,14 +101,10 @@ async fn run_start(
     let vault_query = VaultQuery::new(share_id, vault_name)?;
 
     info!("Loading SSH keys from Proton Pass...");
-
+    eprintln!("Retrieving SSH keys from Proton Pass...");
     let identities = key_load::load_keys_into_storage(&client, &vault_query)
         .await
         .context("Failed to load SSH keys from vaults")?;
-
-    if identities.is_empty() {
-        bail!("No SSH keys found in the specified vault(s)");
-    }
 
     let loaded_count = identities.len();
     info!("Found {} SSH key(s)", loaded_count);
@@ -116,7 +112,11 @@ async fn run_start(
     let key_storage = KeyStorage::default();
     key_storage.replace_all_identities(identities).await;
 
-    eprintln!("Loaded {} SSH key(s) successfully", loaded_count);
+    if loaded_count == 0 {
+        eprintln!("No SSH keys found in the specified vault(s)");
+    } else {
+        eprintln!("Loaded {} SSH key(s) successfully", loaded_count);
+    }
 
     agent::start_agent(
         &client,

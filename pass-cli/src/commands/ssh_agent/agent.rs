@@ -188,7 +188,7 @@ impl Session for KeyStorage {
         let pubkey: SshPublicKey = sign_request.pubkey.clone().into();
 
         debug!(
-            "Sign request for public key: {:?}",
+            "Sign request for public key: {}",
             pubkey.fingerprint(HashAlg::Sha256)
         );
 
@@ -335,7 +335,17 @@ impl Session for KeyStorage {
 
     async fn remove_identity(&mut self, identity: RemoveIdentity) -> Result<(), AgentError> {
         let pubkey: SshPublicKey = identity.pubkey.into();
+        info!(
+            "Received a remove_identity request for pubkey: {}",
+            pubkey.fingerprint(HashAlg::Sha256)
+        );
         self.identity_remove(&pubkey).await?;
+        Ok(())
+    }
+
+    async fn remove_all_identities(&mut self) -> Result<(), AgentError> {
+        info!("Received a remove_all_identities request");
+        self.replace_all_identities(Vec::new()).await;
         Ok(())
     }
 
