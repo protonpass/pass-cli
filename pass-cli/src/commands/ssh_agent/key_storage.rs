@@ -13,7 +13,7 @@ pub enum IdentitySource {
 }
 
 #[derive(Clone, PartialEq, Debug)]
-pub struct Identity {
+pub struct SshIdentity {
     pub public_key: SshPublicKey,
     pub encrypted_private_key_bytes: Vec<u8>,
     pub xor_key: u8,
@@ -21,7 +21,7 @@ pub struct Identity {
     pub source: IdentitySource,
 }
 
-impl Identity {
+impl SshIdentity {
     pub fn new(
         private_key: SshPrivateKey,
         comment: String,
@@ -59,26 +59,26 @@ impl Identity {
 
 #[derive(Clone)]
 pub struct KeyStorage {
-    pub identities: Arc<Mutex<Vec<Identity>>>,
-    pub create_item_sender: UnboundedSender<Identity>,
+    pub identities: Arc<Mutex<Vec<SshIdentity>>>,
+    pub create_item_sender: UnboundedSender<SshIdentity>,
 }
 
 impl KeyStorage {
-    pub fn new(create_item_sender: UnboundedSender<Identity>) -> Self {
+    pub fn new(create_item_sender: UnboundedSender<SshIdentity>) -> Self {
         Self {
             identities: Arc::new(Mutex::new(Vec::new())),
             create_item_sender,
         }
     }
 
-    pub async fn identity_from_pubkey(&self, pubkey: &SshPublicKey) -> Option<Identity> {
+    pub async fn identity_from_pubkey(&self, pubkey: &SshPublicKey) -> Option<SshIdentity> {
         let identities = self.identities.lock().await;
 
         let index = Self::identity_index_from_pubkey(&identities, pubkey)?;
         Some(identities[index].clone())
     }
 
-    pub async fn identity_add(&self, identity: Identity) {
+    pub async fn identity_add(&self, identity: SshIdentity) {
         let mut identities = self.identities.lock().await;
         if Self::identity_index_from_pubkey(&identities, &identity.public_key).is_none() {
             if let Err(e) = self.create_item_sender.send(identity.clone()) {
@@ -99,13 +99,13 @@ impl KeyStorage {
         }
     }
 
-    pub async fn replace_all_identities(&self, new_identities: Vec<Identity>) {
+    pub async fn replace_all_identities(&self, new_identities: Vec<SshIdentity>) {
         let mut self_identities = self.identities.lock().await;
 
         let mut final_identities = HashMap::new();
 
         // Keep identities added manually by the user
-        let user_added_identities: Vec<Identity> = self_identities
+        let user_added_identities: Vec<SshIdentity> = self_identities
             .iter()
             .filter(|i| i.source == IdentitySource::User)
             .cloned()
@@ -119,11 +119,14 @@ impl KeyStorage {
             final_identities.insert(identity.public_key.key_data().clone(), identity);
         }
 
-        let identities: Vec<Identity> = final_identities.into_values().collect();
+        let identities: Vec<SshIdentity> = final_identities.into_values().collect();
         *self_identities = identities;
     }
 
-    fn identity_index_from_pubkey(identities: &[Identity], pubkey: &SshPublicKey) -> Option<usize> {
+    fn identity_index_from_pubkey(
+        identities: &[SshIdentity],
+        pubkey: &SshPublicKey,
+    ) -> Option<usize> {
         // Compare by key data instead of the full PublicKey object, since metadata might differ
         let target_key_data = pubkey.key_data();
         for (index, identity) in identities.iter().enumerate() {

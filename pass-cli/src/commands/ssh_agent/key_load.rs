@@ -1,5 +1,5 @@
 use super::VaultQuery;
-use super::key_storage::{Identity, IdentitySource, KeyStorage};
+use super::key_storage::{IdentitySource, KeyStorage, SshIdentity};
 use anyhow::{Context, Result, anyhow};
 use futures::stream::{self, StreamExt};
 use pass::PassClient;
@@ -251,7 +251,7 @@ fn load_and_decrypt_key(item: &Item, private_key_str: &str) -> Result<SshPrivate
 pub async fn fetch_ssh_keys(
     client: &PassClient,
     vault_query: &VaultQuery,
-) -> Result<Vec<Identity>> {
+) -> Result<Vec<SshIdentity>> {
     let ssh_key_items = load_ssh_keys_from_vaults(client, vault_query.clone())
         .await
         .context("Failed to load SSH keys from vaults")?;
@@ -265,7 +265,7 @@ pub async fn fetch_ssh_keys(
     for ssh_item in ssh_key_items {
         let item = &ssh_item.item;
         match load_and_decrypt_key(item, &ssh_item.private_key) {
-            Ok(private_key) => match Identity::new(
+            Ok(private_key) => match SshIdentity::new(
                 private_key,
                 item.content.title.clone(),
                 IdentitySource::ProtonPass,

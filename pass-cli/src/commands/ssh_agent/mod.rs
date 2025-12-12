@@ -6,7 +6,7 @@ mod load_agent;
 use crate::telemetry::event::CommandEvent;
 use anyhow::{Context, Result, anyhow};
 use clap::Subcommand;
-use key_storage::{Identity, KeyStorage};
+use key_storage::{KeyStorage, SshIdentity};
 use pass::ssh_key::SshKeyItemCreatePayload;
 use pass::{PassClient, is_id};
 use pass_domain::{ItemId, PermissionFlag, ShareId};
@@ -178,7 +178,7 @@ async fn run_start(
 async fn listen_for_item_create_events(
     client: PassClient,
     share_id: Option<ShareId>,
-    mut rx: UnboundedReceiver<Identity>,
+    mut rx: UnboundedReceiver<SshIdentity>,
 ) -> Result<()> {
     while let Some(identity) = rx.recv().await {
         info!("Received SSH key item create event");
@@ -194,7 +194,7 @@ async fn listen_for_item_create_events(
     Ok(())
 }
 
-async fn create_item_for_identity(client: &PassClient, share_id: &ShareId, identity: Identity) {
+async fn create_item_for_identity(client: &PassClient, share_id: &ShareId, identity: SshIdentity) {
     match inner_create_item_for_identity(client, share_id, identity).await {
         Ok((item_id, title)) => eprintln!("Created a new item: {title} [{item_id}]"),
         Err(e) => {
@@ -206,7 +206,7 @@ async fn create_item_for_identity(client: &PassClient, share_id: &ShareId, ident
 async fn inner_create_item_for_identity(
     client: &PassClient,
     share_id: &ShareId,
-    identity: Identity,
+    identity: SshIdentity,
 ) -> Result<(ItemId, String)> {
     let private_key = identity
         .decrypt_private_key()
