@@ -1,7 +1,10 @@
 use crate::PassClient;
 use anyhow::{Context, Result};
 use muon::GET;
-use pass_domain::{EventId, UserEvents, UserEventsHandler};
+use pass_domain::{
+    EventId, FolderId, ItemId, ShareId, SyncEventChangedWithToken, SyncEventShare,
+    SyncEventShareFolder, SyncEventShareItem, UserEvents, UserEventsHandler,
+};
 use std::sync::Arc;
 
 #[derive(Debug, serde::Deserialize)]
@@ -127,20 +130,23 @@ impl PassClient {
 
             // Check if there are new events
             if events.last_event_id != event_id.value() {
-                handler
-                    .on_event(UserEvents {})
-                    .await
-                    .context("Error on events handler")?;
+                // Convert API events to domain events
+                let user_events = UserEvents::from(events);
 
                 // Tell handler to update the last event ID
-                let last_event_id = EventId::new(events.last_event_id);
                 handler
-                    .set_last_user_event_id(last_event_id.clone())
+                    .set_last_user_event_id(user_events.last_event_id.clone())
                     .await
                     .context("Error setting last user event id")?;
 
+                // Notify handler with the events
+                handler
+                    .on_event(user_events.clone())
+                    .await
+                    .context("Error on events handler")?;
+
                 // Update our local last event ID
-                event_id = last_event_id;
+                event_id = user_events.last_event_id;
             }
 
             // Wait until the next time
@@ -166,5 +172,111 @@ impl PassClient {
         let response: GetLastEventIdResponse = assert_response!(res);
 
         Ok(EventId::new(response.event_id))
+    }
+}
+
+// From implementations to convert API response types to domain types
+
+impl From<SyncEventChangedWithTokenOutput> for SyncEventChangedWithToken {
+    fn from(value: SyncEventChangedWithTokenOutput) -> Self {
+        Self {
+            event_token: EventId::new(value.event_token),
+        }
+    }
+}
+
+impl From<SyncEventShareFolderOutput> for SyncEventShareFolder {
+    fn from(value: SyncEventShareFolderOutput) -> Self {
+        Self {
+            share_id: ShareId::new(value.share_id),
+            folder_id: FolderId::new(value.folder_id),
+            event_token: EventId::new(value.event_token),
+        }
+    }
+}
+
+impl From<SyncEventShareOutput> for SyncEventShare {
+    fn from(value: SyncEventShareOutput) -> Self {
+        Self {
+            share_id: ShareId::new(value.share_id),
+            event_token: EventId::new(value.event_token),
+        }
+    }
+}
+
+impl From<SyncEventShareItemOutput> for SyncEventShareItem {
+    fn from(value: SyncEventShareItemOutput) -> Self {
+        Self {
+            share_id: ShareId::new(value.share_id),
+            item_id: ItemId::new(value.item_id),
+            event_token: EventId::new(value.event_token),
+        }
+    }
+}
+
+impl From<Events> for UserEvents {
+    fn from(value: Events) -> Self {
+        Self {
+            last_event_id: EventId::new(value.last_event_id),
+            items_updated: value
+                .items_updated
+                .into_iter()
+                .map(SyncEventShareItem::from)
+                .collect(),
+            items_deleted: value
+                .items_deleted
+                .into_iter()
+                .map(SyncEventShareItem::from)
+                .collect(),
+            alias_note_changed: value
+                .alias_note_changed
+                .into_iter()
+                .map(SyncEventShareItem::from)
+                .collect(),
+            shares_created: value
+                .shares_created
+                .into_iter()
+                .map(SyncEventShare::from)
+                .collect(),
+            shares_updated: value
+                .shares_updated
+                .into_iter()
+                .map(SyncEventShare::from)
+                .collect(),
+            shares_deleted: value
+                .shares_deleted
+                .into_iter()
+                .map(SyncEventShare::from)
+                .collect(),
+            folders_updated: value
+                .folders_updated
+                .into_iter()
+                .map(SyncEventShareFolder::from)
+                .collect(),
+            folders_deleted: value
+                .folders_deleted
+                .into_iter()
+                .map(SyncEventShareFolder::from)
+                .collect(),
+            invites_changed: value.invites_changed.map(SyncEventChangedWithToken::from),
+            group_invites_changed: value
+                .group_invites_changed
+                .map(SyncEventChangedWithToken::from),
+            pending_alias_to_create_changed: value
+                .pending_alias_to_create_changed
+                .map(SyncEventChangedWithToken::from),
+            breach_update: value.breach_update.map(SyncEventChangedWithToken::from),
+            organization_info_changed: value
+                .organization_info_changed
+                .map(SyncEventChangedWithToken::from),
+            shares_with_invites_to_create: value
+                .shares_with_invites_to_create
+                .into_iter()
+                .map(SyncEventShare::from)
+                .collect(),
+            refresh_user: value.refresh_user,
+            events_pending: value.events_pending,
+            full_refresh: value.full_refresh,
+        }
     }
 }

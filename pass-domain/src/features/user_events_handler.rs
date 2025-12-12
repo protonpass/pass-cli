@@ -1,8 +1,5 @@
-use crate::EventId;
+use crate::{EventId, UserEvents};
 use anyhow::Result;
-
-#[derive(Clone, Debug)]
-pub struct UserEvents {}
 
 #[async_trait::async_trait]
 pub trait UserEventsHandler: Send + Sync {

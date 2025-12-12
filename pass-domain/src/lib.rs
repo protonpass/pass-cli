@@ -40,6 +40,7 @@ pub use aes_gcm;
 pub use feature_flag::*;
 pub use features::*;
 pub use models::address::*;
+pub use models::events::*;
 pub use models::folder::*;
 pub use models::group::*;
 pub use models::invite::*;
