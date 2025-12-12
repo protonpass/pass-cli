@@ -14,6 +14,7 @@ mod client;
 mod common;
 mod constants;
 mod crypto;
+mod events;
 mod feature_flags;
 mod first_time_setup;
 mod folder;
