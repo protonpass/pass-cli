@@ -38,50 +38,56 @@ impl PassClient {
             warn!("Should perform full refresh");
         }
 
-        self.handle_organization_info_changed(events.organization_info_changed, result.clone())
-            .await
-            .context("Error handling organization info changed")?;
+        // Run shares operations in parallel
+        let (shares_created_result, shares_updated_result, shares_deleted_result) = futures::join!(
+            self.handle_shares_created(events.shares_created, result.clone()),
+            self.handle_shares_updated(events.shares_updated, result.clone()),
+            self.handle_shares_deleted(events.shares_deleted, result.clone())
+        );
+        shares_created_result.context("Error handling shares created")?;
+        shares_updated_result.context("Error handling shares updated")?;
+        shares_deleted_result.context("Error handling shares deleted")?;
 
-        self.handle_shares_created(events.shares_created, result.clone())
-            .await
-            .context("Error handling shares created")?;
-        self.handle_shares_updated(events.shares_updated, result.clone())
-            .await
-            .context("Error handling shares updated")?;
-        self.handle_shares_deleted(events.shares_deleted, result.clone())
-            .await
-            .context("Error handling shares deleted")?;
+        // Run folders operations in parallel (after shares)
+        let (folders_updated_result, folders_deleted_result) = futures::join!(
+            self.handle_folders_updated(events.folders_updated, result.clone()),
+            self.handle_folders_deleted(events.folders_deleted, result.clone())
+        );
+        folders_updated_result.context("Error handling folders updated")?;
+        folders_deleted_result.context("Error handling folders deleted")?;
 
-        self.handle_folders_updated(events.folders_updated, result.clone())
-            .await
-            .context("Error handling folders updated")?;
-        self.handle_folders_deleted(events.folders_deleted, result.clone())
-            .await
-            .context("Error handling folders deleted")?;
+        // Run items operations in parallel (after folders)
+        let (items_updated_result, items_deleted_result, alias_note_result) = futures::join!(
+            self.handle_items_updated(events.items_updated, result.clone()),
+            self.handle_items_deleted(events.items_deleted, result.clone()),
+            self.handle_alias_note_changed(events.alias_note_changed, result.clone())
+        );
+        items_updated_result.context("Error handling items updated")?;
+        items_deleted_result.context("Error handling items deleted")?;
+        alias_note_result.context("Error handling alias note_changed")?;
 
-        self.handle_items_updated(events.items_updated, result.clone())
-            .await
-            .context("Error handling items updated")?;
-        self.handle_items_deleted(events.items_deleted, result.clone())
-            .await
-            .context("Error handling items deleted")?;
-        self.handle_alias_note_changed(events.alias_note_changed, result.clone())
-            .await
-            .context("Error handling alias note_changed")?;
-
-        self.handle_invites_changed(events.invites_changed, result.clone())
-            .await
-            .context("Error handling invites changed")?;
-        self.handle_group_invites_changed(events.group_invites_changed, result.clone())
-            .await
-            .context("Error handling group invites changed")?;
-
-        self.handle_breaches_update(events.breach_update, result.clone())
-            .await
-            .context("Error handling breaches update")?;
-        self.handle_pending_alias_to_create(events.pending_alias_to_create_changed, result.clone())
-            .await
-            .context("Error handling pending alias to create")?;
+        // Run independent operations in parallel
+        let (
+            org_info_result,
+            invites_result,
+            group_invites_result,
+            breaches_result,
+            pending_alias_result,
+        ) = futures::join!(
+            self.handle_organization_info_changed(events.organization_info_changed, result.clone()),
+            self.handle_invites_changed(events.invites_changed, result.clone()),
+            self.handle_group_invites_changed(events.group_invites_changed, result.clone()),
+            self.handle_breaches_update(events.breach_update, result.clone()),
+            self.handle_pending_alias_to_create(
+                events.pending_alias_to_create_changed,
+                result.clone()
+            )
+        );
+        org_info_result.context("Error handling organization info changed")?;
+        invites_result.context("Error handling invites changed")?;
+        group_invites_result.context("Error handling group invites changed")?;
+        breaches_result.context("Error handling breaches update")?;
+        pending_alias_result.context("Error handling pending alias to create")?;
 
         let result = result.read().await.clone();
 
@@ -97,14 +103,19 @@ impl PassClient {
             return Ok(());
         }
 
-        let mut new_shares = Vec::with_capacity(shares.len());
-        for share in shares {
-            let fetched_share = self
-                .get_share(&share.share_id)
-                .await
-                .context("Error getting share")?;
-            new_shares.push(fetched_share);
-        }
+        let futures: Vec<_> = shares
+            .into_iter()
+            .map(|share| async move {
+                self.get_share(&share.share_id)
+                    .await
+                    .context("Error getting share")
+            })
+            .collect();
+
+        let new_shares = futures::future::join_all(futures)
+            .await
+            .into_iter()
+            .collect::<Result<Vec<_>>>()?;
 
         result.write().await.new_shares = new_shares;
 
@@ -120,15 +131,21 @@ impl PassClient {
             return Ok(());
         }
 
-        let mut updated_shares = Vec::with_capacity(shares.len());
         self.clear_shares_cache().await;
-        for share in shares {
-            let fetched_share = self
-                .get_share(&share.share_id)
-                .await
-                .context("Error getting share")?;
-            updated_shares.push(fetched_share);
-        }
+
+        let futures: Vec<_> = shares
+            .into_iter()
+            .map(|share| async move {
+                self.get_share(&share.share_id)
+                    .await
+                    .context("Error getting share")
+            })
+            .collect();
+
+        let updated_shares = futures::future::join_all(futures)
+            .await
+            .into_iter()
+            .collect::<Result<Vec<_>>>()?;
 
         result.write().await.updated_shares = updated_shares;
 
@@ -164,14 +181,19 @@ impl PassClient {
             return Ok(());
         }
 
-        let mut updated_folders = Vec::with_capacity(folders.len());
-        for folder in folders {
-            let folder = self
-                .fetch_folder(&folder.share_id, &folder.folder_id)
-                .await
-                .context("Error getting folder")?;
-            updated_folders.push(folder);
-        }
+        let futures: Vec<_> = folders
+            .into_iter()
+            .map(|folder| async move {
+                self.fetch_folder(&folder.share_id, &folder.folder_id)
+                    .await
+                    .context("Error getting folder")
+            })
+            .collect();
+
+        let updated_folders = futures::future::join_all(futures)
+            .await
+            .into_iter()
+            .collect::<Result<Vec<_>>>()?;
 
         result.write().await.updated_folders = updated_folders;
 
@@ -206,14 +228,20 @@ impl PassClient {
             return Ok(());
         }
 
-        let mut updated_items = Vec::with_capacity(items.len());
-        for item in items {
-            let updated_item = self
-                .view_item(&item.share_id, &item.item_id)
-                .await
-                .context("Error getting item")?;
-            updated_items.push(updated_item.item);
-        }
+        let futures: Vec<_> = items
+            .into_iter()
+            .map(|item| async move {
+                self.view_item(&item.share_id, &item.item_id)
+                    .await
+                    .context("Error getting item")
+                    .map(|view| view.item)
+            })
+            .collect();
+
+        let updated_items = futures::future::join_all(futures)
+            .await
+            .into_iter()
+            .collect::<Result<Vec<_>>>()?;
 
         result.write().await.updated_items = updated_items;
 
