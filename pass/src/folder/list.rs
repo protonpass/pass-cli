@@ -198,6 +198,24 @@ impl PassClient {
             .context("Error building folder structure")
     }
 
+    pub(crate) async fn fetch_folder(
+        &self,
+        share_id: &ShareId,
+        folder_id: &FolderId,
+    ) -> Result<Folder> {
+        let req = GET!("/pass/v1/share/{share_id}/folder/{folder_id}");
+        let res = self
+            .send(req)
+            .await
+            .context("Error sending get folder request")?;
+
+        let response: GetFolderResponse = assert_response!(res);
+
+        self.open_folder(&response.folder, share_id)
+            .await
+            .context("Error opening folder")
+    }
+
     pub(crate) async fn get_folder_data(
         &self,
         share_id: &ShareId,
