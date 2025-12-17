@@ -20,7 +20,7 @@ impl From<UserResponse> for UserInfoUser {
     fn from(value: UserResponse) -> Self {
         Self {
             id: value.id,
-            name: value.name,
+            name: value.name.unwrap_or_else(|| value.email.clone()),
             email: value.email,
         }
     }
@@ -37,7 +37,7 @@ struct UserResponse {
     #[serde(rename = "ID")]
     pub id: String,
     #[serde(rename = "Name")]
-    pub name: String,
+    pub name: Option<String>,
     #[serde(rename = "Email")]
     pub email: String,
 }
