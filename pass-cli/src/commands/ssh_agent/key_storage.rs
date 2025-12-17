@@ -1,6 +1,10 @@
 use anyhow::anyhow;
 use ssh_agent_lib::error::AgentError;
-use ssh_key::{private::PrivateKey as SshPrivateKey, public::PublicKey as SshPublicKey};
+use ssh_key::public::KeyData;
+use ssh_key::{
+    certificate::Certificate, private::PrivateKey as SshPrivateKey,
+    public::PublicKey as SshPublicKey,
+};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -19,6 +23,12 @@ pub struct SshIdentity {
     pub xor_key: u8,
     pub comment: String,
     pub source: IdentitySource,
+    pub certificate: Option<Certificate>,
+
+    // The pubkey data to return in SSH_AGENTC_REQUEST_IDENTITIES
+    // For certificates, this contains the certificate blob
+    // For regular keys, this contains the public key data
+    pub pubkey_data: KeyData,
 }
 
 impl SshIdentity {
@@ -26,6 +36,18 @@ impl SshIdentity {
         private_key: SshPrivateKey,
         comment: String,
         source: IdentitySource,
+    ) -> anyhow::Result<Self> {
+        let public_key = SshPublicKey::from(&private_key);
+        let pubkey_data = public_key.key_data().clone();
+        Self::new_with_pubkey_data(private_key, pubkey_data, comment, source, None)
+    }
+
+    fn new_with_pubkey_data(
+        private_key: SshPrivateKey,
+        pubkey_data: KeyData,
+        comment: String,
+        source: IdentitySource,
+        certificate: Option<Certificate>,
     ) -> anyhow::Result<Self> {
         let public_key = SshPublicKey::from(&private_key);
         let xor_key = pass_domain::crypto::generate_random_byte();
@@ -42,6 +64,8 @@ impl SshIdentity {
             xor_key,
             comment,
             source,
+            certificate,
+            pubkey_data,
         })
     }
 

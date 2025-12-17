@@ -176,8 +176,10 @@ impl Session for KeyStorage {
     async fn request_identities(&mut self) -> Result<Vec<message::Identity>, AgentError> {
         let mut identities = vec![];
         for identity in self.identities.lock().await.iter() {
+            // For now, always return the regular public key
+            // Certificates are handled during signing, not in identity listing
             identities.push(message::Identity {
-                pubkey: identity.public_key.key_data().clone(),
+                pubkey: identity.pubkey_data.clone(),
                 comment: identity.comment.clone(),
             })
         }
@@ -309,15 +311,56 @@ impl Session for KeyStorage {
     }
 
     async fn add_identity(&mut self, identity: AddIdentity) -> Result<(), AgentError> {
-        if let Credential::Key { privkey, comment } = identity.credential {
-            let privkey = SshPrivateKey::try_from(privkey).map_err(AgentError::other)?;
-            let identity = SshIdentity::new(privkey, comment, IdentitySource::User)
-                .map_err(|e| std::io::Error::other(format!("Failed to create identity: {}", e)))?;
-            self.identity_add(identity).await;
-            Ok(())
-        } else {
-            info!("Unsupported key type: {:#?}", identity.credential);
-            Ok(())
+        match identity.credential {
+            Credential::Key { privkey, comment } => {
+                let privkey = SshPrivateKey::try_from(privkey).map_err(AgentError::other)?;
+                let identity =
+                    SshIdentity::new(privkey, comment, IdentitySource::User).map_err(|e| {
+                        std::io::Error::other(format!("Failed to create identity: {}", e))
+                    })?;
+                self.identity_add(identity).await;
+                Ok(())
+            }
+            Credential::Cert {
+                algorithm,
+                certificate,
+                comment,
+                ..
+            } => {
+                info!(
+                    "Adding certificate: [key_id={}] [certificate comment={}] [comment={}] [algorithm={}]",
+                    certificate.key_id(),
+                    certificate.comment(),
+                    comment,
+                    algorithm.as_str()
+                );
+
+                // Get the public key from the certificate
+                let cert_public_key = ssh_key::PublicKey::from(certificate.public_key().clone());
+
+                // Find the existing identity with this public key
+                let mut identities = self.identities.lock().await;
+                if let Some(identity) = identities
+                    .iter_mut()
+                    .find(|id| id.public_key.key_data() == cert_public_key.key_data())
+                {
+                    // Update the existing identity with the certificate
+                    // The pubkey_data will be dynamically generated in request_identities
+                    let cert_key_id = certificate.key_id().to_string();
+                    identity.certificate = Some(certificate);
+
+                    info!(
+                        "Certificate {} associated with existing key {}",
+                        cert_key_id, identity.comment
+                    );
+                } else {
+                    warn!(
+                        "Certificate added but no matching key found (key might be added after certificate)"
+                    );
+                }
+
+                Ok(())
+            }
         }
     }
 
