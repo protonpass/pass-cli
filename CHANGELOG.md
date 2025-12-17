@@ -1,3 +1,9 @@
+## Unreleased
+
+## Features :tada:
+
+- `ssh-agent`: now supports ssh certificates added via `ssh-add`
+
 ## 1.3.1 (2025-12-17)
 
 ## Bug fixes :bug:
