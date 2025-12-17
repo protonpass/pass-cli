@@ -7,7 +7,7 @@ use crate::utils::ask_for_input;
 use anyhow::{Context, bail};
 use muon::app::AppVersion;
 use muon::client::flow::LoginFlow;
-use muon::common::{BoxFut, Sender, SenderLayer};
+use muon::common::{BoxFut, EnvProxy, Sender, SenderLayer};
 use muon::env::{Env, EnvId};
 use muon::{App, GET, ProtonRequest, ProtonResponse, Session};
 use pass::{Client, PassSessionKeyType};
@@ -280,6 +280,15 @@ pub async fn get_client(
     if let Ok(session) = std::env::var(XDEBUG_SESSION_ENV_VAR) {
         info!("Adding XDEBUG_SESSION header");
         builder = builder.layer_front(XdebugSessionLayer::new(session));
+    }
+
+    if std::env::var("HTTP_PROXY").is_ok() {
+        eprintln!("Using HTTP_PROXY config");
+        builder = builder.proxy(EnvProxy::all("HTTP_PROXY"));
+    }
+    if std::env::var("HTTPS_PROXY").is_ok() {
+        eprintln!("Using HTTPS_PROXY config");
+        builder = builder.proxy(EnvProxy::all("HTTPS_PROXY"));
     }
 
     let client = builder.build().context("failed to build client")?;
