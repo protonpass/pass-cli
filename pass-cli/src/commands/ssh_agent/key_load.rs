@@ -1,5 +1,5 @@
 use super::VaultQuery;
-use super::key_storage::{IdentitySource, KeyStorage, SshIdentity};
+use super::key_storage::{IdentitySource, SshIdentity};
 use anyhow::{Context, Result, anyhow};
 use futures::stream::{self, StreamExt};
 use pass::PassClient;
@@ -208,7 +208,7 @@ fn load_key(private_key_str: &str) -> Result<SshPrivateKey> {
     }
 }
 
-fn load_and_decrypt_key(item: &Item, private_key_str: &str) -> Result<SshPrivateKey> {
+pub fn load_and_decrypt_key(item: &Item, private_key_str: &str) -> Result<SshPrivateKey> {
     let private_key = load_key(private_key_str).context(format!(
         "Failed to parse SSH private key for item '{}'",
         item.content.title
@@ -268,7 +268,10 @@ pub async fn fetch_ssh_keys(
             Ok(private_key) => match SshIdentity::new(
                 private_key,
                 item.content.title.clone(),
-                IdentitySource::ProtonPass,
+                IdentitySource::ProtonPass {
+                    share_id: item.share_id.clone(),
+                    item_id: item.id.clone(),
+                },
             ) {
                 Ok(identity) => {
                     identities.push(identity);
@@ -284,25 +287,6 @@ pub async fn fetch_ssh_keys(
     }
 
     Ok(identities)
-}
-
-pub async fn refresh_keys_periodically(
-    client: &PassClient,
-    vault_query: &VaultQuery,
-    key_storage: &KeyStorage,
-) {
-    info!("Refreshing SSH keys from Proton Pass...");
-
-    match fetch_ssh_keys(client, vault_query).await {
-        Ok(identities) => {
-            let count = identities.len();
-            key_storage.replace_all_identities(identities).await;
-            info!("Refreshed {} SSH key(s)", count);
-        }
-        Err(e) => {
-            warn!("Failed to refresh SSH keys: {}. Will retry later.", e);
-        }
-    }
 }
 
 #[cfg(test)]

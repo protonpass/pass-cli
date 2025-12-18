@@ -10,19 +10,19 @@ use std::sync::Arc;
 #[allow(dead_code)]
 #[derive(Clone, Debug, Default)]
 pub struct EventHandlingResult {
-    new_shares: Vec<Share>,
-    updated_shares: Vec<Share>,
-    deleted_shares: Vec<ShareId>,
+    pub new_shares: Vec<Share>,
+    pub updated_shares: Vec<Share>,
+    pub deleted_shares: Vec<ShareId>,
 
-    updated_folders: Vec<Folder>,
-    deleted_folders: Vec<(ShareId, FolderId)>,
+    pub updated_folders: Vec<Folder>,
+    pub deleted_folders: Vec<(ShareId, FolderId)>,
 
-    updated_items: Vec<Item>,
-    deleted_items: Vec<(ShareId, ItemId)>,
+    pub updated_items: Vec<Item>,
+    pub deleted_items: Vec<(ShareId, ItemId)>,
 
-    new_invites: Vec<Invite>,
+    pub new_invites: Vec<Invite>,
 
-    force_refresh: bool,
+    pub force_refresh: bool,
 }
 
 impl PassClient {

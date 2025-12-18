@@ -1,4 +1,6 @@
 mod agent;
+mod event_handler;
+mod event_processor;
 mod key_load;
 mod key_storage;
 mod load_agent;
@@ -30,8 +32,8 @@ pub enum SshAgentCommands {
         vault_name: Option<String>,
         #[arg(
             long,
-            help = "Interval in seconds to refresh SSH keys from Proton Pass (0 to disable)",
-            default_value = "3600"
+            help = "Interval in seconds to check for new SSH keys in Proton Pass",
+            default_value = "30"
         )]
         refresh_interval: u64,
         #[arg(

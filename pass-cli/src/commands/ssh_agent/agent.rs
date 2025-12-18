@@ -12,12 +12,14 @@ use ssh_agent_lib::proto::{
 use ssh_key::{private::PrivateKey as SshPrivateKey, public::PublicKey as SshPublicKey};
 use std::path::PathBuf;
 
+use super::event_handler::SshAgentEventHandler;
+use super::event_processor::SshEventProcessor;
 use super::key_storage::{IdentitySource, KeyStorage};
 use super::{SshIdentity, VaultQuery, get_default_socket_path};
-use crate::commands::ssh_agent::key_load::refresh_keys_periodically;
 use pass::PassClient;
 use ssh_key::private::KeypairData;
 use ssh_key::{Algorithm, HashAlg, Signature};
+use std::sync::Arc;
 
 pub async fn start_agent(
     client: &PassClient,
@@ -138,33 +140,39 @@ where
     L: ListeningSocket + Send + std::fmt::Debug,
     KeyStorage: ssh_agent_lib::agent::Agent<L>,
 {
-    if refresh_interval > 0 {
-        let mut refresh_interval_timer =
-            tokio::time::interval(tokio::time::Duration::from_secs(refresh_interval));
-        refresh_interval_timer.tick().await; // Skip the first immediate tick
+    // Create event channel and handler
+    let (tx, mut rx) = tokio::sync::mpsc::channel(10);
+    let handler = Arc::new(SshAgentEventHandler::new(tx, refresh_interval));
 
-        tokio::select! {
-            result = listen(listener, key_storage.clone()) => {
-                result.context("SSH agent error")?;
-            }
-            _ = async {
-                loop {
-                    refresh_interval_timer.tick().await;
-                    refresh_keys_periodically(client, vault_query, &key_storage).await;
-                }
-            } => {}
-            _ = tokio::signal::ctrl_c() => {
-                eprintln!("Received Ctrl+C, shutting down...");
-            }
+    // Spawn event listener
+    let client_clone = client.clone();
+    let event_listener = tokio::spawn(async move {
+        if let Err(e) = client_clone.listen_for_events(handler).await {
+            error!("Event listener error: {}", e);
         }
-    } else {
-        tokio::select! {
-            result = listen(listener, key_storage) => {
-                result.context("SSH agent error")?;
+    });
+
+    // Create event processor
+    let processor =
+        SshEventProcessor::new(client.clone(), vault_query.clone(), key_storage.clone());
+
+    // Main select loop
+    tokio::select! {
+        result = listen(listener, key_storage) => {
+            result.context("SSH agent error")?;
+        }
+        _ = async {
+            while let Some(events) = rx.recv().await {
+                if let Err(e) = processor.process_events(events).await {
+                    warn!("Error processing events: {}", e);
+                }
             }
-            _ = tokio::signal::ctrl_c() => {
-                eprintln!("Received Ctrl+C, shutting down...");
-            }
+        } => {}
+        _ = event_listener => {
+            info!("Event listener task finished");
+        }
+        _ = tokio::signal::ctrl_c() => {
+            eprintln!("Received Ctrl+C, shutting down...");
         }
     }
 
@@ -382,7 +390,7 @@ impl Session for KeyStorage {
             "Received a remove_identity request for pubkey: {}",
             pubkey.fingerprint(HashAlg::Sha256)
         );
-        self.identity_remove(&pubkey).await?;
+        self.identity_remove(&pubkey, true).await?;
         Ok(())
     }
 

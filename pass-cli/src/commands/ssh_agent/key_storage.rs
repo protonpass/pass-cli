@@ -1,4 +1,5 @@
 use anyhow::anyhow;
+use pass_domain::{ItemId, ShareId};
 use ssh_agent_lib::error::AgentError;
 use ssh_key::public::KeyData;
 use ssh_key::{
@@ -12,7 +13,7 @@ use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum IdentitySource {
-    ProtonPass,
+    ProtonPass { share_id: ShareId, item_id: ItemId },
     User,
 }
 
@@ -112,14 +113,23 @@ impl KeyStorage {
         }
     }
 
-    pub async fn identity_remove(&self, pubkey: &SshPublicKey) -> anyhow::Result<(), AgentError> {
+    pub async fn identity_remove(
+        &self,
+        pubkey: &SshPublicKey,
+        fail_on_not_found: bool,
+    ) -> anyhow::Result<(), AgentError> {
         let mut identities = self.identities.lock().await;
 
         if let Some(index) = Self::identity_index_from_pubkey(&identities, pubkey) {
             identities.remove(index);
             Ok(())
-        } else {
+        } else if fail_on_not_found {
             Err(std::io::Error::other("Failed to remove identity: identity not found").into())
+        } else {
+            warn!(
+                "Asked to remove an identity, but we could not find it. Not erroring as fail_not_found is false"
+            );
+            Ok(())
         }
     }
 
@@ -159,5 +169,59 @@ impl KeyStorage {
             }
         }
         None
+    }
+
+    // Update or add identity (for item updates)
+    // If an identity with the same share_id and item_id exists, replace it.
+    // Otherwise, add it as a new identity.
+    pub async fn identity_upsert(&self, identity: SshIdentity) {
+        let mut identities = self.identities.lock().await;
+
+        // Find existing by share_id + item_id
+        if let IdentitySource::ProtonPass { share_id, item_id } = &identity.source
+            && identities.iter().any(|i| match &i.source {
+                IdentitySource::ProtonPass {
+                    share_id: s,
+                    item_id: i,
+                } => s == share_id && i == item_id,
+                IdentitySource::User => false,
+            })
+        {
+            // Replace existing
+            info!("Updating existing SSH key: {}", identity.comment);
+            drop(identities);
+            let _ = self.identity_remove(&identity.public_key, false).await;
+            self.identity_add(identity).await;
+            return;
+        }
+
+        // Add new
+        info!("Adding new SSH key: {}", identity.comment);
+        identities.push(identity);
+    }
+
+    // Remove identity by share_id and item_id (for deletes)
+    // Only removes ProtonPass-sourced keys, preserves User-added keys
+    pub async fn identity_remove_by_item_id(
+        &self,
+        share_id: &ShareId,
+        item_id: &ItemId,
+    ) -> anyhow::Result<()> {
+        let mut identities = self.identities.lock().await;
+
+        if let Some(idx) = identities.iter().position(|i| match &i.source {
+            IdentitySource::ProtonPass {
+                share_id: s,
+                item_id: i,
+            } => s == share_id && i == item_id,
+            IdentitySource::User => false,
+        }) {
+            let removed = &identities[idx];
+            info!("Removing SSH key: {}", removed.comment);
+            identities.remove(idx);
+            Ok(())
+        } else {
+            Err(anyhow!("Identity not found or not from ProtonPass"))
+        }
     }
 }
