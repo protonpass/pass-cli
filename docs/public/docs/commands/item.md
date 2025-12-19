@@ -12,6 +12,10 @@ pass-cli item <SUBCOMMAND>
 
 The `item` command provides operations for managing items within vaults. Items are the fundamental units of data storage in Proton Pass, including logins, notes, credit cards, and aliases.
 
+!!! tip "Using default settings"
+
+    You can configure a default vault and output format using the [`settings`](settings.md) command. When defaults are set, many item commands no longer require `--share-id`, `--vault-name`, or `--output` parameters, making your workflow more efficient.
+
 ## Subcommands
 
 ### list
@@ -26,16 +30,20 @@ pass-cli item list [VAULT_NAME] [--share-id SHARE_ID] [--output FORMAT]
 
 - `VAULT_NAME` - Name of the vault to list items from. Specify `VAULT_NAME` if you are not passing a `--share-id`. Used as an argument
 - `--share-id SHARE_ID` - Share ID of the vault to list items from. Specify `--share-id` if you are not passing a `VAULT_NAME`. Used as a flag
-- `--output FORMAT` - Output format: `human` (default) or `json`
+- `--output FORMAT` - Output format: `human` or `json`. Uses default format from settings if not specified.
 
 **Mutually exclusive options:**
 
-- `--share-id` and `VAULT_NAME` are mutually exclusive. You must provide exactly one.
+- `--share-id` and `VAULT_NAME` are mutually exclusive. You can provide one, or neither if a default vault is configured.
+
+**Using default settings:**
+
+If you have set a default vault using [`settings set default-vault`](settings.md#set-default-vault), you can omit both `VAULT_NAME` and `--share-id`. Similarly, if you've set a default output format, you can omit `--output`.
 
 **Examples:**
 
 ```bash
-# List all items in all accessible vaults
+# List items using default vault and format (requires settings configured)
 pass-cli item list
 
 # List items in a specific vault by name
@@ -46,6 +54,9 @@ pass-cli item list --share-id "abc123def"
 
 # List items in JSON format
 pass-cli item list --output json
+
+# Using default vault but override format
+pass-cli item list --output human
 ```
 
 ### create
@@ -70,7 +81,7 @@ pass-cli item create login [OPTIONS]
 - `--vault-name VAULT_NAME` - Name of the vault to create the item in
 - `--title TITLE` - Title of the login item (required unless using template)
 - `--username USERNAME` - Username for the login (optional)
-- `--email EMAIL` - Email for the login (optional)  
+- `--email EMAIL` - Email for the login (optional)
 - `--password PASSWORD` - Password for the login (optional)
 - `--generate-password[=SETTINGS]` - Generate a random password (optional)
 - `--generate-passphrase[=WORD_COUNT]` - Generate a passphrase (optional)
@@ -80,11 +91,18 @@ pass-cli item create login [OPTIONS]
 
 **Mutually exclusive options:**
 
-- `--share-id` and `--vault-name` are mutually exclusive. You must provide exactly one.
+- `--share-id` and `--vault-name` are mutually exclusive. You can provide one, or neither if a default vault is configured.
 
 **Examples:**
 
 ```bash
+# Create using default vault (if configured)
+pass-cli item create login \
+  --title "GitHub Account" \
+  --username "myuser" \
+  --password "mypassword" \
+  --url "https://github.com"
+
 # Create a basic login item using share ID
 pass-cli item create login \
   --share-id "abc123def" \
@@ -163,7 +181,7 @@ pass-cli item create ssh-key generate [OPTIONS]
 
 **Mutually exclusive options:**
 
-- `--share-id` and `--vault-name` are mutually exclusive. You must provide exactly one.
+- `--share-id` and `--vault-name` are mutually exclusive. You can provide one, or neither if a default vault is configured.
 
 **Passphrase protection:**
 
@@ -179,6 +197,10 @@ When generating new SSH keys with `--password`, you'll be prompted to enter and 
 **Examples:**
 
 ```bash
+# Generate using default vault (if configured)
+pass-cli item create ssh-key generate \
+  --title "GitHub Deploy Key"
+
 # Generate an Ed25519 key (recommended)
 pass-cli item create ssh-key generate \
   --share-id "abc123def" \
@@ -228,7 +250,7 @@ pass-cli item create ssh-key import [OPTIONS]
 
 **Mutually exclusive options:**
 
-- `--share-id` and `--vault-name` are mutually exclusive. You must provide exactly one.
+- `--share-id` and `--vault-name` are mutually exclusive. You can provide one, or neither if a default vault is configured.
 
 **Handling passphrase-protected SSH keys:**
 
@@ -330,23 +352,26 @@ pass-cli item view [OPTIONS] [URI]
 
 **Options:**
 
-- `--share-id SHARE_ID` - Share ID of the vault containing the item
-- `--vault-name VAULT_NAME` - Name of the vault containing the item
+- `--share-id SHARE_ID` - Share ID of the vault containing the item (optional if default vault is set and not using URI)
+- `--vault-name VAULT_NAME` - Name of the vault containing the item (optional if default vault is set and not using URI)
 - `--item-id ITEM_ID` - ID of the item
 - `--item-title ITEM_TITLE` - Title of the item
 - `URI` - Pass URI in format `pass://SHARE_ID/ITEM_ID[/FIELD]`
 - `--field FIELD` - Specific field to view
-- `--output FORMAT` - Output format: `human` (default) or `json`
+- `--output FORMAT` - Output format: `human` or `json`. Uses default format from settings if not specified.
 
 **Mutually exclusive options:**
 
-- `--share-id` and `--vault-name` are mutually exclusive. You must provide exactly one.
+- `--share-id` and `--vault-name` are mutually exclusive. You can provide one, or neither if a default vault is configured and not using URI.
 - `--item-id` and `--item-title` are mutually exclusive. You must provide exactly one.
-- - `--share-id/--vault-name` and `--item-id/--item-title` parameters and `URI` are mutually exclusive. You must provide either both parameters or a single secret reference.
+- `--share-id/--vault-name` and `--item-id/--item-title` parameters and `URI` are mutually exclusive. You must provide either both parameters or a single secret reference.
 
 **Examples:**
 
 ```bash
+# View item using default vault (if configured)
+pass-cli item view --item-id "item456"
+
 # View item by IDs
 pass-cli item view --share-id "abc123def" --item-id "item456"
 
@@ -383,17 +408,16 @@ The `update` command allows you to modify fields of an existing item. You can up
 
 **Options:**
 
-- `--share-id SHARE_ID` - Share ID of the vault containing the item
-- `--vault-name VAULT_NAME` - Name of the vault containing the item
+- `--share-id SHARE_ID` - Share ID of the vault containing the item (optional if default vault is set)
+- `--vault-name VAULT_NAME` - Name of the vault containing the item (optional if default vault is set)
 - `--item-id ITEM_ID` - ID of the item to update
 - `--item-title ITEM_TITLE` - Title of the item to update
 - `--field FIELD_NAME=FIELD_VALUE` - Field to update in format `field_name=field_value`. Can be specified multiple times to update multiple fields.
 
 **Mutually exclusive options:**
 
-- `--share-id` and `--vault-name` are mutually exclusive. You must provide exactly one.
+- `--share-id` and `--vault-name` are mutually exclusive. You can provide one, or neither if a default vault is configured.
 - `--item-id` and `--item-title` are mutually exclusive. You must provide exactly one.
-- `--share-id/--vault-name` and `--item-id/--item-title` parameters and `URI` are mutually exclusive. You must provide either both parameters or a single secret reference.
 - At least one `--field` option is required.
 
 **Field names:**
@@ -409,6 +433,11 @@ Standard fields for login items include: `title`, `username`, `password`, `email
 ### Update a single field
 
 ```bash
+# Update password using default vault (if configured)
+pass-cli item update \
+  --item-id "item456" \
+  --field "password=newpassword123"
+
 # Update password by Share ID and Item ID
 pass-cli item update \
   --share-id "abc123def" \
@@ -593,23 +622,26 @@ Generate TOTP codes for the fields of an item. If you have an item that has TOTP
 
 **Options:**
 
-- `--share-id SHARE_ID` - Share ID of the vault containing the item
-- `--vault-name VAULT_NAME` - Name of the vault containing the item
+- `--share-id SHARE_ID` - Share ID of the vault containing the item (optional if default vault is set and not using URI)
+- `--vault-name VAULT_NAME` - Name of the vault containing the item (optional if default vault is set and not using URI)
 - `--item-id ITEM_ID` - ID of the item
 - `--item-title ITEM_TITLE` - Title of the item
 - `URI` - Pass URI in format `pass://SHARE_ID/ITEM_ID[/FIELD]`
 - `--field FIELD` - Specific field to view
-- `--output FORMAT` - Output format: `human` (default) or `json`
+- `--output FORMAT` - Output format: `human` or `json`. Uses default format from settings if not specified.
 
 **Mutually exclusive options:**
 
-- `--share-id` and `--vault-name` are mutually exclusive. You must provide exactly one.
+- `--share-id` and `--vault-name` are mutually exclusive. You can provide one, or neither if a default vault is configured and not using URI.
 - `--item-id` and `--item-title` are mutually exclusive. You must provide exactly one.
 - `--share-id/--vault-name` and `--item-id/--item-title` parameters and `URI` are mutually exclusive. You must provide either both parameters or a single secret reference.
 
 **Examples:**
 
 ```bash
+# Generate TOTP using default vault and format (if configured)
+pass-cli item totp --item-title "WithTOTPs"
+
 # Generate all TOTPs on a given item (Readable format)
 pass-cli item totp "pass://TOTP export/WithTOTPs"
 # TOTP 1: 343325

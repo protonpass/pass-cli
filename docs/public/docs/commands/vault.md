@@ -12,6 +12,10 @@ pass-cli vault <SUBCOMMAND>
 
 The `vault` command provides operations for managing vaults, which are containers that organize your items. You can create, list, update, delete, and share vaults, as well as manage vault members.
 
+!!! tip "Using default settings"
+
+    You can configure a default vault and output format using the [`settings`](settings.md) command. The default output format will be automatically applied to `vault list` when not explicitly specified, making your workflow more efficient.
+
 ## How it works
 
 Vaults are the top-level organizational structure in Proton Pass. Each vault:
@@ -35,13 +39,20 @@ pass-cli vault list [--output FORMAT]
 
 **Options:**
 
-- `--output FORMAT` - Output format: `human` (default) or `json`
+- `--output FORMAT` - Output format: `human` or `json`. Uses default format from settings if not specified.
+
+**Using default settings:**
+
+If you have set a default output format using [`settings set default-format`](settings.md#set-default-format), you can omit the `--output` parameter.
 
 **Examples:**
 
 ```bash
-# List vaults in human-readable format
+# List vaults using default format (if configured)
 pass-cli vault list
+
+# List vaults in human-readable format
+pass-cli vault list --output human
 
 # List vaults in JSON format for scripting
 pass-cli vault list --output json
