@@ -9,7 +9,7 @@ pub mod view;
 /// Enum representing all available user settings
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Setting {
-    DefaultVault,
+    DefaultShareId,
     DefaultFormat,
 }
 
@@ -17,7 +17,7 @@ impl Setting {
     /// Returns the setting key name used in the database
     pub fn key(&self) -> &'static str {
         match self {
-            Setting::DefaultVault => "default_vault",
+            Setting::DefaultShareId => "default_share_id",
             Setting::DefaultFormat => "default_format",
         }
     }
@@ -25,14 +25,14 @@ impl Setting {
     /// Returns the default value for this setting
     pub fn default_value(&self) -> &'static str {
         match self {
-            Setting::DefaultVault => "(none)",
+            Setting::DefaultShareId => "(none)",
             Setting::DefaultFormat => "human",
         }
     }
 
     /// Returns all available settings
     pub fn all() -> Vec<Setting> {
-        vec![Setting::DefaultVault, Setting::DefaultFormat]
+        vec![Setting::DefaultShareId, Setting::DefaultFormat]
     }
 }
 

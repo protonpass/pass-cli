@@ -6,8 +6,8 @@ use pass::PassClient;
 use pass_db::UserSettingModel;
 use pass_domain::ShareId;
 
-pub async fn get_default_vault(client: &PassClient) -> Result<Option<ShareId>> {
-    let setting = get_setting(client, Setting::DefaultVault).await?;
+pub async fn get_default_share_id(client: &PassClient) -> Result<Option<ShareId>> {
+    let setting = get_setting(client, Setting::DefaultShareId).await?;
     Ok(setting.map(ShareId::new))
 }
 

@@ -10,12 +10,12 @@ pub async fn run(subcommand: SetCommands, client: PassClient) -> Result<()> {
         SetCommands::DefaultVault {
             vault_name,
             share_id,
-        } => set_default_vault(client, vault_name, share_id).await,
+        } => set_default_share_id(client, vault_name, share_id).await,
         SetCommands::DefaultFormat { format } => set_default_format(client, format).await,
     }
 }
 
-async fn set_default_vault(
+async fn set_default_share_id(
     client: PassClient,
     vault_name: Option<String>,
     share_id: Option<String>,
@@ -54,7 +54,7 @@ async fn set_default_vault(
     UserSettingModel::upsert(
         &conn,
         &user_id,
-        Setting::DefaultVault.key(),
+        Setting::DefaultShareId.key(),
         Some(share_id.to_string()),
     )
     .await?;

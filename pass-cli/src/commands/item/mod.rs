@@ -185,7 +185,7 @@ pub async fn run(subcommand: ItemCommands, client: PassClient) -> Result<()> {
                 (None, None) => {
                     // Try to use default vault from settings
                     if let Some(default_share_id) =
-                        settings_helper::get_default_vault(&client).await?
+                        settings_helper::get_default_share_id(&client).await?
                     {
                         ListItemsQuery::ShareId(default_share_id)
                     } else {
@@ -227,18 +227,18 @@ pub async fn run(subcommand: ItemCommands, client: PassClient) -> Result<()> {
             output,
         } => {
             // Apply default vault if both are None and URI is not provided
-            let (share_id, vault_name) = if share_id.is_none()
-                && vault_name.is_none()
-                && uri.is_none()
-            {
-                if let Some(default_share_id) = settings_helper::get_default_vault(&client).await? {
-                    (Some(default_share_id.to_string()), None)
+            let (share_id, vault_name) =
+                if share_id.is_none() && vault_name.is_none() && uri.is_none() {
+                    if let Some(default_share_id) =
+                        settings_helper::get_default_share_id(&client).await?
+                    {
+                        (Some(default_share_id.to_string()), None)
+                    } else {
+                        (None, None)
+                    }
                 } else {
-                    (None, None)
-                }
-            } else {
-                (share_id, vault_name)
-            };
+                    (share_id, vault_name)
+                };
 
             let query =
                 view::ViewItemQuery::new(share_id, vault_name, item_id, item_title, field, uri)?;
@@ -256,7 +256,9 @@ pub async fn run(subcommand: ItemCommands, client: PassClient) -> Result<()> {
             let (from_share_id, from_vault_name) = if from_share_id.is_none()
                 && from_vault_name.is_none()
             {
-                if let Some(default_share_id) = settings_helper::get_default_vault(&client).await? {
+                if let Some(default_share_id) =
+                    settings_helper::get_default_share_id(&client).await?
+                {
                     (Some(default_share_id.to_string()), None)
                 } else {
                     return Err(anyhow!(
@@ -292,18 +294,18 @@ pub async fn run(subcommand: ItemCommands, client: PassClient) -> Result<()> {
             output,
         } => {
             // Apply default vault if both are None and URI is not provided
-            let (share_id, vault_name) = if share_id.is_none()
-                && vault_name.is_none()
-                && uri.is_none()
-            {
-                if let Some(default_share_id) = settings_helper::get_default_vault(&client).await? {
-                    (Some(default_share_id.to_string()), None)
+            let (share_id, vault_name) =
+                if share_id.is_none() && vault_name.is_none() && uri.is_none() {
+                    if let Some(default_share_id) =
+                        settings_helper::get_default_share_id(&client).await?
+                    {
+                        (Some(default_share_id.to_string()), None)
+                    } else {
+                        (None, None)
+                    }
                 } else {
-                    (None, None)
-                }
-            } else {
-                (share_id, vault_name)
-            };
+                    (share_id, vault_name)
+                };
 
             let query =
                 totp::ViewTotpQuery::new(share_id, vault_name, item_id, item_title, field, uri)?;
@@ -317,7 +319,9 @@ pub async fn run(subcommand: ItemCommands, client: PassClient) -> Result<()> {
         } => {
             // Apply default vault if both are None
             let (share_id, vault_name) = if share_id.is_none() && vault_name.is_none() {
-                if let Some(default_share_id) = settings_helper::get_default_vault(&client).await? {
+                if let Some(default_share_id) =
+                    settings_helper::get_default_share_id(&client).await?
+                {
                     (Some(default_share_id.to_string()), None)
                 } else {
                     return Err(anyhow!(
@@ -339,7 +343,9 @@ pub async fn run(subcommand: ItemCommands, client: PassClient) -> Result<()> {
         } => {
             // Apply default vault if both are None
             let (share_id, vault_name) = if share_id.is_none() && vault_name.is_none() {
-                if let Some(default_share_id) = settings_helper::get_default_vault(&client).await? {
+                if let Some(default_share_id) =
+                    settings_helper::get_default_share_id(&client).await?
+                {
                     (Some(default_share_id.to_string()), None)
                 } else {
                     return Err(anyhow!(
@@ -364,7 +370,7 @@ pub async fn run(subcommand: ItemCommands, client: PassClient) -> Result<()> {
             let share_query = match (&share_id, &vault_name) {
                 (None, None) => {
                     if let Some(default_share_id) =
-                        settings_helper::get_default_vault(&client).await?
+                        settings_helper::get_default_share_id(&client).await?
                     {
                         common::ShareQuery::ShareId(default_share_id)
                     } else {

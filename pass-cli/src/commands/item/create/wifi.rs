@@ -111,7 +111,7 @@ pub struct WifiArgs {
 pub async fn run(mut args: WifiArgs, client: PassClient) -> Result<()> {
     // Apply default vault if both are None
     if args.share_id.is_none() && args.vault_name.is_none() {
-        args.share_id = settings_helper::get_default_vault(&client)
+        args.share_id = settings_helper::get_default_share_id(&client)
             .await?
             .map(|id| id.to_string());
     }

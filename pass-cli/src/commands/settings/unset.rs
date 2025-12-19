@@ -6,7 +6,7 @@ use pass_db::UserSettingModel;
 
 pub async fn run(subcommand: UnsetCommands, client: PassClient) -> Result<()> {
     let setting = match subcommand {
-        UnsetCommands::DefaultVault => Setting::DefaultVault,
+        UnsetCommands::DefaultVault => Setting::DefaultShareId,
         UnsetCommands::DefaultFormat => Setting::DefaultFormat,
     };
 

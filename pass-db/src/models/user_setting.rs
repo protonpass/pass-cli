@@ -130,7 +130,7 @@ mod tests {
         let conn = db.get_connection().await.unwrap();
 
         let user_id = "user123";
-        let setting_key = "default_vault";
+        let setting_key = "default_share_id";
         let setting_value = Some("vault-id-123".to_string());
 
         UserSettingModel::upsert(&conn, user_id, setting_key, setting_value.clone())
@@ -206,7 +206,7 @@ mod tests {
         let user2 = "user2";
 
         // Insert multiple settings for user1
-        UserSettingModel::upsert(&conn, user1, "default_vault", Some("vault1".to_string()))
+        UserSettingModel::upsert(&conn, user1, "default_share_id", Some("vault1".to_string()))
             .await
             .unwrap();
         UserSettingModel::upsert(&conn, user1, "default_format", Some("human".to_string()))
@@ -214,7 +214,7 @@ mod tests {
             .unwrap();
 
         // Insert setting for user2
-        UserSettingModel::upsert(&conn, user2, "default_vault", Some("vault2".to_string()))
+        UserSettingModel::upsert(&conn, user2, "default_share_id", Some("vault2".to_string()))
             .await
             .unwrap();
 

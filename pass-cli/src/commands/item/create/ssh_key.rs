@@ -108,7 +108,7 @@ pub async fn run(args: SshKeyArgs, client: PassClient) -> Result<()> {
         } => {
             // Apply default vault if both are None
             if share_id.is_none() && vault_name.is_none() {
-                share_id = settings_helper::get_default_vault(&client)
+                share_id = settings_helper::get_default_share_id(&client)
                     .await?
                     .map(|id| id.to_string());
             }
@@ -142,7 +142,7 @@ pub async fn run(args: SshKeyArgs, client: PassClient) -> Result<()> {
         } => {
             // Apply default vault if both are None
             if share_id.is_none() && vault_name.is_none() {
-                share_id = settings_helper::get_default_vault(&client)
+                share_id = settings_helper::get_default_share_id(&client)
                     .await?
                     .map(|id| id.to_string());
             }
