@@ -190,13 +190,13 @@ pass-cli item list  # Uses human format
 
 ## Available settings
 
-### default_vault
+### `default-vault`
 
-**Type:** Vault reference (share ID)
+**Type:** Vault reference (Share ID)
 **Default:** `(none)`
 **Description:** The default vault used for item operations when not explicitly specified.
 
-### default_format
+### `default-format`
 
 **Type:** String (`human` or `json`)
 **Default:** `human`
