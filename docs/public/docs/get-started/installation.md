@@ -41,12 +41,13 @@ brew update
 brew upgrade pass-cli
 ```
 
-!!! warning "Installing via Homebrew"
-    When installed via Homebrew (or any package manager):
-    
-    - **The `pass-cli update` command will not work**: you must use `brew upgrade pass-cli` instead
-    - **Track switching is not available**: you cannot switch between stable and beta tracks
-    - Updates are managed entirely by Homebrew
+> [!WARNING]
+> **Installing via Homebrew**
+> When installed via Homebrew (or any package manager):
+>
+> - **The `pass-cli update` command will not work**: you must use `brew upgrade pass-cli` instead
+> - **Track switching is not available**: you cannot switch between stable and beta tracks
+> - Updates are managed entirely by Homebrew
 
 ## Installation options
 
@@ -89,10 +90,11 @@ Invoke-WebRequest -Uri https://proton.me/download/pass-cli/install.ps1 -OutFile 
 $env:PROTON_PASS_CLI_INSTALL_CHANNEL="beta"; .\install.ps1
 ```
 
-!!! note "Track Switching for Manual Installations"
-    If you install the Pass CLI by selecting an install channel, you will automatically be switched to that release track. You can switch between tracks later or revert to the `stable` track using the [`update` command](../commands/update.md).
-    
-    **Important:** Track switching is only available for manual installations. If you install via a package manager, you cannot switch tracks.
+> [!NOTE]
+> **Track Switching for Manual Installations**
+> If you install the Pass CLI by selecting an install channel, you will automatically be switched to that release track. You can switch between tracks later or revert to the `stable` track using the [`update` command](../commands/update.md).
+>
+> **Important:** Track switching is only available for manual installations. If you install via a package manager, you cannot switch tracks.
 
 ## System requirements
 

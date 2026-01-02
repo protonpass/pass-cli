@@ -28,10 +28,10 @@ There you will be able to check the current execution policy. In order to allow 
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine
 ```
 
-It will only allow to run scripts that are signed, and the provided `install.ps1` is properly signed, so your computer should be able to run it without any further restrictions.
+It will only allow running scripts that are signed, and the provided `install.ps1` is properly signed, so your computer should be able to run it without any further restrictions.
 
-Once you have successfully installed it, you can set back the execution policy to its previous value by running back again the `Set-ExecutionPolicy` command and passing the original value you got by running `Get-ExecutionPolicy`. 
+Once you have successfully installed it, you can set back the execution policy to its previous value by running the `Set-ExecutionPolicy` command again and passing the original value you got by running `Get-ExecutionPolicy`.
 
 ## Contact support
 
- Head to our [support form](https://proton.me/support/contact) to get help from our fantastic support team.
+Head to our [support form](https://proton.me/support/contact) to get help from our fantastic support team.

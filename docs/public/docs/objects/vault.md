@@ -1,6 +1,6 @@
 # Vault object
 
-A **Vault** is a container that organizes and groups your items in Proton Pass. Think of it as a folder or category that helps you organize your passwords, notes, and other sensitive information. Vaults ehlp you organize items by purpose, project, or any other criteria. 
+A **Vault** is a container that organizes and groups your items in Proton Pass. Think of it as a folder or category that helps you organize your passwords, notes, and other sensitive information. Vaults help you organize items by purpose, project, or any other criteria.
 
 ``` mermaid
 flowchart TD

@@ -2,7 +2,7 @@
 
 An **Item** is the fundamental unit of data storage in Proton Pass. Items contain your sensitive information such as login credentials, secure notes, credit card details, and other personal data.
 
-Items are identified by an item ID, but be aware that this ID is not necessarily unique. The only guarantee of uniqueness is that the ShareID + ItemID combination is globally unique.
+Items are identified by an item ID, but be aware that this ID is not necessarily unique. The only guarantee of uniqueness is that the Share ID + Item ID combination is globally unique.
 
 ## Item types
 
@@ -14,7 +14,7 @@ Proton Pass supports several types of items:
 - **Identity**: Information about a person.
 - **Alias**: Email aliases for privacy protection
 - **SSH key**: Keys to access servers via SSH
-- **Wifi**: Credentials to access a Wifi network
+- **WiFi**: Credentials to access a WiFi network
 
 ## Item properties
 
@@ -80,4 +80,4 @@ pass-cli item view "pass://vault123/item456/password"
 pass-cli item list --share-id "vault123"
 ```
 
-For detailed information about secret references (uris starting with `pass://`), see the [secret references](../commands/contents/secret-references.md) documentation.
+For detailed information about secret references (URIs starting with `pass://`), see the [secret references](../commands/contents/secret-references.md) documentation.
