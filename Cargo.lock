@@ -1793,8 +1793,9 @@ dependencies = [
 
 [[package]]
 name = "gopenpgp-sys"
-version = "0.3.2"
-source = "git+ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git?tag=release-2025-08-09#546f993348e529b1b89aae98cb228b33b11a5d1f"
+version = "0.3.3"
+source = "sparse+https://rust.gitlab-pages.protontech.ch/shared/registry/index/"
+checksum = "e81404bf5710b9075990639b5349491b5d476b59b83950d02d939cc354ad4ec3"
 dependencies = [
  "base64",
  "bindgen 0.72.1",
@@ -2754,8 +2755,9 @@ dependencies = [
 
 [[package]]
 name = "muon"
-version = "1.8.1"
-source = "git+ssh://git@gitlab.protontech.ch/ProtonVPN/rust/muon.git?rev=2ab522c2ee1706f907ced56d7332f9716ee0c2b5#2ab522c2ee1706f907ced56d7332f9716ee0c2b5"
+version = "1.9.0"
+source = "sparse+https://rust.gitlab-pages.protontech.ch/shared/registry/index/"
+checksum = "a04f3eb892b6ac1581926cdb7a4d49ff83cc30b92f4b990ebd4415c932f6e452"
 dependencies = [
  "anyhow",
  "async-channel",
@@ -2792,7 +2794,7 @@ dependencies = [
  "num",
  "num_cpus",
  "pin-project",
- "proton-srp 0.7.1 (sparse+https://rust.gitlab-pages.protontech.ch/shared/registry/index/)",
+ "proton-srp",
  "rand 0.8.5",
  "rcgen",
  "regex",
@@ -3856,13 +3858,14 @@ checksum = "95067976aca6421a523e491fce939a3e65249bac4b977adee0ee9771568e8aa3"
 
 [[package]]
 name = "proton-crypto"
-version = "0.7.0"
-source = "git+ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git?tag=release-2025-08-09#546f993348e529b1b89aae98cb228b33b11a5d1f"
+version = "0.7.1"
+source = "sparse+https://rust.gitlab-pages.protontech.ch/shared/registry/index/"
+checksum = "c7dc0a26d77810cac1ccfbc7d62cbdbcc0bb858dc09b2beeeb6d755938b201b8"
 dependencies = [
  "gopenpgp-sys",
  "hex",
  "parking_lot",
- "proton-srp 0.7.1 (git+ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git?tag=release-2025-08-09)",
+ "proton-srp",
  "rand 0.8.5",
  "serde",
  "subtle",
@@ -3871,8 +3874,9 @@ dependencies = [
 
 [[package]]
 name = "proton-crypto-account"
-version = "0.12.2"
-source = "git+ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git?tag=release-2025-08-09#546f993348e529b1b89aae98cb228b33b11a5d1f"
+version = "0.12.3"
+source = "sparse+https://rust.gitlab-pages.protontech.ch/shared/registry/index/"
+checksum = "85c1f08882ab468facdd18a967653de2f5318b59f8e915ce186013c319b2580f"
 dependencies = [
  "base64",
  "derive_more 2.0.1",
@@ -3942,21 +3946,6 @@ name = "proton-srp"
 version = "0.7.1"
 source = "sparse+https://rust.gitlab-pages.protontech.ch/shared/registry/index/"
 checksum = "2be7a723cbcf580757fb53e7152c70336def958cdd0436a601a06c52ed233a3c"
-dependencies = [
- "base64",
- "bcrypt",
- "crypto-bigint",
- "pgp",
- "rand 0.8.5",
- "sha2",
- "thiserror 1.0.69",
- "zeroize",
-]
-
-[[package]]
-name = "proton-srp"
-version = "0.7.1"
-source = "git+ssh://git@gitlab.protontech.ch/rust/proton-crypto-rs.git?tag=release-2025-08-09#546f993348e529b1b89aae98cb228b33b11a5d1f"
 dependencies = [
  "base64",
  "bcrypt",
@@ -4975,7 +4964,7 @@ version = "0.8.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c1c97747dbf44bb1ca44a561ece23508e99cb592e862f22222dcf42f51d1e451"
 dependencies = [
- "heck 0.5.0",
+ "heck 0.4.1",
  "proc-macro2",
  "quote",
  "syn",
