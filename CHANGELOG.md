@@ -1,3 +1,10 @@
+## 1.3.3 (2026-01-09)
+
+## Other
+
+- Offer `--capitalize` alongside `--capitalise` for `password generate passphrase`
+- Documentation fixes
+
 ## 1.3.2 (2025-12-18)
 
 ## Features :tada:
