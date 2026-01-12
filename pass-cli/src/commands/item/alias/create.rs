@@ -1,7 +1,8 @@
 use crate::commands::OutputFormat;
+use crate::commands::item::common::ShareQuery;
 use anyhow::{Context, Result};
 use pass::PassClient;
-use pass_domain::{ItemId, ShareId};
+use pass_domain::ItemId;
 
 #[derive(serde::Serialize)]
 struct JsonAliasItem {
@@ -11,10 +12,11 @@ struct JsonAliasItem {
 
 pub async fn run(
     client: PassClient,
-    share_id: ShareId,
+    share_query: ShareQuery,
     prefix: String,
     output: OutputFormat,
 ) -> Result<()> {
+    let share_id = share_query.share_id(&client).await?;
     let res = client
         .create_alias(&share_id, &prefix)
         .await
