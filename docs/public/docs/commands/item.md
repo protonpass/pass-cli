@@ -595,11 +595,39 @@ Manage email aliases.
 pass-cli item alias <ALIAS_SUBCOMMAND>
 ```
 
+#### alias create
+
+Create a new email alias.
+
+```bash
+pass-cli item alias create [OPTIONS]
+```
+
+**Options:**
+
+- `--share-id SHARE_ID` - Share ID of the vault where the alias will be created
+- `--vault-name VAULT_NAME` - Name of the vault where the alias will be created
+- `--prefix PREFIX` - Prefix of the alias. The resulting email will be `[prefix].[suffix]` (required)
+- `--output FORMAT` - Output format: `human` or `json`. Uses default format from settings if not specified.
+
+**Mutually exclusive options:**
+
+- `--share-id` and `--vault-name` are mutually exclusive. You can provide one, or neither if a default vault is configured.
+
 **Examples:**
 
 ```bash
-# Alias operations (exact subcommands depend on implementation)
-pass-cli item alias create --share-id "abc123def" --title "Shopping Alias"
+# Create alias using default vault (if configured)
+pass-cli item alias create --prefix "shopping"
+
+# Create alias using share ID
+pass-cli item alias create --share-id "abc123def" --prefix "newsletter"
+
+# Create alias using vault name
+pass-cli item alias create --vault-name "Personal" --prefix "work-signup"
+
+# Create alias with JSON output
+pass-cli item alias create --vault-name "Personal" --prefix "temp" --output json
 ```
 
 ## Login template format
