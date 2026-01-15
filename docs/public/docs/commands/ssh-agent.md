@@ -1,6 +1,6 @@
 # SSH Agent
 
-The Proton Pass CLI integrates nicely with any existing SSH workflows. It can either act as a SSH agent, or load your Pass-stored SSH keys into your already existing SSH agent. Let's see how to use both modes.
+The Proton Pass CLI integrates nicely with any existing SSH workflows. It can either act as an SSH agent, or load your Pass-stored SSH keys into your already existing SSH agent. Let's see how to use both modes.
 
 ## Previous considerations
 
@@ -14,7 +14,7 @@ Proton Pass allows you to generate new SSH keys, but it can also import and secu
 If you are generating new SSH keys, there's no need to protect them with a passphrase, as they are already encrypted and securely stored within your Proton Pass vault.
 However, if you are importing your already-existing SSH keys, probably they are using a passphrase for security reasons. If you want to import your passphrase-protected SSH keys, you can either:
 
-- Create a copy of your unlocked private SSH key and import it into Proton Pass. For removing the passphrase of a SSH key you can use `ssh-keygen -p -f PATH_TO_YOUR_PRIVATE_KEY -N ""` (it will prompt your for your passphrase).
+- Create a copy of your unlocked private SSH key and import it into Proton Pass. For removing the passphrase of an SSH key you can use `ssh-keygen -p -f PATH_TO_YOUR_PRIVATE_KEY -N ""` (it will prompt you for your passphrase).
 - Import your passphrase-protected private SSH key into Proton Pass and also create a custom field of type Hidden containing the passphrase. You can name it `Password` or `Passphrase`, but if you save it with any other name, Proton Pass CLI will try to use all the available `Hidden` custom fields to open it.
 
 For more details on importing passphrase-protected keys, see the [SSH key import documentation](./item.md#create-ssh-key-import).
@@ -74,7 +74,7 @@ You can verify with: ssh-add -l
 
 ## Proton Pass CLI as your SSH agent
 
-Proton Pass CLI can also work as a SSH agent itself. For doing so, you can start it by running the following command:
+Proton Pass CLI can also work as an SSH agent itself. For doing so, you can start it by running the following command:
 
 ```bash
 pass-cli ssh-agent start
@@ -99,7 +99,7 @@ Keys will refresh automatically every 3600 seconds.
 Press Ctrl+C to stop the agent.
 ```
 
-When the SSH agent starts, it will create a unix socket in the default location, which is `$HOME/.ssh/proton-pass-agent.sock`. You can specify a custom location by passing the `--socket-path` flag:
+When the SSH agent starts, it will create a Unix socket in the default location, which is `$HOME/.ssh/proton-pass-agent.sock`. You can specify a custom location by passing the `--socket-path` flag:
 
 ```text
 pass-cli ssh-agent start --socket-path MY_CUSTOM_SOCKET_PATH
@@ -119,7 +119,8 @@ export SSH_AUTH_SOCK=/Users/youruser/.ssh/proton-pass-agent.sock
 
 ### Creating new SSH key items automatically
 
-!!! info "Feature available since version 1.3.0"
+> [!NOTE]
+> **Feature available since version 1.3.0**
 
 When using Proton Pass CLI as your SSH agent, you can enable automatic creation of new SSH key items. This feature is particularly useful if you want to import an existing SSH key using `ssh-add` and have it automatically stored in your Proton Pass vault.
 
@@ -156,7 +157,7 @@ ssh-add ~/.ssh/my_new_key
 
 ### `ssh-copy-id` fails due to having many ssh keys loaded and doesn't prompt for a password
 
-A usual flow with a SSH agent is making sure we can log in with our SSH keys onto a new server, which is usually either done by:
+A usual flow with an SSH agent is making sure we can log in with our SSH keys onto a new server, which is usually either done by:
 
 1. The sysadmin adding our public SSH key for the desired remote user.
 2. Ourselves performing a `ssh-copy-id` identifying with password for the first time in order to copy our SSH keys into the `authorized_keys` file.

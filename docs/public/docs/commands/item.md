@@ -190,9 +190,9 @@ When generating new SSH keys with `--password`, you'll be prompted to enter and 
 - `PROTON_PASS_SSH_KEY_PASSWORD` - Passphrase as plain text
 - `PROTON_PASS_SSH_KEY_PASSWORD_FILE` - Path to file containing the passphrase
 
-!!! note "Passphrase recommendation for generated keys"
-
-    Since generated SSH keys are already encrypted and securely stored within your Proton Pass vault, adding a passphrase is optional. However, if you plan to export the key for use outside Proton Pass, adding a passphrase provides an additional layer of security.
+> [!NOTE]
+> **Passphrase recommendation for generated keys**
+> Since generated SSH keys are already encrypted and securely stored within your Proton Pass vault, adding a passphrase is optional. However, if you plan to export the key for use outside Proton Pass, adding a passphrase provides an additional layer of security.
 
 **Examples:**
 
@@ -338,9 +338,9 @@ shred -u /tmp/id_ed25519_temp  # Linux
 rm -P /tmp/id_ed25519_temp  # macOS
 ```
 
-!!! tip "Using imported SSH keys"
-
-    Once imported, your SSH keys can be loaded into any SSH agent using the [`ssh-agent load`](./ssh-agent.md#ssh-agent-integration) command or by starting Proton Pass CLI's built-in SSH agent with [`ssh-agent start`](./ssh-agent.md#proton-pass-cli-as-your-ssh-agent).
+> [!TIP]
+> **Using imported SSH keys**
+> Once imported, your SSH keys can be loaded into any SSH agent using the [`ssh-agent load`](./ssh-agent.md#ssh-agent-integration) command or by starting Proton Pass CLI's built-in SSH agent with [`ssh-agent start`](./ssh-agent.md#proton-pass-cli-as-your-ssh-agent).
 
 ### view
 
@@ -424,9 +424,9 @@ The `update` command allows you to modify fields of an existing item. You can up
 
 Standard fields for login items include: `title`, `username`, `password`, `email`, `url`, `note`. You can also create or update custom fields with any name.
 
-!!! info "Types of fields"
-
-    Item update does not allow to change time or TOTP fields. Please use a different Proton Pass client to update those fields
+> [!NOTE]
+> **Types of fields**
+> Item update does not allow to change time or TOTP fields. Please use a different Proton Pass client to update those fields
 
 **Examples:**
 

@@ -2,7 +2,7 @@
 
 A **Share** represents the relationship between a user and a resource in Proton Pass. It defines what access a user has to either a vault or an individual item, and what permissions they have to interact with that resource.
 
-All shares have a single unique ID. Most of the Proton Pass CLI commands need to act on the share that links the user to the resource, and they always accept the share ID as an argument. However, some commands may also offer the option to type the resource name, although in case of duplicates, there is no guarantee that it will act on the one you expected. So in case of doubt, always prefer referring to resource by its corresponding ID.
+All shares have a single unique ID. Most of the Proton Pass CLI commands need to act on the share that links the user to the resource, and they always accept the share ID as an argument. However, some commands may also offer the option to type the resource name, although in case of duplicates, there is no guarantee that it will act on the one you expected. So in case of doubt, always prefer referring to the resource by its corresponding ID.
 
 When sharing a resource, a new Share instance will be created for the target user. That means, if you create a vault, you will have a share with some ID, and if you share it with another user, they will also have a share pointing to that vault, but the ID will be different.
 
@@ -36,7 +36,7 @@ flowchart TD
     v2 --> i2
 ```
 
-In the previous example there are four shares. Three shares (1,3 and 4) grant access to vaults while share 2 grants access to a single item.  Shares also grant permissions to the user over the resource they grant access to. In the previous example, shares 1 and 3 grant Alice and Bob access to Vault 1. Alice may have manager permission to vault 1 while Bob has only read permission.
+In the previous example, there are four shares. Three shares (1,3 and 4) grant access to vaults while share 2 grants access to a single item. Shares also grant permissions to the user over the resource they grant access to. In the previous example, shares 1 and 3 grant Alice and Bob access to Vault 1. Alice may have manager permission to vault 1 while Bob has only read permission.
 
 
 ## Types of shares

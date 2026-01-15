@@ -2,8 +2,9 @@
 
 Manage shares in Proton Pass.
 
-!!! info "Sharing content in Proton Pass"
-    If you are looking for a way to share content in Proton Pass, please refer to the [`vault share`](./vault.md#share) and the [`item share`](./item.md#share) commands.
+> [!NOTE]
+> **Sharing content in Proton Pass**
+> If you are looking for a way to share content in Proton Pass, please refer to the [`vault share`](./vault.md#share) and the [`item share`](./item.md#share) commands.
 
 
 ## Synopsis

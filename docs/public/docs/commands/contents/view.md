@@ -10,9 +10,9 @@ pass-cli item view [OPTIONS] [URI]
 
 - `--share-id SHARE_ID` - Share ID of the vault containing the item
 - `--vault-name VAULT_NAME` - Name of the vault containing the item
-- `--item-id ITEM_ID` - ID of the item to update
-- `--item-title ITEM_TITLE` - Title of the item to update
-- `URI` - Secret reference in as specified in [here](secret-references.md)
+- `--item-id ITEM_ID` - ID of the item to view
+- `--item-title ITEM_TITLE` - Title of the item to view
+- `URI` - Secret reference as specified in [here](secret-references.md)
 - `--output FORMAT` - Output format: `human` (default) or `json`
 
 **Mutually exclusive options:**
