@@ -3,8 +3,8 @@ use crate::item::item_keys::OpenedItemKey;
 use crate::item::list::ItemRevision;
 use anyhow::{Context, Result, anyhow};
 use bytes::Bytes;
-use chrono::{DateTime, NaiveDateTime};
 use futures::stream::{self, StreamExt};
+use jiff::Timestamp;
 use pass_domain::{
     FolderId, Item, ItemData, ItemFlag, ItemId, ItemState, ItemType, ShareId, ShareType, VaultId,
     crypto,
@@ -13,9 +13,9 @@ use std::collections::HashMap;
 
 const MAX_CONCURRENCY: usize = 10;
 
-fn timestamp_to_naive_datetime(timestamp: u64) -> NaiveDateTime {
-    DateTime::from_timestamp(timestamp as i64, 0)
-        .map(|dt| dt.naive_utc())
+fn timestamp_to_naive_datetime(timestamp: u64) -> jiff::civil::DateTime {
+    Timestamp::from_second(timestamp as i64)
+        .map(|ts| ts.to_zoned(jiff::tz::TimeZone::UTC).datetime())
         .unwrap_or_default()
 }
 

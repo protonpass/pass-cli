@@ -5,7 +5,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 const LAST_CHECK_FILE: &str = ".last_update_check";
 const UPDATE_DAYS_CHECK_INTERVAL: i64 = 3;
 
-pub async fn get_last_check(base_dir: &Path) -> Result<Option<chrono::DateTime<chrono::Utc>>> {
+pub async fn get_last_check(base_dir: &Path) -> Result<Option<jiff::Zoned>> {
     let file_path = base_dir.join(LAST_CHECK_FILE);
 
     if !file_path.exists() {
@@ -21,20 +21,28 @@ pub async fn get_last_check(base_dir: &Path) -> Result<Option<chrono::DateTime<c
         .await
         .context("Failed to read last check file")?;
 
-    match chrono::DateTime::parse_from_rfc3339(contents.trim()) {
-        Ok(timestamp) => Ok(Some(timestamp.with_timezone(&chrono::Utc))),
-        Err(e) => {
-            // In case of error force re-check
-            error!("Failed to parse timestamp: {e}");
-            Ok(None)
-        }
+    let trimmed = contents.trim();
+
+    // Try to parse as i64 (new format)
+    if let Ok(timestamp) = trimmed.parse::<i64>()
+        && let Ok(ts) = jiff::Timestamp::from_second(timestamp)
+    {
+        return Ok(Some(ts.to_zoned(jiff::tz::TimeZone::UTC)));
     }
+
+    // Try to parse as Zoned datetime (old chrono format for backwards compatibility)
+    if let Ok(zoned) = trimmed.parse::<jiff::Zoned>() {
+        return Ok(Some(zoned));
+    }
+
+    // If both fail, return None to force re-check (file will be updated with new format)
+    Ok(None)
 }
 
 pub async fn update_last_check(base_dir: &Path) -> Result<()> {
     let file_path = base_dir.join(LAST_CHECK_FILE);
-    let now = chrono::Utc::now();
-    let timestamp = now.to_rfc3339();
+    let now = jiff::Timestamp::now().as_second();
+    let timestamp = now.to_string();
 
     let mut file = tokio::fs::File::create(&file_path)
         .await
@@ -57,9 +65,10 @@ pub async fn should_check_for_updates(base_dir: &Path) -> Result<bool> {
     match last_check {
         None => Ok(true), // Never checked before
         Some(last) => {
-            let now = chrono::Utc::now();
-            let duration = now.signed_duration_since(last);
-            Ok(duration.num_days() >= UPDATE_DAYS_CHECK_INTERVAL)
+            let now = jiff::Timestamp::now().to_zoned(jiff::tz::TimeZone::UTC);
+            let duration = now.timestamp().as_second() - last.timestamp().as_second();
+            let days = duration / (24 * 60 * 60);
+            Ok(days >= UPDATE_DAYS_CHECK_INTERVAL)
         }
     }
 }

@@ -127,7 +127,7 @@ impl DatabaseManager {
                         rusqlite::params![
                             migration_id,
                             description,
-                            chrono::Utc::now().timestamp()
+                            jiff::Timestamp::now().as_second()
                         ],
                     )
                     .map_err(|e| anyhow!("Failed to record migration: {}", e))?;

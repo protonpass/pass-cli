@@ -13,7 +13,7 @@ deadpool = "0.12"
 rusqlite = { version = "0.37.0", features = ["bundled-sqlcipher-vendored-openssl"] }
 
 anyhow.workspace = true
-chrono.workspace = true
+jiff.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
 tracing.workspace = true

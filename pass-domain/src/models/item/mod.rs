@@ -49,7 +49,7 @@ pub struct Item {
     pub content: ItemData,
     pub state: ItemState,
     pub flags: Vec<ItemFlag>,
-    pub create_time: chrono::NaiveDateTime,
+    pub create_time: jiff::civil::DateTime,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub folder_id: Option<FolderId>,
 }

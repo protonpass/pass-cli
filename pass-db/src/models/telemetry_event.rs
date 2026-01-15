@@ -48,7 +48,7 @@ impl TelemetryEventModel {
         let dimensions = event.dimensions();
         let extra_data =
             serde_json::to_string(&dimensions).context("Failed to serialize dimensions")?;
-        let timestamp = chrono::Utc::now().timestamp();
+        let timestamp = jiff::Timestamp::now().as_second();
 
         conn.interact(move |conn| {
             conn.execute(

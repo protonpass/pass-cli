@@ -1,6 +1,6 @@
 use crate::commands::OutputFormat;
 use anyhow::{Context, Result};
-use chrono::TimeZone;
+use jiff::Timestamp;
 use pass::PassClient;
 
 #[derive(serde::Serialize)]
@@ -27,11 +27,12 @@ pub async fn run(client: PassClient, output_format: OutputFormat) -> Result<()> 
             println!("User: {}", primary_address.email);
             println!("Plan: {}", user_info.plan.display_name);
             if let Some(subscription_end) = user_info.plan.subscription_end {
-                let end_date = chrono::Utc.timestamp_opt(subscription_end as i64, 0);
-                println!(
-                    "Subscription Ends: {}",
-                    end_date.unwrap().format("%Y-%m-%d %H:%M:%S")
-                );
+                let end_date = Timestamp::from_second(subscription_end as i64)
+                    .ok()
+                    .map(|ts| ts.to_zoned(jiff::tz::TimeZone::UTC))
+                    .map(|zoned| zoned.strftime("%Y-%m-%d %H:%M:%S").to_string())
+                    .unwrap_or_else(|| "Invalid date".to_string());
+                println!("Subscription Ends: {}", end_date);
             }
             if let Some(vault_limit) = user_info.plan.vault_limit {
                 println!("Vault limit: {vault_limit}");

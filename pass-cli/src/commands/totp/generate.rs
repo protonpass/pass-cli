@@ -1,6 +1,6 @@
 use crate::commands::OutputFormat;
 use anyhow::{Context, Result};
-use chrono::Utc;
+use jiff::Timestamp;
 use proton_pass_common::totp::TOTP;
 use serde::Serialize;
 
@@ -18,7 +18,7 @@ pub async fn run(secret_or_uri: &str, output: &OutputFormat) -> Result<()> {
         .context("Failed to parse TOTP URI or secret. Please provide a valid TOTP URI (otpauth://...) or base32 secret")?;
 
     // Get current timestamp in UTC
-    let timestamp = Utc::now().timestamp() as u64;
+    let timestamp = Timestamp::now().as_second() as u64;
 
     // Generate token
     let token = totp

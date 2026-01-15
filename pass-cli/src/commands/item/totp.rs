@@ -2,7 +2,7 @@ use crate::commands::item::common::{ItemQuery, ShareQuery};
 use crate::commands::secret_resolver::ItemReference;
 use crate::commands::{OutputFormat, settings_helper};
 use anyhow::{Context, Result, anyhow, bail};
-use chrono::Utc;
+use jiff::Timestamp;
 use pass::{FindItemQuery, PassClient};
 use pass_domain::Field;
 use proton_pass_common::totp::TOTP;
@@ -84,7 +84,7 @@ fn generate_totp_token(totp_uri: &str) -> Result<String> {
     let totp = TOTP::from_uri(totp_uri)
         .context("Failed to parse TOTP content. Please ensure the field contains a valid TOTP URI or base32 secret")?;
 
-    let timestamp = Utc::now().timestamp() as u64;
+    let timestamp = Timestamp::now().as_second() as u64;
     let token = totp
         .generate_token(timestamp)
         .context("Failed to generate TOTP token")?;

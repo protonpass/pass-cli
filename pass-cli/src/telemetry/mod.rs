@@ -122,12 +122,12 @@ impl SqliteTelemetryHandler {
 
         match record {
             Some(activity_time) => {
-                let elapsed = chrono::Utc::now().timestamp() - activity_time.timestamp;
+                let elapsed = jiff::Timestamp::now().as_second() - activity_time.timestamp;
                 Ok(elapsed >= TELEMETRY_SEND_INTERVAL.as_secs() as i64)
             }
             None => {
                 // No record found, insert current time and return false
-                let now = chrono::Utc::now().timestamp();
+                let now = jiff::Timestamp::now().as_second();
                 ActivityTimeModel::upsert(
                     &conn,
                     Some(user_id.to_string()),
@@ -143,7 +143,7 @@ impl SqliteTelemetryHandler {
 
     async fn update_last_send_time(&self, user_id: Option<&str>) -> Result<()> {
         let conn = self.db.get_connection().await?;
-        let now = chrono::Utc::now().timestamp();
+        let now = jiff::Timestamp::now().as_second();
 
         ActivityTimeModel::upsert(
             &conn,

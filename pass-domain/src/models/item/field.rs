@@ -456,9 +456,10 @@ mod tests {
                 platform_specific: None,
             },
             flags: vec![],
-            create_time: chrono::DateTime::from_timestamp(1234567890, 0)
+            create_time: jiff::Timestamp::from_second(1234567890)
                 .unwrap()
-                .naive_utc(),
+                .to_zoned(jiff::tz::TimeZone::UTC)
+                .datetime(),
             folder_id: None,
         }
     }

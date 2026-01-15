@@ -36,7 +36,7 @@ impl FolderKeyModel {
         let user_id = user_id.to_string();
         let share_id = share_id.to_string();
         let folder_id = folder_id.to_string();
-        let created_at = chrono::Utc::now().timestamp();
+        let created_at = jiff::Timestamp::now().as_second();
 
         let conn = db.get_connection().await?;
         conn.interact(move |conn| {

@@ -290,7 +290,7 @@ impl pass_domain::PgpCrypto for NativePgpCrypto {
         let provider = proton_crypto::new_pgp_provider();
         let generator = provider.new_key_generator();
 
-        let now = chrono::Utc::now().to_utc().timestamp();
+        let now = jiff::Timestamp::now().as_second();
         let key = generator
             .with_generation_time(UnixTimestamp(now as u64))
             .with_algorithm(KeyGeneratorAlgorithm::ECC)
