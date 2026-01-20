@@ -55,7 +55,7 @@ uuid.workspace = true
 libc = "0.2"
 
 [target.'cfg(windows)'.dependencies]
-zip = "6.0.0"
+zip = "7"
 
 [dev-dependencies]
 tempfile.workspace = true
