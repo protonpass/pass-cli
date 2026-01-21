@@ -1,3 +1,9 @@
+## 1.4.1 (2026-01-21)
+
+## Fixes :bug:
+
+- Fixed `pass-cli item update` duplicating custom fields when updating an item
+
 ## 1.4.0 (2026-01-20)
 
 ## Features :tada:
