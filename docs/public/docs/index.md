@@ -4,8 +4,9 @@ hide:
   - toc
 ---
 
-!!! warning "Proton Pass CLI is in Beta"
-    Currently, the Proton Pass CLI is in beta status, and is only available for some users during this beta period. We plan to make it available to more users soon, so stay tuned for more news!
+> [!WARNING]
+> **Proton Pass CLI is in Beta**
+> Currently, the Proton Pass CLI is in beta status, and is only available for some users during this beta period. We plan to make it available to more users soon, so stay tuned for more news!
 
 # Overview
 
@@ -348,7 +349,7 @@ Did you have any issue during the installation? Take a look at our [Troubleshoot
 
 ## What is Proton Pass CLI?
 
-The Proton Pass CLI allows you to manage your Proton Pass vaults and items directly from the command line, bringing the power of secure secret management to your terminal workflow. With the CLI, you can create, list, view, and delete vaults and items seamlessly, making it an great tool for developers and system administrators who prefer working in the command line.
+The Proton Pass CLI allows you to manage your Proton Pass vaults and items directly from the command line, bringing the power of secure secret management to your terminal workflow. With the CLI, you can create, list, view, and delete vaults and items seamlessly, making it a great tool for developers and system administrators who prefer working in the command line.
 
 Beyond basic vault management, the CLI allows you to inject secrets into your applications through environment variables or template files, enabling easy integration with your deployment workflows. The tool also provides comprehensive SSH integration, allowing you to use your SSH keys stored in Proton Pass with your existing SSH workflows.
 

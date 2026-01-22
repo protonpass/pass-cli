@@ -26,11 +26,10 @@ In case you want to log in by using SSO, or your account is protected by a hardw
 
 ## Interactive login
 
-!!! warning "Interactive login restrictions"
-    Take into account that not all login flows are supported in the Interactive login. SSO login flows, or 2FA requiring
-```
-a U2F key are only supported in the web login.
-```
+> [!WARNING]
+> **Interactive login restrictions**
+> Take into account that not all login flows are supported in the interactive login. SSO login flows or 2FA requiring
+> a U2F key are only supported in the web login.
 
 To log in with your Proton account directly in the CLI:
 
@@ -60,8 +59,9 @@ For each authentication parameter, the CLI checks for values in this order:
 
 ### Password
 
-!!! warning "Password in env variables"
-    Storing your password in an environment variable makes it readable by all other processes under the same session. Be conscious about doing so, and clear the variable when you are done.
+> [!WARNING]
+> **Password in env variables**
+> Storing your password in an environment variable makes it readable by all other processes under the same session. Be conscious about doing so, and clear the variable when you are done.
 
 **Interactive (default):**
 
