@@ -42,7 +42,7 @@ impl PassClient {
 mod tests {
     use super::*;
     use crate::test_tools::*;
-    use crate::{last_request, share_id};
+
     use muon::Method;
     use muon::test::server::Server;
     use pass_domain::{PermissionFlag, TargetType};
