@@ -47,7 +47,7 @@ pub use item::create::note;
 pub use item::create::ssh_key;
 pub use item::create::wifi;
 pub use item::find::FindItemQuery;
-pub use service_account::{CreateServiceAccountArgs, CreateServiceAccountResponse};
+pub use service_account::{CreateServiceAccountArgs, CreateServiceAccountResponse, ServiceAccount};
 pub use user::access::{PassPlan, PlanType, UserDataSettings, UserInfo};
 pub use utils::is_id;
 pub use vault::{CreateVaultArgs, UpdateVaultArgs};

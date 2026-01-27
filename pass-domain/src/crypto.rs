@@ -175,8 +175,8 @@ mod tests {
         fn test_service_account_name_encryption() {
             let key = generate_encryption_key();
             let data = b"MyServiceAccountName";
-            let ciphertext = encrypt(data, &key, EncryptionTag::ServiceAccountName)
-                .expect("encryption failed");
+            let ciphertext =
+                encrypt(data, &key, EncryptionTag::ServiceAccountName).expect("encryption failed");
             let plaintext = decrypt(&ciphertext, &key, EncryptionTag::ServiceAccountName)
                 .expect("decryption failed");
             assert_eq!(data.to_vec(), plaintext);

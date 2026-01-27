@@ -1,8 +1,8 @@
 use crate::PassClient;
 use anyhow::{Context, Result, anyhow};
 use muon::POST;
-use pass_domain::{PlainText, crypto};
 use pass_domain::crypto::EncryptionTag;
+use pass_domain::{PlainText, crypto};
 
 #[derive(Debug)]
 pub struct CreateServiceAccountArgs {
