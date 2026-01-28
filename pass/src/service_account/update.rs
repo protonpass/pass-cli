@@ -74,7 +74,10 @@ impl PassClient {
         Ok(())
     }
 
-    async fn get_service_account_key(&self, service_account_id: &str) -> Result<Vec<u8>> {
+    pub(crate) async fn get_service_account_key(
+        &self,
+        service_account_id: &str,
+    ) -> Result<Vec<u8>> {
         let service_accounts = self
             .list_service_accounts()
             .await
