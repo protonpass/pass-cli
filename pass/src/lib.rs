@@ -48,7 +48,7 @@ pub use item::create::ssh_key;
 pub use item::create::wifi;
 pub use item::find::FindItemQuery;
 pub use service_account::{
-    CreateServiceAccountArgs, CreateServiceAccountResponse, ServiceAccount,
+    CreateServiceAccountArgs, CreateServiceAccountResponse, ServiceAccount, ServiceAccountAccess,
     UpdateServiceAccountArgs,
 };
 pub use user::access::{PassPlan, PlanType, UserDataSettings, UserInfo};

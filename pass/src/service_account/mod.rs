@@ -8,4 +8,5 @@ mod update;
 
 pub use create::{CreateServiceAccountArgs, CreateServiceAccountResponse};
 pub use list::ServiceAccount;
+pub use list_access::ServiceAccountAccess;
 pub use update::UpdateServiceAccountArgs;
