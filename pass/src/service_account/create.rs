@@ -1,8 +1,9 @@
 use crate::PassClient;
 use anyhow::{Context, Result, anyhow};
+use base64::Engine;
 use muon::POST;
 use pass_domain::crypto::EncryptionTag;
-use pass_domain::{PlainText, crypto};
+use pass_domain::{PlainText, ServiceAccountId, crypto};
 
 #[derive(Debug)]
 pub struct CreateServiceAccountArgs {
@@ -58,7 +59,7 @@ struct ServiceAccountData {
 }
 
 pub struct CreateServiceAccountResponse {
-    pub service_account_id: String,
+    pub service_account_id: ServiceAccountId,
     pub name: String,
     pub service_account_key: String,
     pub expire_time: Option<i64>,
@@ -66,6 +67,7 @@ pub struct CreateServiceAccountResponse {
     pub modify_time: i64,
     pub token: String,
     pub raw_service_account_key: Vec<u8>,
+    pub env_var: String,
 }
 
 impl PassClient {
@@ -97,14 +99,19 @@ impl PassClient {
             sa.service_account_id
         );
 
+        let service_account_key_b64 =
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&raw_service_account_key);
+
+        let env_var = format!("{}::{}", sa.token, service_account_key_b64);
         Ok(CreateServiceAccountResponse {
-            service_account_id: sa.service_account_id,
+            service_account_id: ServiceAccountId::new(sa.service_account_id),
             name: sa.name,
             service_account_key: sa.service_account_key,
             expire_time: sa.expire_time,
             create_time: sa.create_time,
             modify_time: sa.modify_time,
             token: sa.token,
+            env_var,
             raw_service_account_key,
         })
     }
@@ -192,7 +199,7 @@ mod tests {
             .await
             .expect("Should be able to create the service account");
 
-        assert_eq!(SERVICE_ACCOUNT_ID, response.service_account_id);
+        assert_eq!(SERVICE_ACCOUNT_ID, response.service_account_id.value());
         assert_eq!(TOKEN, response.token);
         assert_eq!(32, response.raw_service_account_key.len());
 

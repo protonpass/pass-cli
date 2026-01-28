@@ -1,8 +1,8 @@
 use crate::PassClient;
 use anyhow::{Context, Result, anyhow};
 use muon::PUT;
-use pass_domain::crypto;
 use pass_domain::crypto::EncryptionTag;
+use pass_domain::{ServiceAccountId, crypto};
 
 #[derive(Debug)]
 pub struct UpdateServiceAccountArgs {
@@ -28,7 +28,7 @@ struct UpdateServiceAccountRequest {
 impl PassClient {
     pub async fn update_service_account(
         &self,
-        service_account_id: &str,
+        service_account_id: &ServiceAccountId,
         args: UpdateServiceAccountArgs,
     ) -> Result<()> {
         info!(
@@ -76,7 +76,7 @@ impl PassClient {
 
     pub(crate) async fn get_service_account_key(
         &self,
-        service_account_id: &str,
+        service_account_id: &ServiceAccountId,
     ) -> Result<Vec<u8>> {
         let service_accounts = self
             .list_service_accounts()
@@ -85,7 +85,7 @@ impl PassClient {
 
         let service_account = service_accounts
             .iter()
-            .find(|sa| sa.service_account_id == service_account_id)
+            .find(|sa| service_account_id.eq(&sa.service_account_id))
             .ok_or_else(|| anyhow!("Service account not found: {}", service_account_id))?;
 
         service_account
@@ -165,7 +165,7 @@ mod tests {
 
         client
             .update_service_account(
-                SERVICE_ACCOUNT_ID,
+                &ServiceAccountId::new(SERVICE_ACCOUNT_ID.to_string()),
                 UpdateServiceAccountArgs::new(NEW_NAME.to_string()).unwrap(),
             )
             .await

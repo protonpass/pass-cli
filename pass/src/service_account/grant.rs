@@ -3,7 +3,7 @@ use crate::common::CodeResponse;
 use anyhow::{Context, Result, anyhow};
 use muon::POST;
 use pass_domain::crypto::EncryptionTag;
-use pass_domain::{ItemId, ShareId, ShareRole, TargetType, crypto};
+use pass_domain::{ItemId, ServiceAccountId, ShareId, ShareRole, TargetType, crypto};
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 struct KeyRotationKeyPair {
@@ -32,7 +32,7 @@ struct ServiceAccountGrantAccessRequest {
 impl PassClient {
     pub async fn grant_service_account_access(
         &self,
-        service_account_id: &str,
+        service_account_id: &ServiceAccountId,
         share_id: &ShareId,
         item_id: Option<&ItemId>,
         role: &ShareRole,
@@ -68,7 +68,7 @@ impl PassClient {
 
     async fn prepare_grant_access_request(
         &self,
-        service_account_id: &str,
+        service_account_id: &ServiceAccountId,
         share_id: &ShareId,
         item_id: Option<&ItemId>,
         role: &ShareRole,
@@ -172,7 +172,7 @@ impl PassClient {
 
     async fn send_grant_access_request(
         &self,
-        service_account_id: &str,
+        service_account_id: &ServiceAccountId,
         request: ServiceAccountGrantAccessRequest,
     ) -> Result<()> {
         let req = POST!("/pass/v1/service_account/{}/access", service_account_id)
@@ -304,7 +304,7 @@ mod tests {
 
         client
             .grant_service_account_access(
-                SERVICE_ACCOUNT_ID,
+                &ServiceAccountId::new(SERVICE_ACCOUNT_ID.to_string()),
                 &ShareId::new(SHARE_ID.to_string()),
                 None,
                 &ShareRole::Viewer,

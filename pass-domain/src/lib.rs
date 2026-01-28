@@ -45,6 +45,7 @@ pub use models::folder::*;
 pub use models::group::*;
 pub use models::invite::*;
 pub use models::item::*;
+pub use models::service_account::*;
 pub use models::share::*;
 pub use models::vault::*;
 pub use protobuf;

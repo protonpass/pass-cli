@@ -2,7 +2,7 @@ use crate::PassClient;
 use crate::pagination::SincePagination;
 use anyhow::{Context, Result, anyhow};
 use muon::GET;
-use pass_domain::{ItemId, ShareId, ShareRole, TargetType};
+use pass_domain::{ItemId, ServiceAccountId, ShareId, ShareRole, TargetType};
 
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
@@ -50,7 +50,7 @@ pub(crate) struct ServiceAccountShare {
 impl PassClient {
     pub async fn list_service_account_access(
         &self,
-        service_account_id: &str,
+        service_account_id: &ServiceAccountId,
     ) -> Result<Vec<ServiceAccountAccess>> {
         let access_list = self
             .fetch_service_account_access(service_account_id)
@@ -126,7 +126,7 @@ impl PassClient {
 
     async fn fetch_service_account_access(
         &self,
-        service_account_id: &str,
+        service_account_id: &ServiceAccountId,
     ) -> Result<Vec<ServiceAccountShare>> {
         let mut access_list = vec![];
         let mut pagination = SincePagination::default();
@@ -255,7 +255,7 @@ mod tests {
         });
 
         let access_list = client
-            .list_service_account_access(SERVICE_ACCOUNT_ID)
+            .list_service_account_access(&ServiceAccountId::new(SERVICE_ACCOUNT_ID.to_string()))
             .await
             .expect("Should be able to list service account access");
 

@@ -2,12 +2,12 @@ use crate::PassClient;
 use crate::common::CodeResponse;
 use anyhow::{Context, Result};
 use muon::DELETE;
-use pass_domain::ShareId;
+use pass_domain::{ServiceAccountId, ShareId};
 
 impl PassClient {
     pub async fn revoke_service_account_access(
         &self,
-        service_account_id: &str,
+        service_account_id: &ServiceAccountId,
         share_id: &ShareId,
     ) -> Result<()> {
         info!("Revoking service account {service_account_id} access from share {share_id}");
@@ -53,7 +53,10 @@ mod tests {
             server.handler_with_method(Method::DELETE, REVOKE_PATH, |_| success_code());
 
         client
-            .revoke_service_account_access(SERVICE_ACCOUNT_ID, &ShareId::new(SHARE_ID.to_string()))
+            .revoke_service_account_access(
+                &ServiceAccountId::new(SERVICE_ACCOUNT_ID.to_string()),
+                &ShareId::new(SHARE_ID.to_string()),
+            )
             .await
             .expect("Should be able to revoke access");
 

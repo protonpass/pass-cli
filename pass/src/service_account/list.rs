@@ -1,8 +1,8 @@
 use crate::PassClient;
 use anyhow::{Context, Result, anyhow};
 use muon::GET;
-use pass_domain::crypto;
 use pass_domain::crypto::EncryptionTag;
+use pass_domain::{ServiceAccountId, crypto};
 
 const PAGE_SIZE: usize = 100;
 
@@ -43,7 +43,7 @@ pub(crate) struct ListServiceAccountsResponse {
 
 #[derive(Clone, Debug, serde::Serialize)]
 pub struct ServiceAccount {
-    pub service_account_id: String,
+    pub service_account_id: ServiceAccountId,
     pub name: String,
     pub expire_time: Option<i64>,
     #[serde(skip)]
@@ -140,7 +140,7 @@ impl PassClient {
             String::from_utf8(decrypted_name).context("Service account name is not valid UTF-8")?;
 
         Ok(ServiceAccount {
-            service_account_id: sa_data.service_account_id.clone(),
+            service_account_id: ServiceAccountId::new(sa_data.service_account_id.clone()),
             name,
             expire_time: sa_data.expire_time,
             service_account_key: Some(decrypted_service_account_key),
@@ -236,7 +236,7 @@ mod tests {
             .expect("Should be able to list service accounts");
 
         assert_eq!(1, result.len());
-        assert_eq!(SERVICE_ACCOUNT_ID, result[0].service_account_id);
+        assert_eq!(SERVICE_ACCOUNT_ID, result[0].service_account_id.value());
         assert_eq!(SERVICE_ACCOUNT_NAME, result[0].name);
         assert_eq!(None, result[0].expire_time);
 

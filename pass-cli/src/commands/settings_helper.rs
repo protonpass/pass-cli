@@ -19,6 +19,18 @@ pub async fn get_default_format(client: &PassClient) -> Result<Option<OutputForm
     }
 }
 
+pub async fn get_format(format: Option<OutputFormat>, client: &PassClient) -> Result<OutputFormat> {
+    match format {
+        Some(o) => Ok(o),
+        None => {
+            let default = get_default_format(client)
+                .await
+                .context("could not get default format")?;
+            Ok(default.unwrap_or(OutputFormat::Human))
+        }
+    }
+}
+
 async fn get_setting(client: &PassClient, setting: Setting) -> Result<Option<String>> {
     let client_features = client
         .get_cli_client_features()

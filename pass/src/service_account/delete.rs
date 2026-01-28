@@ -2,9 +2,13 @@ use crate::PassClient;
 use crate::common::CodeResponse;
 use anyhow::Context;
 use muon::DELETE;
+use pass_domain::ServiceAccountId;
 
 impl PassClient {
-    pub async fn delete_service_account(&self, service_account_id: &str) -> anyhow::Result<()> {
+    pub async fn delete_service_account(
+        &self,
+        service_account_id: &ServiceAccountId,
+    ) -> anyhow::Result<()> {
         info!("Deleting service account: {service_account_id}");
 
         let res = self
