@@ -181,26 +181,32 @@ fn mask_line(line: &str, masking_regex: &Option<Regex>) -> String {
 
 #[cfg(not(target_os = "windows"))]
 async fn kill_process_by_pid(pid: i32) {
-    // On Unix systems, send SIGTERM first, then SIGKILL if needed
-    unsafe {
-        const SIGKILL_GRACE_TIME_MS: u64 = 2_000;
+    use nix::sys::signal::{Signal, kill};
+    use nix::unistd::Pid;
 
-        libc::kill(pid, libc::SIGTERM);
+    const SIGKILL_GRACE_TIME_MS: u64 = 2_000;
 
-        // Give the process a moment to terminate gracefully
-        tokio::time::sleep(tokio::time::Duration::from_millis(SIGKILL_GRACE_TIME_MS)).await;
+    let pid = Pid::from_raw(pid);
 
-        // Check if process is still running by sending signal 0
-        if libc::kill(pid, 0) == 0 {
-            // Process is still running, force kill
-            libc::kill(pid, libc::SIGKILL);
+    if let Err(e) = kill(pid, Signal::SIGTERM) {
+        eprintln!("Failed to send SIGTERM to process {}: {}", pid, e);
+        if let Err(e) = kill(pid, Signal::SIGKILL) {
+            eprintln!("Failed to send SIGKILL to process {}: {}", pid, e);
         }
+        return;
+    }
+
+    tokio::time::sleep(tokio::time::Duration::from_millis(SIGKILL_GRACE_TIME_MS)).await;
+
+    if kill(pid, None).is_ok()
+        && let Err(e) = kill(pid, Signal::SIGKILL)
+    {
+        eprintln!("Failed to send SIGKILL to process {}: {}", pid, e);
     }
 }
 
 #[cfg(target_os = "windows")]
 async fn kill_process_by_pid(pid: i32) {
-    // On non-Unix systems (Windows), we'll use taskkill command as a simple approach
     let _ = std::process::Command::new("taskkill")
         .args(&["/PID", &pid.to_string(), "/F"])
         .output();

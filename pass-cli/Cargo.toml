@@ -53,6 +53,7 @@ uuid.workspace = true
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
+nix = { version = "0.29", features = ["signal", "process"] }
 
 [target.'cfg(windows)'.dependencies]
 zip = "7"
