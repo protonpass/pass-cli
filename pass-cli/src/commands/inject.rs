@@ -14,29 +14,26 @@ fn compile_pass_uri_regex() -> Result<Regex> {
         .map_err(|e| anyhow!("Failed to compile pass URI regex: {}", e))
 }
 
-fn set_file_permissions(file_path: &str, mode: u32) -> Result<()> {
+fn write_file_with_permissions(file_path: &str, content: &str, mode: u32) -> Result<()> {
     #[cfg(not(target_os = "windows"))]
     {
-        use std::os::unix::fs::PermissionsExt;
-        let file = fs::File::open(file_path).with_context(|| {
-            format!("Failed to open output file for permission setting: {file_path}")
+        use std::os::unix::fs::OpenOptionsExt;
+        let mut options = fs::OpenOptions::new();
+        options.write(true).create(true).truncate(true).mode(mode);
+
+        let mut file = options.open(file_path).with_context(|| {
+            format!("Failed to create output file with permissions: {file_path}")
         })?;
 
-        let mut permissions = file
-            .metadata()
-            .context("Failed to get file metadata")?
-            .permissions();
-
-        permissions.set_mode(mode);
-        fs::set_permissions(file_path, permissions)
-            .with_context(|| format!("Failed to set file permissions: {file_path}"))?;
+        file.write_all(content.as_bytes())
+            .with_context(|| format!("Failed to write to output file: {file_path}"))?;
     }
 
     #[cfg(target_os = "windows")]
     {
-        // On non-Unix systems (like Windows), we can't set Unix-style permissions
-        // The file will use default permissions for the platform
-        let _ = (file_path, mode); // Suppress unused parameter warnings
+        fs::write(file_path, content)
+            .with_context(|| format!("Failed to write to output file: {file_path}"))?;
+        let _ = mode;
     }
 
     Ok(())
@@ -85,15 +82,12 @@ pub async fn run(
                 return Err(anyhow!("Output file already exists"));
             }
 
-            // Write to file
-            fs::write(&output_path, processed_content)
-                .with_context(|| format!("Failed to write to output file: {output_path}"))?;
-
-            // Set file permissions
+            // Parse file mode first
             let mode = parse_file_mode(&file_mode)
                 .with_context(|| format!("Invalid file mode: {file_mode}"))?;
 
-            set_file_permissions(&output_path, mode)?;
+            // Write to file with permissions set atomically
+            write_file_with_permissions(&output_path, &processed_content, mode)?;
 
             eprintln!("Secrets injected successfully to: {output_path}");
         }
