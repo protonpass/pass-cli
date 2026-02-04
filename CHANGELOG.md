@@ -1,3 +1,10 @@
+## 1.4.2 (2026-02-04)
+
+## Other
+
+- Improvements on permission handling
+- Add modify time to `item view` in JSON output format
+
 ## 1.4.1 (2026-01-21)
 
 ## Fixes :bug:
