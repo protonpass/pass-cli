@@ -48,6 +48,8 @@ impl EncryptInviteKeysFlow {
             None => return Err(anyhow::anyhow!("Empty list of invited_keys")),
         };
 
+        debug!("[create_invite] signing_key: {}", signing_key.id);
+
         let mut res = Vec::with_capacity(invite_keys.len());
         for invite_key in invite_keys {
             let rotation = invite_key.key_rotation;

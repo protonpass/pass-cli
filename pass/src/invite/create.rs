@@ -120,6 +120,16 @@ impl PassClient {
             .await
             .context("Error getting address")?;
 
+        debug!(
+            "[create_invite] share [id={}] [address_id={}]",
+            share.id, share.address_id
+        );
+        debug!(
+            "[create_invite] user_address [id={}] [email={}]",
+            user_address.id, user_address.email
+        );
+        debug!("[create_invite] address_to_invite: {address_to_invite}");
+
         let invite_target = match item_id {
             None => match &share.share_type {
                 ShareType::Vault { .. } => {

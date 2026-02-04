@@ -102,6 +102,10 @@ impl PassClient {
     }
 
     async fn invite_response_to_invite(&self, invite: PendingInvite) -> Result<InviteWithKeys> {
+        debug!(
+            "[list_invites] invite [{}] | inviter_email [{}] | invited_email: [{}]",
+            invite.invite_token, invite.inviter_email, invite.invited_email
+        );
         let vault_data = match invite.vault_data {
             None => None,
             Some(data) => {
@@ -196,10 +200,16 @@ impl PassClient {
         inviter_address: &str,
         keys: Vec<InviteKeyResponse>,
     ) -> Result<Vec<OpenedInviteKey>> {
+        debug!("[list_invites] Fetching inviter keys [{inviter_address}]");
         let inviter_keys = self
             .get_keys_for_email(inviter_address, true)
             .await
             .context("Error getting keys for inviter")?;
+
+        debug!(
+            "[list_invites] Fetched {} keys for inviter",
+            inviter_keys.len()
+        );
 
         let invited_addresses = self
             .get_addresses()
@@ -214,6 +224,11 @@ impl PassClient {
             .open_address_keys(invited_address.keys)
             .await
             .context("Error opening address keys")?;
+
+        debug!(
+            "[list_invites] Get {} keys for invited address",
+            invited_address_keys.keys().len()
+        );
 
         let crypto = self.client_features.get_pgp_crypto().await;
         let flow = OpenInviteKeyFlow::new(crypto, invited_address_keys, inviter_keys);
