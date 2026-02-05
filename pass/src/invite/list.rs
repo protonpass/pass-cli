@@ -90,12 +90,19 @@ impl PassClient {
         let response: GetPendingInvitesResponse = assert_response!(res);
 
         let mut result = Vec::new();
+        let mut failure_count = 0;
         for invite in response.invites {
-            let opened = self
-                .invite_response_to_invite(invite)
-                .await
-                .context("Error opening invite")?;
-            result.push(opened);
+            match self.invite_response_to_invite(invite).await {
+                Ok(opened) => result.push(opened),
+                Err(e) => {
+                    warn!("Error opening invite: {e}");
+                    failure_count += 1;
+                }
+            }
+        }
+
+        if failure_count > 0 {
+            error!("Failed to open {failure_count} invites");
         }
 
         Ok(result)
