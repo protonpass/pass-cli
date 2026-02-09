@@ -16,7 +16,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-const ENVIRONMENT_ENV_VAR: &str = "ENVIRONMENT";
+const ENVIRONMENT_ENV_VAR: &str = "PROTON_PASS_ENVIRONMENT";
 const XDEBUG_SESSION_ENV_VAR: &str = "XDEBUG_SESSION";
 const XDEBUG_SESSION_HEADER: &str = "XDEBUG_SESSION";
 const APP_NAME: &str = "cli-pass";
