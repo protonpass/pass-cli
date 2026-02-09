@@ -1,3 +1,9 @@
+## 1.4.3 (2026-02-09)
+
+## Other
+
+- Renamed internal config variables to avoid clashing with commonly defined variables (`ENVIRONMENT`)
+
 ## 1.4.2 (2026-02-04)
 
 ## Other
