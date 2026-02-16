@@ -195,7 +195,7 @@ pass-cli login --interactive user@proton.me
 ### Basic interactive login
 
 ```bash
-pass-cli login alice@proton.me
+pass-cli login --interactive alice@proton.me
 # You'll be prompted for password and TOTP (if enabled)
 ```
 
@@ -205,7 +205,7 @@ pass-cli login alice@proton.me
 #!/bin/bash
 export PROTON_PASS_PASSWORD="$(cat ~/.proton-pass-password)"
 export PROTON_PASS_TOTP="$(generate-totp-code)"
-pass-cli login alice@proton.me
+pass-cli login --interactive alice@proton.me
 ```
 
 ### Reading credentials from files
@@ -217,7 +217,7 @@ chmod 600 ~/.proton-pass-password
 
 # Configure environment
 export PROTON_PASS_PASSWORD_FILE="$HOME/.proton-pass-password"
-pass-cli login alice@proton.me
+pass-cli login --interactive alice@proton.me
 ```
 
 ## Security considerations
