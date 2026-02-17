@@ -1,3 +1,4 @@
+use crate::storage::SessionStorage;
 use anyhow::{Context, anyhow};
 use muon::app::{AppName, AppVersion, SemVer};
 use muon::client::Auth;
@@ -9,12 +10,9 @@ use pass::PassSessionKeyType;
 use pass_domain::crypto::EncryptionTag;
 use pass_domain::{AccountType, LocalKeyProvider};
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-
-pub const FILE_NAME: &str = "session.json";
 
 pub struct AllowAllPinVerifier;
 
@@ -115,7 +113,7 @@ fn default_account_type() -> AccountType {
 pub struct PassSessionStore {
     pub env: EnvId,
     pub auth: Arc<RwLock<Option<Auth>>>,
-    pub base_path: PathBuf,
+    pub storage: Arc<dyn SessionStorage>,
     pub key_provider: Arc<dyn LocalKeyProvider>,
     pub account_type: AccountType,
 }
@@ -260,21 +258,22 @@ impl Store<PassSessionKeyType> for SharedPassSessionStore {
     }
 }
 
-pub(crate) enum GetStoreError {
+/// Error type for loading session store
+pub enum GetStoreError {
     CannotDecrypt(anyhow::Error),
     Other(anyhow::Error),
 }
 
 impl PassSessionStore {
-    pub fn new_with_path(
+    pub fn new(
         env: EnvId,
-        base_path: PathBuf,
+        storage: Arc<dyn SessionStorage>,
         key_provider: Arc<dyn LocalKeyProvider>,
     ) -> Self {
         Self {
             auth: Arc::new(RwLock::new(None)),
             env,
-            base_path,
+            storage,
             key_provider,
             account_type: AccountType::User, // Default to User for new stores
         }
@@ -289,32 +288,21 @@ impl PassSessionStore {
     }
 
     pub async fn get_from_local(
-        base_path: PathBuf,
+        storage: Arc<dyn SessionStorage>,
         key_provider: Arc<dyn LocalKeyProvider>,
     ) -> Result<Option<PassSessionStore>, GetStoreError> {
-        let file_path = base_path.join(FILE_NAME);
-        if !file_path.exists() || !file_path.is_file() {
-            return Ok(None);
-        }
-
-        match std::fs::symlink_metadata(&file_path) {
-            Ok(metadata) if metadata.is_symlink() => {
-                return Err(GetStoreError::Other(anyhow!(
-                    "Session file is a symlink, which is not allowed for security reasons"
-                )));
-            }
+        // Try to load encrypted data from storage
+        let contents = match storage.load().await {
+            Ok(Some(data)) => data,
+            Ok(None) => return Ok(None), // No session stored
             Err(e) => {
                 return Err(GetStoreError::Other(anyhow!(
-                    "Error reading file metadata: {e}"
+                    "Error loading from storage: {e}"
                 )));
             }
-            _ => {}
-        }
-
-        let contents = match std::fs::read(file_path) {
-            Ok(contents) => contents,
-            Err(e) => return Err(GetStoreError::Other(anyhow!("Error reading file: {e}"))),
         };
+
+        // Decrypt the session data
         let local_key = match key_provider.get_key().await {
             Ok(k) => k,
             Err(e) => {
@@ -349,7 +337,7 @@ impl PassSessionStore {
         Ok(Some(PassSessionStore {
             env: EnvId::from(deserialized.env),
             auth: Arc::new(RwLock::new(deserialized.auth)),
-            base_path,
+            storage,
             key_provider,
             account_type: deserialized.account_type,
         }))
@@ -365,22 +353,7 @@ impl PassSessionStore {
             }
         };
 
-        let file_path = self.base_path.join(FILE_NAME);
-        debug!("[STORE] Storing session to {}", file_path.display());
-
-        if file_path.exists() {
-            match std::fs::symlink_metadata(&file_path) {
-                Ok(metadata) if metadata.is_symlink() => {
-                    return Err(anyhow!(
-                        "Session file is a symlink, which is not allowed for security reasons"
-                    ));
-                }
-                Err(e) => {
-                    return Err(anyhow!("Error reading file metadata: {e}"));
-                }
-                _ => {}
-            }
-        }
+        debug!("[STORE] Storing session");
 
         let as_str = serde_json::to_string(&serialized).context("Error serializing json")?;
 
@@ -401,25 +374,11 @@ impl PassSessionStore {
             }
         };
 
-        #[cfg(not(target_os = "windows"))]
-        {
-            let mut options = tokio::fs::OpenOptions::new();
-            options.write(true).create(true).truncate(true).mode(0o600);
-            let mut file = options
-                .open(&file_path)
-                .await
-                .context("Error opening file with secure permissions")?;
-            tokio::io::AsyncWriteExt::write_all(&mut file, &encrypted)
-                .await
-                .context("Error writing file")?;
-        }
-
-        #[cfg(target_os = "windows")]
-        {
-            tokio::fs::write(file_path, encrypted)
-                .await
-                .context("Error writing file")?;
-        }
+        // Delegate to the storage implementation
+        self.storage
+            .save(&encrypted)
+            .await
+            .context("Error saving session to storage")?;
 
         debug!("[STORE] Stored session");
 

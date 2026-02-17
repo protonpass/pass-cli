@@ -1,25 +1,16 @@
-use crate::client::{get_extra_password, init_session};
+use crate::callbacks::{AuthEventHandler, CredentialProvider};
+use crate::error::AuthError;
 use anyhow::{Context, anyhow};
 use muon::{GET, POST, Session, Status};
 use pass::PassSessionKeyType;
 use proton_crypto::srp::SRPProvider;
-
-pub enum ExtraPasswordError {
-    BadPassword,
-    Other(anyhow::Error),
-}
-
-impl From<anyhow::Error> for ExtraPasswordError {
-    fn from(e: anyhow::Error) -> Self {
-        ExtraPasswordError::Other(e)
-    }
-}
+use std::sync::Arc;
 
 async fn perform_extra_password_auth(
-    client: &Session<PassSessionKeyType>,
+    session: &Session<PassSessionKeyType>,
     password: String,
-) -> Result<(), ExtraPasswordError> {
-    let srp_info = get_srp_info(client).await?;
+) -> Result<(), AuthError> {
+    let srp_info = get_srp_info(session).await?;
 
     let provider = proton_crypto::new_srp_provider();
     let proof = provider
@@ -38,8 +29,8 @@ async fn perform_extra_password_auth(
         client_proof: proof.proof,
         srp_session_id: srp_info.srp_session_id,
     };
-    send_srp_proofs(client, proofs).await?;
-    client
+    send_srp_proofs(session, proofs).await?;
+    session
         .refresh_auth()
         .await
         .context("Error refreshing session")?;
@@ -95,7 +86,7 @@ struct ExtraPasswordProofs {
 async fn send_srp_proofs(
     session: &Session<PassSessionKeyType>,
     proofs: ExtraPasswordProofs,
-) -> Result<(), ExtraPasswordError> {
+) -> Result<(), AuthError> {
     let req = POST!("/pass/v1/user/srp/auth")
         .body_json(proofs)
         .context("Error creating SRP request")?;
@@ -105,8 +96,8 @@ async fn send_srp_proofs(
         .context("Error sending SRP proofs")?;
     match res.status() {
         Status::OK => Ok(()),
-        Status::BAD_REQUEST => Err(ExtraPasswordError::BadPassword),
-        _ => Err(ExtraPasswordError::Other(anyhow!(
+        Status::BAD_REQUEST => Err(AuthError::BadExtraPassword),
+        _ => Err(AuthError::Other(anyhow!(
             "Invalid status code received: {:?}",
             res.status()
         ))),
@@ -115,30 +106,41 @@ async fn send_srp_proofs(
 
 pub async fn handle_extra_password(
     session: &Session<PassSessionKeyType>,
+    credential_provider: Arc<dyn CredentialProvider>,
+    event_handler: Arc<dyn AuthEventHandler>,
 ) -> Result<(), anyhow::Error> {
+    event_handler.on_extra_password_required().await?;
+
     let mut attempts = 3;
     loop {
         if attempts == 0 {
-            println!("Too many incorrect extra password attempts, logging out");
+            event_handler
+                .on_error("Too many incorrect extra password attempts")
+                .await?;
             session.logout().await;
             return Err(anyhow!("Error in extra password flow"));
         }
 
-        let extra_password = get_extra_password()?;
+        let extra_password = credential_provider.get_extra_password().await?;
         match perform_extra_password_auth(session, extra_password).await {
             Ok(()) => {
-                init_session(session)
+                // Initialize session to verify it works
+                session
+                    .send(GET!("/tests/ping"))
                     .await
                     .context("Error initializing session")?;
                 return Ok(());
             }
             Err(e) => match e {
-                ExtraPasswordError::Other(e) => {
+                AuthError::Other(e) => {
                     return Err(anyhow!("Error in extra password flow: {e:#}"));
                 }
-                ExtraPasswordError::BadPassword => {
-                    println!("Incorrect extra password");
+                AuthError::BadExtraPassword => {
+                    event_handler.on_warning("Incorrect extra password").await?;
                     attempts -= 1;
+                }
+                AuthError::CannotDecrypt(e) => {
+                    return Err(anyhow!("Cannot decrypt: {e:#}"));
                 }
             },
         }

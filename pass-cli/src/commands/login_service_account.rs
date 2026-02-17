@@ -1,139 +1,11 @@
+use crate::auth::auth_helpers::create_authenticator;
 use crate::features::CliClientFeatures;
 use crate::helpers::{PassClientExt, SessionExt};
-use crate::store::PassSessionStore;
-use crate::{client, utils};
-use anyhow::{Context, Result, anyhow, bail};
-use base64::Engine;
-use muon::POST;
-use muon::client::{Auth, Tokens};
-use muon::store::Store;
-use pass::{Client, FirstTimeSetupKey, PassClient};
+use anyhow::{Context, Result};
+use pass::{Client, FirstTimeSetupKey};
+use pass_auth::PassSessionStore;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-
-const TOKEN_PREFIX: &str = "ppsa_";
-const TOKEN_LENGTH_WITHOUT_PREFIX: usize = 64;
-const TOKEN_SEPARATOR: &str = "::";
-const SERVICE_ACCOUNT_TOKEN_ENV_VAR: &str = "PROTON_PASS_SERVICE_ACCOUNT_TOKEN";
-
-#[derive(Debug, serde::Deserialize)]
-struct ServiceAccountSessionResponse {
-    #[serde(rename = "Session")]
-    session: ServiceAccountSession,
-}
-
-#[derive(Debug, serde::Deserialize)]
-struct ServiceAccountSession {
-    #[serde(rename = "SessionUID")]
-    session_uid: String,
-    #[serde(rename = "AccessToken")]
-    access_token: String,
-    #[serde(rename = "RefreshToken")]
-    refresh_token: String,
-    #[serde(rename = "AccessExpirationTime")]
-    #[allow(dead_code)]
-    access_expiration_time: Option<i64>,
-    #[serde(rename = "RefreshExpirationTime")]
-    #[allow(dead_code)]
-    refresh_expiration_time: Option<i64>,
-    #[serde(rename = "Scopes")]
-    scopes: Vec<String>,
-}
-
-#[derive(Debug, serde::Serialize)]
-struct ServiceAccountLoginRequest {
-    #[serde(rename = "Token")]
-    token: String,
-}
-
-struct ParsedServiceAccountToken {
-    token: String,
-    service_account_key: Vec<u8>,
-}
-
-fn parse_service_account_token(token_string: &str) -> Result<ParsedServiceAccountToken> {
-    // Split by ::
-    let parts: Vec<&str> = token_string.split(TOKEN_SEPARATOR).collect();
-    if parts.len() != 2 {
-        bail!("Invalid service account token format. Expected format: ppsa_<token>::<key>");
-    }
-
-    let token = parts[0];
-    let key_b64 = parts[1];
-
-    // Validate token format
-    if !token.starts_with(TOKEN_PREFIX) {
-        bail!("Service account token must start with '{}'", TOKEN_PREFIX);
-    }
-
-    let token_without_prefix = &token[TOKEN_PREFIX.len()..];
-    if token_without_prefix.len() != TOKEN_LENGTH_WITHOUT_PREFIX {
-        bail!(
-            "Service account token must have exactly {} characters after '{}' prefix",
-            TOKEN_LENGTH_WITHOUT_PREFIX,
-            TOKEN_PREFIX
-        );
-    }
-
-    // Decode the service account key (base64 URL-safe)
-    let service_account_key = base64::engine::general_purpose::URL_SAFE_NO_PAD
-        .decode(key_b64)
-        .context("Failed to decode service account key. Must be base64-urlsafe encoded")?;
-
-    Ok(ParsedServiceAccountToken {
-        token: token.to_string(),
-        service_account_key,
-    })
-}
-
-async fn create_service_account_session(
-    session: &muon::Session<pass::PassSessionKeyType>,
-    token: &str,
-) -> Result<ServiceAccountSessionResponse> {
-    info!("Creating service account session...");
-
-    let request = ServiceAccountLoginRequest {
-        token: token.to_string(),
-    };
-
-    let res = session
-        .send(
-            POST!("/pass/v1/service_account/session")
-                .body_json(&request)
-                .context("Failed to create service account session request")?,
-        )
-        .await
-        .context("Error requesting service account session")?;
-
-    if !res.status().is_success() {
-        return Err(anyhow!("HTTP Status: {:?}", res.status()));
-    }
-
-    let session_response: ServiceAccountSessionResponse = res
-        .body_json()
-        .context("Error parsing service account session response")?;
-
-    Ok(session_response)
-}
-
-async fn create_new_client(
-    client_features: Arc<CliClientFeatures>,
-) -> Result<(PassClient, Arc<RwLock<PassSessionStore>>)> {
-    let base_dir = utils::get_base_dir().context("Error getting base dir")?;
-
-    let (client, store) = client::get_client(base_dir.clone(), client_features.clone())
-        .await
-        .context("Error getting client")?;
-
-    Ok((
-        PassClient::new(
-            client,
-            client_features,
-            pass_domain::AccountType::ServiceAccount,
-        ),
-        store,
-    ))
-}
 
 pub async fn run(
     token_string_arg: Option<String>,
@@ -141,68 +13,17 @@ pub async fn run(
     client_features: Arc<CliClientFeatures>,
     store: Arc<RwLock<PassSessionStore>>,
 ) -> Result<()> {
-    let session = client.get_session(()).await;
-    if let Some(session) = session
-        && session.is_authenticated().await
-    {
-        eprintln!("Client is already authenticated. Log out if you want to log in again");
-        return Ok(());
-    }
+    let authenticator = create_authenticator(client_features.clone())?;
 
-    // Get token string from arg or environment variable
-    let token_string = match token_string_arg {
-        Some(token) => token,
-        None => match std::env::var("SERVICE_ACCOUNT_TOKEN_ENV_VAR") {
-            Ok(token) => token,
-            Err(_) => bail!(
-                "Service account token not provided. Use --service-account argument or set {SERVICE_ACCOUNT_TOKEN_ENV_VAR} environment variable"
-            ),
-        },
-    };
-
-    // Parse the token
-    let parsed = parse_service_account_token(&token_string)
-        .context("Failed to parse service account token")?;
-
-    info!("Service account token parsed successfully");
-
-    // Create unauthenticated session
-    let session = client
-        .new_session_without_credentials(())
-        .await
-        .context("Error creating session")?;
-
-    // Request service account session
-    let response = create_service_account_session(&session, &parsed.token)
-        .await
-        .context("Error creating service account session")?;
-
-    println!("Service account session created successfully");
-
-    // Set authentication
-    {
-        let auth = Auth::Internal {
-            user_id: response.session.session_uid.clone(),
-            uid: response.session.session_uid.clone(),
-            tok: Tokens::access(
-                response.session.access_token,
-                response.session.refresh_token,
-                response.session.scopes,
-            ),
-        };
-
-        let mut store_guard = store.write().await;
-        // Set account type for service account login
-        store_guard.set_account_type(pass_domain::AccountType::ServiceAccount);
-        store_guard
-            .set_auth(&(), auth)
-            .await
-            .context("Error setting auth")?;
-    }
-
-    // HACK: Create a new client to make sure we're using the right store, as the old one sometimes
-    // has credentials locally-cached and doesn't work well
-    let (pass_client, store) = create_new_client(client_features).await?;
+    // Perform service account login
+    let (pass_client, service_account_key) = authenticator
+        .login_service_account(
+            client,
+            client_features.clone(),
+            store.clone(),
+            token_string_arg,
+        )
+        .await?;
 
     // Perform first-time setup with the service account key
     let user_id = store.get_user_id().await?;
@@ -210,9 +31,7 @@ pub async fn run(
     client_features.set_user_id(Some(user_id)).await;
 
     pass_client
-        .perform_first_time_setup_with_key(FirstTimeSetupKey::ServiceAccount(
-            parsed.service_account_key,
-        ))
+        .perform_first_time_setup_with_key(FirstTimeSetupKey::ServiceAccount(service_account_key))
         .await
         .context("Error performing first time setup")?;
 

@@ -1,9 +1,9 @@
-use crate::client::{authenticate_client, get_username};
+use crate::auth::auth_helpers::create_authenticator;
 use crate::features::CliClientFeatures;
 use crate::helpers::{PassClientExt, SessionExt};
-use crate::store::PassSessionStore;
 use anyhow::{Context, Result};
-use pass::{Client, CreateVaultArgs, FirstTimeSetupKey, PassClient};
+use pass::{Client, FirstTimeSetupKey, PassClient};
+use pass_auth::PassSessionStore;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -23,11 +23,11 @@ async fn is_login_allowed(client: &PassClient) -> Result<bool> {
 }
 
 pub(crate) async fn after_login(
-    client: PassClient,
+    client: &PassClient,
     key: FirstTimeSetupKey,
     store: Arc<RwLock<PassSessionStore>>,
 ) -> Result<()> {
-    let login_allowed = is_login_allowed(&client)
+    let login_allowed = is_login_allowed(client)
         .await
         .context("Error checking login permissions")?;
     if !login_allowed {
@@ -41,24 +41,11 @@ pub(crate) async fn after_login(
     let client_features = client.get_cli_client_features()?;
     client_features.set_user_id(Some(user_id)).await;
 
-    client
-        .perform_first_time_setup_with_key(key)
+    // Use pass-auth's post_login with CLI-specific post-processing
+    let config = pass_auth::PostLoginConfig::default();
+    pass_auth::post_login::perform_post_login_setup(client, key, &config)
         .await
-        .context("Error performing first time setup")?;
-
-    info!("Successfully finished setup for user");
-
-    let vaults = client.list_vaults().await.context("Couldn't list vaults")?;
-    if vaults.is_empty() {
-        info!("Could not find any vault. Creating a default one");
-        let args = CreateVaultArgs::new("Personal".to_string())
-            .context("Error creating default vault args")?;
-        let (share_id, _) = client
-            .create_vault(args)
-            .await
-            .context("Error creating default vault")?;
-        info!("Created vault with id: {}", share_id);
-    }
+        .context("Error in post-login setup")?;
 
     Ok(())
 }
@@ -70,44 +57,31 @@ pub async fn run(
     client_features: Arc<CliClientFeatures>,
     store: Arc<RwLock<PassSessionStore>>,
 ) -> Result<()> {
-    // Route to web login if not in interactive mode
-    if !interactive {
-        return crate::commands::login_web::run(client, client_features, store).await;
-    }
+    let authenticator = create_authenticator(client_features.clone())?;
 
-    // Traditional login requires a username - get it from env var or prompt if not provided
-    let username = match username {
-        Some(u) => u.to_string(),
-        None => get_username().context("Error getting username")?,
+    let (pass_client, key) = if interactive {
+        // Interactive login
+        let (client, password) = authenticator
+            .login_interactive(
+                client,
+                client_features.clone(),
+                store.clone(),
+                username.map(|s| s.to_string()),
+            )
+            .await?;
+        (client, FirstTimeSetupKey::UserPassword(password))
+    } else {
+        // Web login
+        let (client, passphrase) = authenticator
+            .login_web(client, client_features.clone(), store.clone())
+            .await?;
+        (client, FirstTimeSetupKey::Passphrase(passphrase))
     };
 
-    let session = client.get_session(()).await;
-    if let Some(session) = session
-        && session.is_authenticated().await
-    {
-        info!("Client is already authenticated. Log out if you want to log in again");
-        return Ok(());
-    }
-    info!("Logging in user: {}", username);
+    after_login(&pass_client, key, store).await?;
 
-    let authenticated_client = authenticate_client(client, &username, store.clone()).await?;
+    let user_info = pass_client.get_info().await?;
+    println!("Successfully logged in as {}", user_info.user.email);
 
-    // Set account type in store for regular user login
-    {
-        let mut store_guard = store.write().await;
-        store_guard.set_account_type(pass_domain::AccountType::User);
-    }
-
-    info!("Logged in user: {}", username);
-    let client = PassClient::new(
-        authenticated_client.client,
-        client_features,
-        pass_domain::AccountType::User,
-    );
-
-    let setup_key = FirstTimeSetupKey::UserPassword(authenticated_client.password);
-    after_login(client, setup_key, store).await?;
-
-    println!("Successfully logged in as {}", username);
     Ok(())
 }

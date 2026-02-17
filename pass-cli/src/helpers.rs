@@ -4,7 +4,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use crate::features::CliClientFeatures;
-use crate::store::PassSessionStore;
+use pass_auth::PassSessionStore;
 
 #[async_trait::async_trait]
 pub trait SessionExt {

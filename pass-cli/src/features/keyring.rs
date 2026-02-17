@@ -1,3 +1,4 @@
+use crate::constants::SESSION_FILE_NAME;
 use anyhow::{Context, Result};
 use keyring::{Entry, Error as KeyringError};
 use pass_domain::utils::xor_key_multibyte;
@@ -26,7 +27,7 @@ impl KeyringKeyProvider {
     }
 
     fn session_exists(&self) -> bool {
-        let session_path = self.base_dir.join(crate::store::FILE_NAME);
+        let session_path = self.base_dir.join(SESSION_FILE_NAME);
         session_path.exists() && session_path.is_file()
     }
 

@@ -1,6 +1,5 @@
-use crate::features::CliClientFeatures;
+use crate::callbacks::AuthEventHandler;
 use crate::store::PassSessionStore;
-use crate::{client, utils};
 use aes::Aes256;
 use anyhow::{Context, Result, anyhow, bail};
 use base64::Engine;
@@ -8,7 +7,7 @@ use muon::client::{Auth, Tokens};
 use muon::env::EnvId;
 use muon::store::Store;
 use muon::{GET, Session};
-use pass::{Client, FirstTimeSetupKey, PassClient};
+use pass::PassSessionKeyType;
 use pass_domain::aes_gcm::aead::consts::U16;
 use pass_domain::aes_gcm::aead::generic_array::GenericArray;
 use pass_domain::aes_gcm::aead::{Aead, Payload};
@@ -47,7 +46,7 @@ struct SessionResponse {
 }
 
 #[derive(Debug, serde::Deserialize)]
-struct SessionPayload {
+pub struct SessionPayload {
     #[serde(rename = "keyPassword")]
     pub key_password: String,
 }
@@ -100,9 +99,7 @@ fn decrypt_payload(encryption_key: &[u8], payload: &str) -> Result<SessionPayloa
     Ok(parsed)
 }
 
-async fn fetch_session_fork(
-    session: &Session<pass::PassSessionKeyType>,
-) -> Result<SessionForkResponse> {
+async fn fetch_session_fork(session: &Session<PassSessionKeyType>) -> Result<SessionForkResponse> {
     info!("Fetching session fork...");
     let res = session
         .send(GET!("/auth/sessions/forks"))
@@ -121,8 +118,9 @@ async fn fetch_session_fork(
 }
 
 async fn poll_session_fork(
-    session: &Session<pass::PassSessionKeyType>,
+    session: &Session<PassSessionKeyType>,
     selector: &str,
+    event_handler: Arc<dyn AuthEventHandler>,
 ) -> Result<SessionResponse> {
     info!("Starting to poll for authentication...");
 
@@ -130,6 +128,11 @@ async fn poll_session_fork(
 
     for attempt in 1..=MAX_POLL_ATTEMPTS {
         info!("Polling attempt {}/{}", attempt, MAX_POLL_ATTEMPTS);
+
+        // Notify event handler of polling progress
+        event_handler
+            .on_poll_progress(attempt, MAX_POLL_ATTEMPTS)
+            .await?;
 
         let res = match session
             .send(GET!("/auth/sessions/forks/{selector}", selector = selector))
@@ -202,39 +205,11 @@ fn build_web_login_url(env: &EnvId, user_code: &str, encryption_key: &[u8]) -> R
     Ok(url)
 }
 
-async fn create_new_client(
-    client_features: Arc<CliClientFeatures>,
-) -> Result<(PassClient, Arc<RwLock<PassSessionStore>>)> {
-    let base_dir = utils::get_base_dir().context("Error getting base dir")?;
-
-    let (client, store) = client::get_client(base_dir.clone(), client_features.clone())
-        .await
-        .context("Error getting client")?;
-
-    Ok((
-        PassClient::new(client, client_features, pass_domain::AccountType::User),
-        store,
-    ))
-}
-
-pub async fn run(
-    client: Client,
-    client_features: Arc<CliClientFeatures>,
+pub async fn perform_web_login(
+    session: Session<PassSessionKeyType>,
     store: Arc<RwLock<PassSessionStore>>,
-) -> Result<()> {
-    let session = client.get_session(()).await;
-    if let Some(session) = session
-        && session.is_authenticated().await
-    {
-        eprintln!("Client is already authenticated. Log out if you want to log in again");
-        return Ok(());
-    }
-
-    let session = client
-        .new_session_without_credentials(())
-        .await
-        .context("Error creating session")?;
-
+    event_handler: Arc<dyn AuthEventHandler>,
+) -> Result<SessionPayload> {
     let env = {
         let store_guard = store.read().await;
         store_guard.env.clone()
@@ -251,18 +226,21 @@ pub async fn run(
     let url = build_web_login_url(&env, &fork_response.user_code, &encryption_key)
         .context("Error building web login URL")?;
 
-    println!("\nPlease open the following URL in your browser to complete authentication:");
-    println!("\n{}\n", url);
-    println!("Waiting for authentication to complete...");
+    // Notify event handler of URL generation
+    event_handler.on_web_login_url_generated(&url).await?;
 
-    let response = poll_session_fork(&session, &fork_response.selector)
+    let response = poll_session_fork(&session, &fork_response.selector, event_handler.clone())
         .await
         .context("Error polling for authentication")?;
-    println!("Web authentication complete, setting up your account");
+
+    event_handler
+        .on_info("Web authentication complete, setting up your account")
+        .await?;
 
     let session_payload = decrypt_payload(&encryption_key, &response.payload)?;
     info!("Payload decrypted correctly");
 
+    // Store the auth
     {
         let auth = Auth::Internal {
             user_id: response.user_id,
@@ -283,35 +261,5 @@ pub async fn run(
         store_guard.set_account_type(pass_domain::AccountType::User);
     }
 
-    // HACK: Create a new client to make sure we're using the right store, as the old one sometimes
-    // has credentials locally-cached and doesn't work well
-    let (pass_client, store) = create_new_client(client_features).await?;
-
-    // Check if it needs extra password
-    let needs_extra_password = {
-        let store_guard = store.read().await;
-        store_guard.needs_extra_password().await
-    };
-
-    if needs_extra_password {
-        info!("Account needs Pass extra password");
-
-        let session = pass_client.get_session().await?;
-        crate::extra_password::handle_extra_password(&session).await?;
-    }
-
-    // Attempt to retrieve client info to make sure we can actually perform a request
-    let user_info = pass_client.get_info().await.context("Error getting info")?;
-    println!("Login performed by {}", user_info.user.email);
-
-    let passphrase = session_payload.passphrase();
-    super::login::after_login(
-        pass_client,
-        FirstTimeSetupKey::Passphrase(passphrase),
-        store,
-    )
-    .await?;
-
-    println!("Successfully logged in as {}", user_info.user.email);
-    Ok(())
+    Ok(session_payload)
 }

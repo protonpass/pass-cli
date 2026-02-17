@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "pass-auth",
     "pass-cli",
     "pass-db",
     "pass-domain",

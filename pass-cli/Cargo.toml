@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 pass = { path = "../pass" }
+pass-auth = { path = "../pass-auth" }
 pass-db = { path = "../pass-db" }
 pass-domain = { path = "../pass-domain" }
 pass-fs = { path = "../pass-fs" }
