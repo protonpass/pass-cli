@@ -57,7 +57,7 @@ libc = "0.2"
 nix = { version = "0.31", features = ["signal", "process"] }
 
 [target.'cfg(windows)'.dependencies]
-zip = "7"
+zip = "8"
 
 [dev-dependencies]
 tempfile.workspace = true
