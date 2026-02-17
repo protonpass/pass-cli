@@ -152,6 +152,78 @@ ssh-add ~/.ssh/my_new_key
 # The key is now automatically stored in your Proton Pass vault!
 ```
 
+## Debugging SSH key items
+
+The `ssh-agent debug` command helps you understand why your items are or aren't usable as SSH keys. This is useful when you have items in your vault but they're not being detected by the SSH agent.
+
+To debug all items in a vault:
+
+```bash
+pass-cli ssh-agent debug --vault-name MySshKeysVault
+pass-cli ssh-agent debug --share-id MY_SHARE_ID
+```
+
+To debug a specific item:
+
+```bash
+pass-cli ssh-agent debug --vault-name MySshKeysVault --item-title "my-github-key"
+pass-cli ssh-agent debug --share-id MY_SHARE_ID --item-id ITEM_ID
+```
+
+The debug command will categorize each item as either valid or invalid, and provide clear reasons for why an item cannot be used:
+
+**Valid SSH keys** will display:
+- Item title
+- Algorithm (RSA, Ed25519, ECDSA, DSA)
+- Key size or curve name
+- SHA256 fingerprint
+
+**Invalid items** will show why they can't be used:
+- Not an SSH key item (the item is a Login, Note, etc.)
+- Item is trashed
+- Invalid SSH private key format
+- SSH key is encrypted but no passphrase found in custom fields
+- Failed to decrypt SSH key (wrong passphrase)
+- Malformed SSH key format
+
+### Example output
+
+```bash
+SSH Agent Debug Report
+Vault: Personal Vault (share-id-123)
+
+✓ Valid SSH Keys (2):
+  • my-github-key
+    Algorithm: Ed25519
+    Fingerprint: SHA256:abc123...
+
+  • work-server
+    Algorithm: RSA-4096
+    Fingerprint: SHA256:def456...
+
+✗ Invalid Items (2):
+  • old-encrypted-key (SshKey)
+    Reason: SSH key is encrypted but no passphrase found in custom fields
+
+  • my-gmail-login (Login)
+    Reason: Not an SSH key item (type: Login)
+
+Summary:
+  Valid SSH keys: 2
+  Invalid items: 2
+  Total items checked: 4
+```
+
+### JSON output
+
+You can also get the output in JSON format for scripting purposes:
+
+```bash
+pass-cli ssh-agent debug --vault-name MySshKeysVault --output json
+```
+
+This will output structured JSON data with the same categorization and details.
+
 ## Troubleshooting
 
 ### `ssh-copy-id` fails due to having many ssh keys loaded and doesn't prompt for a password
