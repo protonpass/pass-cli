@@ -1,3 +1,10 @@
+## 1.5.0 (2026-02-18)
+
+## Features :tada:
+
+- Offer `ssh-agent debug` command to debug whether the items of a vault can be used as SSH keys
+- Improvements on crypto dependencies
+
 ## 1.4.3 (2026-02-09)
 
 ## Other
