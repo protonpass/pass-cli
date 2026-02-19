@@ -162,4 +162,8 @@ impl ClientFeatures for TestClientFeatures {
     async fn get_data_storage(&self) -> Result<Arc<dyn DataStorage>> {
         Ok(self.data_storage.clone())
     }
+
+    async fn on_session_invalidated(&self) -> Result<()> {
+        Ok(())
+    }
 }

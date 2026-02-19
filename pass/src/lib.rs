@@ -24,6 +24,7 @@ mod invite;
 mod item;
 mod local_crypto;
 mod logout;
+pub(crate) mod muon_ext;
 mod pagination;
 pub mod password;
 mod permission;
@@ -38,6 +39,7 @@ mod vault;
 
 pub use account::settings::AccountUserSettings;
 pub use client::{Client, PassClient, PassSessionKeyType};
+pub use error::{AnyhowErrorExt, SessionInvalidatedError};
 pub use first_time_setup::FirstTimeSetupKey;
 pub use folder::create::CreateFolderPayload;
 pub use item::create::credit_card;

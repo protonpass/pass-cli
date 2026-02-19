@@ -1,8 +1,11 @@
 use crate::cache::Cache;
+use crate::error::SessionInvalidatedError;
+use crate::muon_ext::MuonErrorExt;
 use anyhow::{Context, Result};
 use muon::Session;
 use pass_domain::{AccountType, ClientFeatures};
 use std::sync::Arc;
+use tracing::warn;
 
 pub type PassSessionKeyType = ();
 pub type Client = muon::Client<PassSessionKeyType>;
@@ -40,11 +43,22 @@ impl PassClient {
     }
 
     pub(crate) async fn send(&self, req: muon::http::HttpReq) -> Result<muon::http::HttpRes> {
-        self.get_session()
-            .await?
-            .send(req)
-            .await
-            .context("Error sending request")
+        match self.get_session().await?.send(req).await {
+            Ok(r) => Ok(r),
+            Err(e) => {
+                if e.is_logged_out_error() {
+                    warn!("Session has been invalidated by the server, clearing local data");
+                    if let Err(cleanup_err) = self.client_features.on_session_invalidated().await {
+                        warn!(
+                            "Failed to clear local data after session invalidation: {cleanup_err:#}"
+                        );
+                    }
+                    Err(anyhow::Error::new(SessionInvalidatedError))
+                } else {
+                    Err(e).context("Error sending request")
+                }
+            }
+        }
     }
 
     pub async fn get_session(&self) -> Result<Session<PassSessionKeyType>> {
