@@ -1,3 +1,9 @@
+## 1.5.1 (2026-02-19)
+
+## Other
+
+- Improved behaviour on session expiration
+
 ## 1.5.0 (2026-02-18)
 
 ## Features :tada:
