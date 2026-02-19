@@ -4114,8 +4114,8 @@ dependencies = [
 
 [[package]]
 name = "proton-pass-common"
-version = "0.28.8"
-source = "git+ssh://git@gitlab.protontech.ch/proton/clients/pass/proton-pass-common.git?rev=75c619d2c48c5c44077ba53647a1f941b0dd6d37#75c619d2c48c5c44077ba53647a1f941b0dd6d37"
+version = "1.0.0"
+source = "git+ssh://git@gitlab.protontech.ch/proton/clients/pass/proton-pass-common.git?tag=1.0.0#49f3c71b0bd9042cccb510267cd9264756787aa4"
 dependencies = [
  "async-trait",
  "coset",
@@ -4142,8 +4142,8 @@ dependencies = [
 
 [[package]]
 name = "proton-pass-derive"
-version = "0.28.8"
-source = "git+ssh://git@gitlab.protontech.ch/proton/clients/pass/proton-pass-common.git?rev=75c619d2c48c5c44077ba53647a1f941b0dd6d37#75c619d2c48c5c44077ba53647a1f941b0dd6d37"
+version = "1.0.0"
+source = "git+ssh://git@gitlab.protontech.ch/proton/clients/pass/proton-pass-common.git?tag=1.0.0#49f3c71b0bd9042cccb510267cd9264756787aa4"
 dependencies = [
  "quote",
  "syn",
@@ -4151,8 +4151,8 @@ dependencies = [
 
 [[package]]
 name = "proton-pass-totp"
-version = "0.28.8"
-source = "git+ssh://git@gitlab.protontech.ch/proton/clients/pass/proton-pass-common.git?rev=75c619d2c48c5c44077ba53647a1f941b0dd6d37#75c619d2c48c5c44077ba53647a1f941b0dd6d37"
+version = "1.0.0"
+source = "git+ssh://git@gitlab.protontech.ch/proton/clients/pass/proton-pass-common.git?tag=1.0.0#49f3c71b0bd9042cccb510267cd9264756787aa4"
 dependencies = [
  "proton-pass-derive",
  "serde",
