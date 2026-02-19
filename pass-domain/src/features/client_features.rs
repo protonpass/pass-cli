@@ -11,4 +11,5 @@ pub trait ClientFeatures: Send + Sync + Any {
     async fn get_pgp_crypto(&self) -> Arc<dyn PgpCrypto>;
     async fn get_telemetry_handler(&self) -> Arc<dyn TelemetryHandler>;
     async fn get_data_storage(&self) -> Result<Arc<dyn DataStorage>>;
+    async fn on_session_invalidated(&self) -> Result<()>;
 }

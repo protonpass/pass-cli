@@ -1,3 +1,25 @@
+#[derive(Debug)]
+pub struct SessionInvalidatedError;
+
+impl std::fmt::Display for SessionInvalidatedError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "session has been invalidated")
+    }
+}
+
+impl std::error::Error for SessionInvalidatedError {}
+
+pub trait AnyhowErrorExt {
+    fn is_session_invalidated(&self) -> bool;
+}
+
+impl AnyhowErrorExt for anyhow::Error {
+    fn is_session_invalidated(&self) -> bool {
+        self.chain()
+            .any(|c| c.downcast_ref::<SessionInvalidatedError>().is_some())
+    }
+}
+
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct ProtonApiError {
     #[serde(rename = "Code")]

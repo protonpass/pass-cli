@@ -4,7 +4,7 @@ extern crate tracing;
 use crate::features::CliClientFeatures;
 use anyhow::{Context, Result, anyhow};
 use clap::{Parser, Subcommand};
-use pass::PassClient;
+use pass::{AnyhowErrorExt, PassClient};
 use std::sync::Arc;
 use zeroizing_alloc::ZeroAlloc;
 
@@ -182,6 +182,21 @@ impl Commands {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    if let Err(e) = run().await {
+        if e.is_session_invalidated() {
+            eprintln!(
+                "Your session has been invalidated and you have been logged out automatically."
+            );
+            eprintln!("Please log in again with: pass login");
+            std::process::exit(1);
+        }
+        return Err(e);
+    }
+
+    Ok(())
+}
+
+async fn run() -> Result<()> {
     logs::setup_logs();
     let cli = Cli::parse();
 
