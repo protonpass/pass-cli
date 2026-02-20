@@ -9,7 +9,7 @@ doctest = false
 [dependencies]
 pass-domain = { path = "../pass-domain" }
 
-deadpool = "0.12"
+deadpool = "0.13"
 rusqlite = { version = "0.38.0", features = ["bundled-sqlcipher-vendored-openssl"] }
 
 anyhow.workspace = true

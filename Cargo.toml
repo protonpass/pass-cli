@@ -15,10 +15,11 @@ muon = { version = "1.9.0", registry = "proton", features = ["tls-tokio-rustls",
 proton-crypto = { version = "0.9.0", registry = "proton", default-features = false, features = ["rustpgp"] }
 proton-crypto-account = { version = "0.14.0", registry = "proton", default-features = false, features = ["rustpgp"] }
 
-proton-pass-common = {  git = "ssh://git@gitlab.protontech.ch/proton/clients/pass/proton-pass-common.git", tag = "1.0.0" }
+proton-pass-common = {  git = "https://github.com/protonpass/proton-pass-common.git", tag = "1.0.0" }
 
 anyhow = "1.0"
 async-trait = "0.1"
+base64 = "0.22.1"
 bytes = "1.10.1"
 futures = "0.3"
 jiff = { version = "0.2.18", features = ["serde"] }

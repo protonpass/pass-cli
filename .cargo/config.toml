@@ -1,2 +1,2 @@
-[registries.proton]
-    index = "sparse+https://rust.gitlab-pages.protontech.ch/shared/registry/index/"
+[registries]
+proton = { index = "sparse+https://rust-registry.proton.me/index/" }
