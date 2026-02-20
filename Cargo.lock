@@ -3340,8 +3340,6 @@ dependencies = [
  "anyhow",
  "async-trait",
  "base64",
- "futures",
- "jiff",
  "muon",
  "pass",
  "pass-domain",
@@ -3351,17 +3349,14 @@ dependencies = [
  "tokio",
  "tracing",
  "urlencoding",
- "uuid",
 ]
 
 [[package]]
 name = "pass-cli"
 version = "1.5.1"
 dependencies = [
- "aes",
  "anyhow",
  "async-trait",
- "base64",
  "clap",
  "dirs",
  "ed25519-dalek",
@@ -3383,7 +3378,6 @@ dependencies = [
  "pass-domain",
  "pass-fs",
  "pass-pgp",
- "proton-crypto",
  "proton-pass-common",
  "rand 0.8.5",
  "regex",
