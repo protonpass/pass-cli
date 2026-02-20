@@ -2841,7 +2841,7 @@ dependencies = [
 [[package]]
 name = "muon"
 version = "1.9.0"
-source = "sparse+https://rust.gitlab-pages.protontech.ch/shared/registry/index/"
+source = "sparse+https://rust-registry.proton.me/index/"
 checksum = "a04f3eb892b6ac1581926cdb7a4d49ff83cc30b92f4b990ebd4415c932f6e452"
 dependencies = [
  "anyhow",
@@ -2907,8 +2907,8 @@ dependencies = [
 [[package]]
 name = "muon-proc"
 version = "0.6.0"
-source = "sparse+https://rust.gitlab-pages.protontech.ch/shared/registry/index/"
-checksum = "896ca7b0894a20c29b620dcce23a3dc34516cc08de1530e9c1915a5cc653300f"
+source = "sparse+https://rust-registry.proton.me/index/"
+checksum = "935779819b06db928270ec18c4dd67a72d1b6abe2806d273ca3d0505f5ed8dff"
 dependencies = [
  "cfg-if",
  "proc-macro2",
@@ -4079,8 +4079,8 @@ checksum = "95067976aca6421a523e491fce939a3e65249bac4b977adee0ee9771568e8aa3"
 [[package]]
 name = "proton-crypto"
 version = "0.9.0"
-source = "sparse+https://rust.gitlab-pages.protontech.ch/shared/registry/index/"
-checksum = "c4af1e80811d267f3b3a174b365d067e08178a045196cc46d6d9db19d934e8b2"
+source = "sparse+https://rust-registry.proton.me/index/"
+checksum = "fc903623dd27c06c7c6c61391ebf7df11179498d81d41f8ef346962c775f908a"
 dependencies = [
  "hex",
  "parking_lot",
@@ -4096,8 +4096,8 @@ dependencies = [
 [[package]]
 name = "proton-crypto-account"
 version = "0.14.0"
-source = "sparse+https://rust.gitlab-pages.protontech.ch/shared/registry/index/"
-checksum = "55f72e7fc90524832b08b68de1976fdd641ecbcff952b8fd64cd1d291d74cbfd"
+source = "sparse+https://rust-registry.proton.me/index/"
+checksum = "91054035320b5de0e487919855fc166c5a7da62ae7e43a7e4bd467dbcf4eb06c"
 dependencies = [
  "base64",
  "derive_more 2.1.1",
@@ -4115,7 +4115,7 @@ dependencies = [
 [[package]]
 name = "proton-pass-common"
 version = "1.0.0"
-source = "git+ssh://git@gitlab.protontech.ch/proton/clients/pass/proton-pass-common.git?tag=1.0.0#49f3c71b0bd9042cccb510267cd9264756787aa4"
+source = "git+https://github.com/protonpass/proton-pass-common.git?tag=1.0.0#eda9ee8edbbbf5c3201e99c0ac9e949b1c895e21"
 dependencies = [
  "async-trait",
  "coset",
@@ -4143,7 +4143,7 @@ dependencies = [
 [[package]]
 name = "proton-pass-derive"
 version = "1.0.0"
-source = "git+ssh://git@gitlab.protontech.ch/proton/clients/pass/proton-pass-common.git?tag=1.0.0#49f3c71b0bd9042cccb510267cd9264756787aa4"
+source = "git+https://github.com/protonpass/proton-pass-common.git?tag=1.0.0#eda9ee8edbbbf5c3201e99c0ac9e949b1c895e21"
 dependencies = [
  "quote",
  "syn",
@@ -4152,7 +4152,7 @@ dependencies = [
 [[package]]
 name = "proton-pass-totp"
 version = "1.0.0"
-source = "git+ssh://git@gitlab.protontech.ch/proton/clients/pass/proton-pass-common.git?tag=1.0.0#49f3c71b0bd9042cccb510267cd9264756787aa4"
+source = "git+https://github.com/protonpass/proton-pass-common.git?tag=1.0.0#eda9ee8edbbbf5c3201e99c0ac9e949b1c895e21"
 dependencies = [
  "proton-pass-derive",
  "serde",
@@ -4165,8 +4165,8 @@ dependencies = [
 [[package]]
 name = "proton-rpgp"
 version = "0.1.0"
-source = "sparse+https://rust.gitlab-pages.protontech.ch/shared/registry/index/"
-checksum = "cc96389ef1f61be1361d1e6c33d130594076a5950be2e74ebc17ce1e36c93729"
+source = "sparse+https://rust-registry.proton.me/index/"
+checksum = "b6b533e6273fa7173069f17cadc6a15332063918fdf72fc72d8be9b820d06d40"
 dependencies = [
  "hex",
  "kem",
@@ -4184,7 +4184,7 @@ dependencies = [
 [[package]]
 name = "proton-srp"
 version = "0.7.1"
-source = "sparse+https://rust.gitlab-pages.protontech.ch/shared/registry/index/"
+source = "sparse+https://rust-registry.proton.me/index/"
 checksum = "2be7a723cbcf580757fb53e7152c70336def958cdd0436a601a06c52ed233a3c"
 dependencies = [
  "base64",
@@ -4200,8 +4200,8 @@ dependencies = [
 [[package]]
 name = "proton-srp"
 version = "0.8.1"
-source = "sparse+https://rust.gitlab-pages.protontech.ch/shared/registry/index/"
-checksum = "d76c1af913844c45e95375bedd80a6bcb635e0027b469aba58abb3d7c561c9fd"
+source = "sparse+https://rust-registry.proton.me/index/"
+checksum = "1f778bc9d0e0f96fba5e35ad767033315814be753ab80d47642e909f0015f488"
 dependencies = [
  "base64",
  "bcrypt",
