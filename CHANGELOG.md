@@ -1,3 +1,9 @@
+## 1.5.2 (2026-02-23)
+
+## Fixes :bug:
+
+- Add missing DLL for Windows installs
+
 ## 1.5.1 (2026-02-19)
 
 ## Other
