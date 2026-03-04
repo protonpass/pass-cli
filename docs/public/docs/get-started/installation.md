@@ -149,6 +149,54 @@ pass-cli.exe --version
 
 You should see the version number. If you get a "command not found" error, make sure the installation directory is in your PATH.
 
+## Shell completions
+
+Proton Pass CLI can generate shell completion scripts on demand:
+
+```bash
+pass-cli completions <shell>
+```
+
+Supported shells: `bash`, `zsh`, and `fish`.
+
+### macOS and Linux
+
+**Bash:**
+
+```bash
+mkdir -p ~/.local/share/bash-completion/completions
+pass-cli completions bash > ~/.local/share/bash-completion/completions/pass-cli
+```
+
+**Zsh:**
+
+```bash
+mkdir -p ~/.zfunc
+pass-cli completions zsh > ~/.zfunc/_pass-cli
+```
+
+If `~/.zfunc` is not in your `fpath`, add this to your `~/.zshrc`:
+
+```bash
+fpath=(~/.zfunc $fpath)
+autoload -Uz compinit && compinit
+```
+
+**Fish:**
+
+```bash
+mkdir -p ~/.config/fish/completions
+pass-cli completions fish > ~/.config/fish/completions/pass-cli.fish
+```
+
+### Windows
+
+!!! note "Shell support on Windows"
+    The CLI currently generates completion scripts for `bash`, `zsh`, and `fish`.
+    If you use Git Bash, you can install the Bash completion script with the same steps as in the macOS/Linux Bash section.
+
+After installing completion scripts, restart your shell session.
+
 ## Next steps
 
 Once installed, proceed to the [Getting started](../getting-started/login.md) guide to learn how to authenticate and configure the CLI.
