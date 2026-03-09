@@ -1,3 +1,13 @@
+## 1.6.0 (2026-03-09)
+
+## Features :tada:
+
+- CLI flag completion for Bash/Zsh/Fish (Thanks to @vichid for the contribution)
+
+## Fixes :bug:
+
+- Fix support for RSA4096 keys in the SSH agent
+
 ## 1.5.2 (2026-02-23)
 
 ## Fixes :bug:
