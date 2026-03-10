@@ -1,3 +1,9 @@
+## 1.6.1 (2026-03-10)
+
+## Other
+
+- Fixed codesign of macOS binaries.
+
 ## 1.6.0 (2026-03-09)
 
 ## Features :tada:
