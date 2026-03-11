@@ -7,11 +7,11 @@ use pass_domain::{PersonalAccessTokenId, PlainText, crypto};
 #[derive(Debug)]
 pub struct CreatePersonalAccessTokenArgs {
     name: String,
-    expiration_time: Option<i64>,
+    expiration_time: i64,
 }
 
 impl CreatePersonalAccessTokenArgs {
-    pub fn new(name: String, expiration_time: Option<i64>) -> Result<Self> {
+    pub fn new(name: String, expiration_time: i64) -> Result<Self> {
         if name.trim().is_empty() {
             return Err(anyhow!("Empty personal access token name"));
         }
@@ -29,8 +29,8 @@ struct CreatePersonalAccessTokenRequest {
     pub name: String,
     #[serde(rename = "PersonalAccessTokenKey")]
     pub personal_access_token_key: String,
-    #[serde(rename = "ExpireTime", skip_serializing_if = "Option::is_none")]
-    pub expire_time: Option<i64>,
+    #[serde(rename = "ExpireTime")]
+    pub expire_time: i64,
     #[serde(rename = "Products")]
     pub products: Vec<String>,
 }
@@ -170,6 +170,7 @@ mod tests {
         const TOKEN: &str = "pst_test_token_123";
         const CREATE_TIME: i64 = 1704067200;
         const MODIFY_TIME: i64 = 1704067200;
+        const EXPIRATION_TIME: i64 = 1735689600;
 
         let client = server.pass_client().await;
         let handled = server.handler("/account/v4/personal-access-token", |_| {
@@ -178,7 +179,7 @@ mod tests {
                     personal_access_token_id: PERSONAL_ACCESS_TOKEN_ID.to_string(),
                     name: "encrypted_name".to_string(),
                     personal_access_token_key: "encrypted_key".to_string(),
-                    expire_time: None,
+                    expire_time: Some(EXPIRATION_TIME),
                     create_time: CREATE_TIME,
                     modify_time: MODIFY_TIME,
                     token: TOKEN.to_string(),
@@ -189,8 +190,11 @@ mod tests {
         let recorder = server.new_recorder();
         let response = client
             .create_personal_access_token(
-                CreatePersonalAccessTokenArgs::new(PERSONAL_ACCESS_TOKEN_NAME.to_string(), None)
-                    .unwrap(),
+                CreatePersonalAccessTokenArgs::new(
+                    PERSONAL_ACCESS_TOKEN_NAME.to_string(),
+                    EXPIRATION_TIME,
+                )
+                .unwrap(),
             )
             .await
             .expect("Should be able to create the personal access token");
@@ -228,57 +232,19 @@ mod tests {
         );
 
         assert_eq!(PERSONAL_ACCESS_TOKEN_NAME, req.name);
-    }
-
-    #[muon::test(scheme(HTTP))]
-    async fn test_create_personal_access_token_with_expiration(server: Arc<Server>) {
-        const PERSONAL_ACCESS_TOKEN_NAME: &str = "ExpiringPersonalAccessToken";
-        const EXPIRATION_TIME: i64 = 1735689600;
-
-        let client = server.pass_client().await;
-        let handled = server.handler("/account/v4/personal-access-token", |_| {
-            success(CreatePersonalAccessTokenResponseData {
-                personal_access_token: PersonalAccessTokenData {
-                    personal_access_token_id: "test_id".to_string(),
-                    name: "encrypted_name".to_string(),
-                    personal_access_token_key: "encrypted_key".to_string(),
-                    expire_time: Some(EXPIRATION_TIME),
-                    create_time: 1704067200,
-                    modify_time: 1704067200,
-                    token: "pst_token".to_string(),
-                },
-            })
-        });
-
-        let recorder = server.new_recorder();
-        let response = client
-            .create_personal_access_token(
-                CreatePersonalAccessTokenArgs::new(
-                    PERSONAL_ACCESS_TOKEN_NAME.to_string(),
-                    Some(EXPIRATION_TIME),
-                )
-                .unwrap(),
-            )
-            .await
-            .expect("Should be able to create the personal access token with expiration");
-
-        assert_eq!(Some(EXPIRATION_TIME), response.expire_time);
-        assert_hit!(handled);
-
-        let req: CreatePersonalAccessTokenRequest = last_request!(recorder);
-        assert_eq!(Some(EXPIRATION_TIME), req.expire_time);
+        assert_eq!(EXPIRATION_TIME, req.expire_time);
     }
 
     #[test]
     fn test_empty_name_validation() {
-        let result = CreatePersonalAccessTokenArgs::new("".to_string(), None);
+        let result = CreatePersonalAccessTokenArgs::new("".to_string(), 1735689600);
         assert!(result.is_err());
         assert_eq!(
             "Empty personal access token name",
             result.unwrap_err().to_string()
         );
 
-        let result = CreatePersonalAccessTokenArgs::new("   ".to_string(), None);
+        let result = CreatePersonalAccessTokenArgs::new("   ".to_string(), 1735689600);
         assert!(result.is_err());
     }
 }
