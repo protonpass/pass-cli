@@ -38,6 +38,7 @@ urlencoding = "2.1"
 zeroizing-alloc = "0.1.0"
 
 anyhow.workspace = true
+base64.workspace = true
 async-trait.workspace = true
 jiff.workspace = true
 futures.workspace = true
