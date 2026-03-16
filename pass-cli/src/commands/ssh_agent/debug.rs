@@ -299,3 +299,62 @@ fn print_json_output(report: &DebugReport) -> Result<()> {
     println!("{}", json);
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pass_domain::{ItemData, ItemId, ItemState, ShareId, SshKeyItem, VaultId};
+    use rsa::pkcs8::EncodePrivateKey;
+
+    fn build_ssh_item(title: &str, private_key: String) -> Item {
+        Item {
+            id: ItemId::new("item-id".to_string()),
+            share_id: ShareId::new("share-id".to_string()),
+            vault_id: VaultId::new("vault-id".to_string()),
+            content: ItemData {
+                title: title.to_string(),
+                note: String::new(),
+                item_uuid: "item-uuid".to_string(),
+                content: ItemContent::SshKey(SshKeyItem {
+                    private_key,
+                    public_key: String::new(),
+                    sections: vec![],
+                }),
+                extra_fields: vec![],
+                platform_specific: None,
+            },
+            state: ItemState::Active,
+            flags: vec![],
+            create_time: jiff::civil::DateTime::default(),
+            modify_time: jiff::civil::DateTime::default(),
+            folder_id: None,
+        }
+    }
+
+    fn generate_pkcs8_rsa_private_key() -> String {
+        let mut rng = rand::thread_rng();
+        let private_key =
+            rsa::RsaPrivateKey::new(&mut rng, 2048).expect("Should generate test RSA key");
+        private_key
+            .to_pkcs8_pem(rsa::pkcs8::LineEnding::LF)
+            .expect("Should encode PKCS#8 private key")
+            .to_string()
+    }
+
+    #[test]
+    fn categorize_single_item_accepts_rsa_pkcs8_private_key() {
+        let private_key = generate_pkcs8_rsa_private_key();
+        let item = build_ssh_item("Personal", private_key);
+
+        match categorize_single_item(&item) {
+            ItemCategory::Valid(key_info) => {
+                assert_eq!(key_info.title, "Personal");
+                assert_eq!(key_info.algorithm, "RSA");
+                assert_eq!(key_info.key_size, Some(2048));
+            }
+            ItemCategory::Invalid(item_info) => {
+                panic!("Expected valid key, got invalid item: {}", item_info.reason)
+            }
+        }
+    }
+}

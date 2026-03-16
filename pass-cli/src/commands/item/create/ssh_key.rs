@@ -5,7 +5,9 @@ use pass::ssh_key::SshKeyItemCreatePayload;
 use std::io::Read;
 use std::path::PathBuf;
 
-use crate::commands::{item::common::ShareQuery, settings_helper};
+use crate::commands::{
+    item::common::ShareQuery, settings_helper, ssh_agent::parse_private_key_with_rsa_pem_fallback,
+};
 
 const SSH_KEY_PASSWORD_ENV_VAR: &str = "PROTON_PASS_SSH_KEY_PASSWORD";
 const SSH_KEY_PASSWORD_FILE_ENV_VAR: &str = "PROTON_PASS_SSH_KEY_PASSWORD_FILE";
@@ -175,8 +177,7 @@ async fn run_import(
     let private_key_content = std::fs::read_to_string(&private_key_file)
         .with_context(|| format!("Error reading private key file: {:?}", private_key_file))?;
 
-    let private_key = ssh_key::private::PrivateKey::from_openssh(&private_key_content)
-        .context("Failed to parse SSH private key")?;
+    let private_key = parse_private_key_with_rsa_pem_fallback(&private_key_content)?;
 
     let passphrase = get_ssh_key_password(password_flag, true)?;
 

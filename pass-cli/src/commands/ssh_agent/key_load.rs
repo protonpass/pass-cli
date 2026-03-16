@@ -1,5 +1,6 @@
 use super::VaultQuery;
 use super::key_storage::{IdentitySource, SshIdentity};
+use super::ssh_key_parsing::parse_private_key_with_rsa_pem_fallback;
 use anyhow::{Context, Result, anyhow};
 use futures::stream::{self, StreamExt};
 use pass::PassClient;
@@ -185,25 +186,19 @@ fn reformat_malformed_ssh_key(key: &str) -> Option<String> {
 }
 
 fn load_key(private_key_str: &str) -> Result<SshPrivateKey> {
-    match SshPrivateKey::from_openssh(private_key_str) {
+    match parse_private_key_with_rsa_pem_fallback(private_key_str) {
         Ok(ssh_key) => Ok(ssh_key),
         Err(original_error) => {
             // Try to reformat the key in case it was stored with newlines replaced by spaces
             if let Some(reformatted_key) = reformat_malformed_ssh_key(private_key_str) {
                 debug!("Attempting to load SSH key after reformatting (legacy format detected)");
-                match SshPrivateKey::from_openssh(&reformatted_key) {
-                    Ok(ssh_key) => {
-                        debug!("Successfully loaded SSH key after reformatting");
-                        Ok(ssh_key)
-                    }
-                    Err(_) => {
-                        // Return the original error since reformatting didn't help
-                        Err(original_error.into())
-                    }
+                if let Ok(ssh_key) = parse_private_key_with_rsa_pem_fallback(&reformatted_key) {
+                    debug!("Successfully loaded SSH key after reformatting");
+                    return Ok(ssh_key);
                 }
-            } else {
-                Err(original_error.into())
             }
+
+            Err(original_error)
         }
     }
 }
@@ -312,6 +307,35 @@ pRr1L3pDxhi5yCqKilAAAABm5vbmFtZQECAwQ=
 -----END OPENSSH PRIVATE KEY-----
 "#;
 
+    const VALID_PKCS8_KEY: &str = r#"-----BEGIN PRIVATE KEY-----
+MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQChM4U8F3rtTa50
+Ta3DNT+0KiAVaM9BM/q81NUevZvME8rmOLNwXnY70JsUl2Q8wtMkIVDUGUWQxC5S
+4p5O90LJoj7DTB9VJkboNpBpKL9ZyyetrtLYtMjcEnBg8xS1j0HTqQMM1drxpwH0
+qq7b1OmulpybftCx50A2/FRckMIgPhDjC0sm+LayAQbhM68qtjNYPq51pVWN7yHf
+zDvWNLBbj9jJV2DPoouXI5q5uC8C/xkTbUq8TbvUr4ov4KPRPP4LfIRe+8vm4RpK
+IPX+o2QFvIG/oYWiXHQAnl5yH+vEF/txGV4QZiYv9Mkp2HSR42w4i82yi8NgjLqv
+SMfwNHYpAgMBAAECggEBAJi3HWbze6Kq8DYAjTidDq/ZJLIDrC1CWC1imFDaImnw
+6ky2tNAkvXAnTXPxhKXHkI3u/gshsfTW1mfxhzaaKuyoxzrvt9NMQuqlHqRxVO51
+dy6kq91fT9alpU9Dmn/yqtMhj+EuDJDYvhKTTLq4d3XN+6mYN5AC26P74tQa074E
+bcMCzg9qwGThphs6J4eTBYpZpozHUNaL5TBvlm4TYgk7Gj9hlFCzwqPUABXNojhy
+r/nPsxXDNmC6LlO5TKFKLWVdpdKiF6iaSP/rEskoiYtqmTtZX+bmZ0OvKWURprc1
+B4o0owsbJNhyeiWE0LJ6pmRRnVwRKNe48mDv+GIJ4fECgYEAzHmbVHSxs+ef9qNm
+JL77ZyZ4zIfpkQkeHTzScYnaBUf4TpKnXl07QsoK9TPsm6AqxMegZQcdCJnFXkRA
+4uOl9kbRyXzLT+yvXMx3O2M/hAxss21s+xrHY05++0FF2hQYw35aqJ0Rep1DzOGX
+3VkTrSLuon8pVyNlx+GQfbqGwM0CgYEAydJiTqLWK7k43r4LA+N+ztxScLcDsOam
+XC8kbeTBFtjwLfIcRELQCLcZqUecDRRHH3JGlkvYHJEkUkzLQ8j+KYsrBigIjbZw
++/P921P/uPOgDMWjG+wid5dOsGOw9yBJT2mjVnCJ3UnnAG4kFwZctmaoBLHtywQs
+gqKhaayUWs0CgYB8zlUzLa8xwlVvM7krAK9u/JqLLQIxlsEc030X9C5xPsafHwCt
+pnZ/g9dAZ5sqOo8gYUDTqY3dLA6+RSbd1ln8gqmWNGfctvkqyVqVkzS3ouXOdyIn
++uZtBQKY1fSO8elTmhI4DPcYQlmZ+rC5WJ+b9FB4Oum+2EpNwK5zL6EEmQKBgHj3
+WacKYNZKKXUQcWe+RnZUhjE68MJqLNJaCzq2/qjkFGllkV20sh5XKNFWs4j/W3XU
+t8xD31+X+y49CyQw524dFQeWnTHbZTMO1lxMp5zCoW6mUxJcYXhOv4Jn7lzhBC/O
+AHHB+FAjiIqweX83eAB33UMbJo0ljkwqkBbXswANAoGBALrmwqIYLhhJpJFK2n0T
+Ih4A7UMCrv+lUlruBSkJRsxd98E40X8FPc1RtvWVP5m2hDS3Pvw1ah8R29vnBx9q
+ehv/Wdxc+aFHORVgKY4iHe5R4LjlvJEkZuGfbyGU6HzK+844A3qiat2rhYUvrSg/
+4sj4xw9X2KY4qYM4qLta8Wf2
+-----END PRIVATE KEY-----"#;
+
     // The same key but with newlines replaced by spaces (the legacy bug format)
     const MALFORMED_SSH_KEY: &str = "-----BEGIN OPENSSH PRIVATE KEY----- b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAlwAAAAdzc2gtcn NhAAAAAwEAAQAAAIEAwUYneWAiJGADOGPA17314hqc9MN4Ci2YWrZGyesGXp1aIKtWhf4o pB+/di3+3O+b2lMbq2I+Uk0U5sB/I6UQzVuWt1rK6IBmhtt5UrUpNwOwKQCzuSN0ZsgDje FavGqKBUgfOcSnXOimAR+FbwQ73ga4CHp1wQVvTj99n7gODW0AAAIA8yP0bvMj9G4AAAAH c3NoLXJzYQAAAIEAwUYneWAiJGADOGPA17314hqc9MN4Ci2YWrZGyesGXp1aIKtWhf4opB +/di3+3O+b2lMbq2I+Uk0U5sB/I6UQzVuWt1rK6IBmhtt5UrUpNwOwKQCzuSN0ZsgDjeFa vGqKBUgfOcSnXOimAR+FbwQ73ga4CHp1wQVvTj99n7gODW0AAAADAQABAAAAgQCUA7QLYj IDhXwx3UM8dgAujo8Ra/ksYkrBfcKstE8Gep8hUdZLe5+IQcARM5xxexbylp8kG3L6+Ik/ RsCXfbxlEPZ9SwoYUPvhLfJ0FyI1DXmUeg9TLOSjRgRY8P6l+GEiwR/Ghr04aD6TiljoJP Q+plAfp1bcMq2FNJVYSkXuwQAAAEBum4W1xKa1sAm2GIt2+wHUTSkOjT2j0KZidYzKPMoP um7h7P7mk8jP64KBu1XE2bIJ8Hs1MAlMQztcgwBcUcGlAAAAQQD/l+lWVhLFgYcLVPegrV gNQJF2emJTcTvEPWcm6E2TzOMD27ILGq73DMquS1IrHw+PRNQQkKGFfvgbuz9y5e8pAAAA QQDBlN0WR/PmWc117JXfMOvo3XMFd1NiQhvaNLezkDH7s9MVVd0TbxRwM3TZRv6NF0eKzt pRr1L3pDxhi5yCqKilAAAABm5vbmFtZQECAwQ= -----END OPENSSH PRIVATE KEY-----";
 
@@ -415,5 +439,11 @@ pRr1L3pDxhi5yCqKilAAAABm5vbmFtZQECAwQ=
             reformatted_key.public_key().to_bytes(),
             "Both formats should produce the same key"
         );
+    }
+
+    #[test]
+    fn test_load_key_with_rsa_pkcs8_pem() {
+        let result = load_key(VALID_PKCS8_KEY).expect("Should be able to load key");
+        assert!(result.algorithm().is_rsa());
     }
 }
