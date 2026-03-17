@@ -111,13 +111,10 @@ async fn resolve_secrets_and_create_env(
 ) -> Result<HashMap<String, String>> {
     let resolver = PassClientResolver::new(client);
     let cache = SecretCache::new();
-    let mut resolved_env: HashMap<String, String> = HashMap::new();
+    let mut resolved_secret_values: HashMap<String, String> = HashMap::new();
 
-    for env_var in env_vars {
+    for env_var in &env_vars {
         if let Some(value) = secret_refs.get(&env_var.name) {
-            // Resolve secrets in this variable
-            let mut resolved_value = env_var.value.clone();
-
             let secret_ref = SecretReference::parse(value).with_context(|| {
                 format!("Invalid secret reference in {}: {}", env_var.name, value)
             })?;
@@ -132,13 +129,29 @@ async fn resolve_secrets_and_create_env(
                     )
                 })?;
 
-            resolved_value = resolved_value.replace(value, &secret_value);
-
-            resolved_env.insert(env_var.name, resolved_value);
+            let resolved_value = env_var.value.replace(value, &secret_value);
+            resolved_secret_values.insert(env_var.name.clone(), resolved_value);
         }
     }
 
-    Ok(resolved_env)
+    Ok(merge_resolved_env(env_vars, resolved_secret_values))
+}
+
+fn merge_resolved_env(
+    env_vars: Vec<EnvVar>,
+    resolved_secret_values: HashMap<String, String>,
+) -> HashMap<String, String> {
+    let mut resolved_env: HashMap<String, String> = HashMap::new();
+
+    for env_var in env_vars {
+        let final_value = resolved_secret_values
+            .get(&env_var.name)
+            .cloned()
+            .unwrap_or(env_var.value);
+        resolved_env.insert(env_var.name, final_value);
+    }
+
+    resolved_env
 }
 
 /// Create a regex pattern to match secrets for output masking
@@ -356,27 +369,14 @@ pub async fn run(
     let secret_refs =
         find_secret_references(&env_vars).context("Failed to find secret references")?;
 
-    if secret_refs.is_empty() {
-        // No secrets found, execute command directly with current environment
-        if command_args.is_empty() {
-            bail!("No command provided");
-        }
-
-        let program = &command_args[0];
-        let args = &command_args[1..];
-
-        let exit_status = Command::new(program)
-            .args(args)
-            .status()
-            .with_context(|| format!("Failed to execute command: {program}"))?;
-
-        std::process::exit(exit_status.code().unwrap_or(-1));
-    }
-
-    // Resolve secrets and create environment
-    let resolved_env = resolve_secrets_and_create_env(env_vars, secret_refs, client)
-        .await
-        .context("Failed to resolve secrets")?;
+    let resolved_env = if secret_refs.is_empty() {
+        merge_resolved_env(env_vars, HashMap::new())
+    } else {
+        // Resolve secrets and create environment
+        resolve_secrets_and_create_env(env_vars, secret_refs, client)
+            .await
+            .context("Failed to resolve secrets")?
+    };
 
     // Execute the command with resolved environment
     let exit_code = execute_command(&command_args, resolved_env, no_masking)
@@ -477,5 +477,27 @@ QUOTED_VAR='some value'
             masked3,
             "Multiple <concealed by Proton Pass> occurrences of <concealed by Proton Pass>"
         );
+    }
+
+    #[test]
+    fn test_merge_resolved_env_preserves_non_secret_entries() {
+        let env_vars = vec![
+            EnvVar {
+                name: "A_VALUE".to_string(),
+                value: "somevalue".to_string(),
+            },
+            EnvVar {
+                name: "B_VALUE".to_string(),
+                value: "pass://TestVault/TestItem/TestField".to_string(),
+            },
+        ];
+
+        let mut resolved_secret_values = HashMap::new();
+        resolved_secret_values.insert("B_VALUE".to_string(), "TestFieldValue".to_string());
+
+        let merged = merge_resolved_env(env_vars, resolved_secret_values);
+
+        assert_eq!(merged.get("A_VALUE"), Some(&"somevalue".to_string()));
+        assert_eq!(merged.get("B_VALUE"), Some(&"TestFieldValue".to_string()));
     }
 }
