@@ -5,6 +5,7 @@ mod event_processor;
 mod key_load;
 mod key_storage;
 mod load_agent;
+mod ssh_key_parsing;
 
 use crate::telemetry::event::CommandEvent;
 use anyhow::{Context, Result, anyhow};
@@ -15,6 +16,7 @@ use pass::{PassClient, is_id};
 use pass_domain::{ItemId, PermissionFlag, ShareId};
 use ssh_agent_lib::ssh_encoding::LineEnding;
 use ssh_key::HashAlg;
+pub(crate) use ssh_key_parsing::parse_private_key_with_rsa_pem_fallback;
 use std::path::PathBuf;
 use tokio::sync::mpsc::{UnboundedReceiver, unbounded_channel};
 
