@@ -1,3 +1,18 @@
+## 1.7.0 (2026-03-18)
+
+## Features :tada:
+
+- Add support for PKCS#8 SSH keys in the SSH agent.
+
+## Fixes :bug:
+
+- `pass-cli run` with env files now doesn't drop values that are not pass secret references.
+
+## Other
+
+- Updated dependencies.
+- Improved local secret key storage in system keyrings.
+
 ## 1.6.1 (2026-03-10)
 
 ## Other
