@@ -60,7 +60,7 @@ apple-native-keyring-store = { version = "0.2.2", features = ["keychain"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 linux-keyutils-keyring-store = "0.2.1"
-zbus-secret-service-keyring-store = { version = "0.3.0", features = ["rt-tokio-crypto-rust"] }
+zbus-secret-service-keyring-store = { version = "0.3.0", features = ["crypto-rust"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 zip = "8"
