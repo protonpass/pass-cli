@@ -1,3 +1,13 @@
+## 1.8.0 (2026-03-23)
+
+## Features :tada:
+
+- Support for Linux DBUS integration.
+
+## Other
+
+- Updated dependencies.
+
 ## 1.7.0 (2026-03-18)
 
 ## Features :tada:
