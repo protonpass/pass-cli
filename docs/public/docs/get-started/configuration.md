@@ -55,15 +55,37 @@ This uses the operating system's secure credential storage:
 
 **Linux keyring note:**
 
-On Linux, using a keyring integration that uses D-Bus to communicate with the Secret Service API would be preferred. However, **D-Bus is not available in headless environments** (containers, SSH sessions without X11, distroless images, etc.).
-
-To work around this limitation, the Linux keyring library is configured to store secrets in the **kernel keyring** (kernel key retention service). This approach:
+On Linux, the CLI defaults to the **kernel keyring** (kernel key retention service), which:
 
 - Stores the encryption key in kernel memory
 - Does not require D-Bus or a graphical session
 - **Secrets are cleared on system reboot**
 
-This is a known limitation when running in headless Linux environments.
+If you have a desktop environment with a Secret Service provider (e.g. GNOME Keyring), you can opt in to D-Bus-backed persistent storage instead:
+
+```bash
+export PROTON_PASS_LINUX_KEYRING=dbus
+```
+
+| Value | Backend | Persists across reboots | Requires D-Bus |
+|-------|---------|------------------------|----------------|
+| `kernel` (default) | Kernel key retention service | No | No |
+| `dbus` | D-Bus Secret Service (e.g. GNOME Keyring) | Yes | Yes |
+
+When `dbus` is set and the Secret Service is unavailable or locked (e.g. the GNOME Keyring has not been unlocked yet), the CLI will fail with an error rather than falling back silently. Unlock your desktop session first, then retry.
+
+For the GNOME Keyring, if you don't have physical access to the device, you can use the following script:
+
+```bash
+function unlock-keyring ()
+{
+    read -rsp "Password: " keyringpass
+    export $(echo -n "$keyringpass" | gnome-keyring-daemon --replace --unlock)
+    unset keyringpass
+}
+
+unlock-keyring
+```
 
 Take into account that when running in docker containers, the container cannot access the kernel secret service, so the only option available to be used when running in a container is the Filesystem storage.
 
