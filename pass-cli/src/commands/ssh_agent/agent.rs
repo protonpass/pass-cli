@@ -378,7 +378,7 @@ impl Session for KeyStorage {
                     // Update the existing identity with the certificate
                     // The pubkey_data will be dynamically generated in request_identities
                     let cert_key_id = certificate.key_id().to_string();
-                    identity.certificate = Some(certificate);
+                    identity.certificate = Some(*certificate);
 
                     info!(
                         "Certificate {} associated with existing key {}",
