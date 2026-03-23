@@ -12,6 +12,36 @@ If you still want to use the app, you will need to:
  2. Set the environment variable `PROTON_PASS_KEY_PROVIDER` to `fs`.
  3. Login normally as you would.
 
+## **Linux: keyring error with `NoStorageAccess` or D-Bus errors**
+
+On Linux, the CLI uses the kernel keyring by default, which does not require D-Bus. However, if you have explicitly set `PROTON_PASS_LINUX_KEYRING=dbus` and see an error like:
+
+```
+Error accessing credential [...]: NoStorageAccess(Unknown(1))
+```
+
+this means the D-Bus Secret Service (e.g. GNOME Keyring) is unavailable or has not been unlocked yet. Common causes:
+
+- You are in a desktop session but have not yet unlocked the GNOME Keyring (e.g. first login, or the keyring was manually locked).
+- You are connecting over SSH without forwarding a D-Bus session socket.
+- The Secret Service daemon is not running.
+
+**Solutions:**
+
+- **Unlock your desktop session** — log in to your graphical session to unlock GNOME Keyring, then retry.
+- **Switch back to the kernel keyring** (default) — unset or remove `PROTON_PASS_LINUX_KEYRING` from your environment:
+  ```bash
+  unset PROTON_PASS_LINUX_KEYRING
+  ```
+- **Use filesystem key storage** for headless/SSH environments where neither backend is accessible:
+  ```bash
+  pass-cli logout --force
+  export PROTON_PASS_KEY_PROVIDER=fs
+  pass-cli login
+  ```
+
+See the [Configuration — Linux keyring note](../get-started/configuration.md#linux-keyring-note) for a full explanation of the available backends.
+
 ## **On Windows it complains about `install.ps1` cannot be loaded because running scripts is disabled**
 
 It's possible that your computer has a restricted script execution policy set, either by you or via a company Device Management System.
