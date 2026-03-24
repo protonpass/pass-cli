@@ -122,6 +122,11 @@ enum Commands {
         #[command(subcommand)]
         command: commands::password::PasswordCommands,
     },
+    #[command(about = "Personal Access Token operations", alias = "pat")]
+    PersonalAccessToken {
+        #[command(subcommand)]
+        command: commands::personal_access_token::PersonalAccessTokenCommands,
+    },
     #[command(about = "TOTP operations")]
     Totp {
         #[command(subcommand)]
@@ -241,28 +246,25 @@ async fn run() -> Result<()> {
             interactive,
             ..
         } => {
-            #[cfg(feature = "internal")]
+            // Extract personal_access_token field when feature is enabled
+            if let Commands::Login {
+                pat: personal_access_token,
+                ..
+            } = &cli.command
             {
-                // Extract personal_access_token field when feature is enabled
-                if let Commands::Login {
-                    pat: personal_access_token,
-                    ..
-                } = &cli.command
-                {
-                    // Route to personal access token login if --service-account is provided
-                    use crate::auth::cli_credential_provider::PERSONAL_ACCESS_TOKEN_ENV_VAR;
+                // Route to personal access token login if --service-account is provided
+                use crate::auth::cli_credential_provider::PERSONAL_ACCESS_TOKEN_ENV_VAR;
 
-                    if personal_access_token.is_some()
-                        || std::env::var(PERSONAL_ACCESS_TOKEN_ENV_VAR).is_ok()
-                    {
-                        return commands::login_pat::run(
-                            personal_access_token.clone(),
-                            client,
-                            client_features,
-                            store,
-                        )
-                        .await;
-                    }
+                if personal_access_token.is_some()
+                    || std::env::var(PERSONAL_ACCESS_TOKEN_ENV_VAR).is_ok()
+                {
+                    return commands::login_pat::run(
+                        personal_access_token.clone(),
+                        client,
+                        client_features,
+                        store,
+                    )
+                    .await;
                 }
             }
 
@@ -358,6 +360,9 @@ async fn run() -> Result<()> {
         Commands::User { command } => commands::user::run(command, client).await,
         Commands::SshAgent { command } => commands::ssh_agent::run(command, client).await,
         Commands::Settings { command } => commands::settings::run(command, client).await,
+        Commands::PersonalAccessToken { command } => {
+            commands::personal_access_token::run(command, client).await
+        }
         #[cfg(feature = "internal")]
         Commands::Internal { command } => {
             commands::internal::run(command, client, client_features).await

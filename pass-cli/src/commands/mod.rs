@@ -8,10 +8,10 @@ pub mod internal;
 pub mod invite;
 pub mod item;
 pub mod login;
-#[cfg(feature = "internal")]
 pub mod login_pat;
 pub mod logout;
 pub mod password;
+pub mod personal_access_token;
 pub mod run;
 pub mod secret_resolver;
 pub mod settings;
