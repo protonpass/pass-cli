@@ -2,6 +2,51 @@
 
 This section defines which parts of the CLI are configurable and how to do so.
 
+## Personal access tokens
+
+Personal access tokens are a way to authenticate with Proton Pass without using your full account credentials. Instead of logging in as your user account, you authenticate as a named token that you control, with access restricted to exactly the vaults and items you choose.
+
+They're particularly useful for:
+
+- **CI/CD pipelines**: automate secret retrieval without embedding your account password
+- **Shared scripts**: give a build script or deploy tool access to only what it needs
+- **Restricted environments**: run `pass-cli` in a container or headless server where you don't want full account access
+
+### Access control
+
+When you create a personal access token, it has no access to anything until you explicitly grant it. You can grant access at two levels:
+
+- **Vault level** - the token can read (or write) all items in the vault
+- **Item level** - the token can only access a specific item, even if it's inside a shared vault
+
+Each grant also carries a role (`viewer`, `editor`, or `manager`), so you can further limit what the token can do with the items it can see.
+
+Tokens also have a mandatory expiration date, so they stop working automatically after a set period. This limits the damage if a token is ever leaked.
+
+### Logging in with a personal access token
+
+There are two ways to provide the token when logging in.
+
+**Via environment variable (recommended for CI):**
+
+```bash
+PROTON_PASS_PERSONAL_ACCESS_TOKEN=pst_xxxx...xxxx::TOKENKEY pass-cli login
+```
+
+This keeps the token out of your shell history and is the easiest option for automated environments.
+
+**Via command-line flag:**
+
+```bash
+pass-cli login --personal-access-token "pst_xxxx...xxxx::TOKENKEY"
+```
+
+Once logged in, the CLI behaves normally. Commands like `pass-cli info` will show the token name under "Personal Access Token" instead of a user email.
+
+For instructions on creating and managing tokens, see the [`pat` command reference](../commands/personal-access-token.md).
+
+---
+
 ## Configuring logging
 
 Control log output verbosity with this environment variable:
