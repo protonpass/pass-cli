@@ -217,8 +217,8 @@ pub fn run_daemon_status(pid_file: Option<PathBuf>) -> Result<()> {
 
 fn last_lines(path: &Path, n: usize) -> Result<Vec<String>> {
     use std::io::{Read, Seek, SeekFrom};
-    let mut file = std::fs::File::open(path)
-        .with_context(|| format!("Failed to read {}", path.display()))?;
+    let mut file =
+        std::fs::File::open(path).with_context(|| format!("Failed to read {}", path.display()))?;
     let file_len = file.seek(SeekFrom::End(0))?;
     let offset = file_len.saturating_sub(1024);
     file.seek(SeekFrom::Start(offset))?;
