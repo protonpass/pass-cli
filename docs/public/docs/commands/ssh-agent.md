@@ -290,13 +290,7 @@ The daemon does not modify your shell environment. You need to set `SSH_AUTH_SOC
     Add the following line to your PowerShell profile (`$PROFILE`):
 
     ```powershell
-    $env:SSH_AUTH_SOCK = "$env:USERPROFILE\.ssh\proton-pass-agent.pid" -replace "\.pid$", ""
-    ```
-
-    Or set it explicitly:
-
-    ```powershell
-    $env:SSH_AUTH_SOCK = "$env:USERPROFILE\.ssh\proton-pass-agent"
+    $env:SSH_AUTH_SOCK = "$env:USERPROFILE\.ssh\proton-pass-agent.sock"
     ```
 
 ### Starting the daemon automatically on login
