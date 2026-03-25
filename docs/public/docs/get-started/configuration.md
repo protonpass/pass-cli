@@ -8,7 +8,7 @@ Personal access tokens are a way to authenticate with Proton Pass without using 
 
 They're particularly useful for the following scenarios:
 
-- **Automated executions**: Automate secret retrieval without embedding your account password. For instance when running in a CI/CD pipeline, cron jobs, deployment scripts..
+- **Automated executions**: Automate secret retrieval without embedding your account password. For instance when running in a CI/CD pipeline, cron jobs, deployment scripts...
 - **Restricted access control**: Grant limited permissions to PAT to reduce the impact if the token is compromised.
 - **Headless or remote environments**: Run `pass-cli` in a container or headless server where you cannot do web login.
 - **Temporary access**: Limit the time the access is granted to a PAT without affecting your main account.

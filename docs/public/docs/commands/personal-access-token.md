@@ -4,7 +4,7 @@ Create and manage personal access tokens.
 
 ## Synopsis
 
-The namespace can be specified as either personal-access-token or its shorthand pat; both behave identically.
+The namespace can be specified as either `personal-access-token` or its shorthand `pat`; both behave identically.
 
 ```bash
 pass-cli pat <COMMAND>
