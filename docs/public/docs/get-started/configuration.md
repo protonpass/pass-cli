@@ -6,11 +6,12 @@ This section defines which parts of the CLI are configurable and how to do so.
 
 Personal access tokens are a way to authenticate with Proton Pass without using your full account credentials. Instead of logging in as your user account, you authenticate as a named token that you control, with access restricted to exactly the vaults and items you choose.
 
-They're particularly useful for:
+They're particularly useful for the following scenarios:
 
-- **CI/CD pipelines**: automate secret retrieval without embedding your account password
-- **Shared scripts**: give a build script or deploy tool access to only what it needs
-- **Restricted environments**: run `pass-cli` in a container or headless server where you don't want full account access
+- **Automated executions**: Automate secret retrieval without embedding your account password. For instance when running in a CI/CD pipeline, cron jobs, deployment scripts..
+- **Restricted access control**: Grant limited permissions to PAT to reduce the impact if the token is compromised.
+- **Headless or remote environments**: Run `pass-cli` in a container or headless server where you cannot do web login.
+- **Temporary access**: Limit the time the access is granted to a PAT without affecting your main account.
 
 ### Access control
 
