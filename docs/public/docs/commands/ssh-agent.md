@@ -152,6 +152,234 @@ ssh-add ~/.ssh/my_new_key
 # The key is now automatically stored in your Proton Pass vault!
 ```
 
+## Running the SSH agent as a background daemon
+
+If you want the Proton Pass SSH agent to run in the background without keeping a terminal open, you can use the `daemon` subcommand. It spawns the agent as a detached background process and manages it through a PID file.
+
+### Starting the daemon
+
+```bash
+pass-cli ssh-agent daemon start
+```
+
+The command will print the PID, the PID file location, and the socket path you need to set:
+
+```text
+Daemon started (PID: 12345)
+PID file: /home/youruser/.ssh/proton-pass-agent.pid
+Logs: discarded (use --log-file to capture them)
+
+To connect to the agent, set SSH_AUTH_SOCK:
+  export SSH_AUTH_SOCK=/home/youruser/.ssh/proton-pass-agent.sock
+```
+
+You can pass the same options as `ssh-agent start`:
+
+```bash
+pass-cli ssh-agent daemon start --vault-name MySshKeysVault
+pass-cli ssh-agent daemon start --share-id MY_SHARE_ID
+pass-cli ssh-agent daemon start --refresh-interval 7200
+pass-cli ssh-agent daemon start --create-new-identities MySshKeysVault
+pass-cli ssh-agent daemon start --socket-path /tmp/my-agent.sock
+```
+
+To capture the daemon's output for troubleshooting, use `--log-file`:
+
+```bash
+pass-cli ssh-agent daemon start --log-file ~/.ssh/proton-pass-agent.log
+```
+
+The log file path is always stored as an absolute path, so it is unambiguous regardless of the directory you were in when you started the daemon.
+
+> **Note:** The daemon process uses the credentials already stored in your system keychain. Make sure you are logged in with `pass-cli` before starting the daemon, otherwise it will fail silently in the background. Use `--log-file` to capture any startup errors.
+
+### Checking the daemon status
+
+```bash
+pass-cli ssh-agent daemon status
+```
+
+When the daemon is running, the command prints the `SSH_AUTH_SOCK` line you need to set, so you do not have to look it up separately:
+
+```text
+Status:   running
+PID:      12345
+Socket:   /home/youruser/.ssh/proton-pass-agent.sock
+
+To connect to the agent, set SSH_AUTH_SOCK:
+  export SSH_AUTH_SOCK=/home/youruser/.ssh/proton-pass-agent.sock
+
+PID file: /home/youruser/.ssh/proton-pass-agent.pid
+```
+
+If you started the daemon with `--log-file`, the status command also prints the path and the last 10 lines of that file:
+
+```text
+Status:   running
+PID:      12345
+Socket:   /home/youruser/.ssh/proton-pass-agent.sock
+
+To connect to the agent, set SSH_AUTH_SOCK:
+  export SSH_AUTH_SOCK=/home/youruser/.ssh/proton-pass-agent.sock
+
+PID file: /home/youruser/.ssh/proton-pass-agent.pid
+Log file: /home/youruser/.ssh/proton-pass-agent.log
+
+Last 3 log line(s):
+  Retrieving SSH keys from Proton Pass...
+  Loaded 4 SSH key(s) successfully
+  Listening on /home/youruser/.ssh/proton-pass-agent.sock
+```
+
+The status command also detects when the daemon stopped unexpectedly. There are four possible states:
+
+| Status | Meaning |
+|---|---|
+| `running` | The process is alive and the socket is present. |
+| `degraded` | The process is alive but the socket file is missing. |
+| `stopped (process died, stale socket file present)` | The process is gone but the socket file was not cleaned up. |
+| `stopped` | Neither the process nor the socket file exists. |
+
+In the `degraded` or stale-socket cases, stop and restart the daemon to recover:
+
+```bash
+pass-cli ssh-agent daemon stop
+pass-cli ssh-agent daemon start
+```
+
+### Stopping the daemon
+
+```bash
+pass-cli ssh-agent daemon stop
+```
+
+This sends a termination signal to the background process and removes the PID file.
+
+### Custom PID file location
+
+By default the PID file is stored at `~/.ssh/proton-pass-agent.pid`. You can override this with `--pid-file` on any of the three subcommands, which is useful if you want to run multiple daemon instances side by side:
+
+```bash
+pass-cli ssh-agent daemon start --pid-file /tmp/my-agent.pid --socket-path /tmp/my-agent.sock
+pass-cli ssh-agent daemon status --pid-file /tmp/my-agent.pid
+pass-cli ssh-agent daemon stop --pid-file /tmp/my-agent.pid
+```
+
+### Setting SSH_AUTH_SOCK automatically on login
+
+The daemon does not modify your shell environment. You need to set `SSH_AUTH_SOCK` yourself so that SSH tools can find the socket.
+
+=== "Linux"
+
+    Add the following line to your `~/.bashrc` or `~/.zshrc`:
+
+    ```bash
+    export SSH_AUTH_SOCK="$HOME/.ssh/proton-pass-agent.sock"
+    ```
+
+=== "macOS"
+
+    Add the following line to your `~/.zshrc` (or `~/.bashrc` if you use Bash):
+
+    ```bash
+    export SSH_AUTH_SOCK="$HOME/.ssh/proton-pass-agent.sock"
+    ```
+
+=== "Windows (PowerShell)"
+
+    Add the following line to your PowerShell profile (`$PROFILE`):
+
+    ```powershell
+    $env:SSH_AUTH_SOCK = "$env:USERPROFILE\.ssh\proton-pass-agent.pid" -replace "\.pid$", ""
+    ```
+
+    Or set it explicitly:
+
+    ```powershell
+    $env:SSH_AUTH_SOCK = "$env:USERPROFILE\.ssh\proton-pass-agent"
+    ```
+
+### Starting the daemon automatically on login
+
+If you want the daemon to start automatically when you log in, the recommended approach is to use your operating system's service manager. See the relevant section below.
+
+Take into account that these files are examples that you may need to adapt to your use-case, such as the path
+
+=== "Linux (systemd)"
+
+    Create the file `~/.config/systemd/user/proton-pass-ssh-agent.service`:
+
+    ```ini
+    [Unit]
+    Description=Proton Pass SSH Agent
+
+    [Service]
+    ExecStart=/home/youruser/.local/bin/pass-cli ssh-agent start --socket-path %h/.ssh/proton-pass-agent.sock
+    Restart=on-failure
+
+    [Install]
+    WantedBy=default.target
+    ```
+
+    Then enable and start it:
+
+    ```bash
+    systemctl --user enable --now proton-pass-ssh-agent.service
+    ```
+
+=== "macOS (launchctl)"
+
+    Create the file `~/Library/LaunchAgents/com.proton.pass-cli.ssh-agent.plist`:
+
+    ```xml
+    <?xml version="1.0" encoding="UTF-8"?>
+    <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+      "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+    <plist version="1.0">
+    <dict>
+      <key>Label</key>
+      <string>com.proton.pass-cli.ssh-agent</string>
+      <key>ProgramArguments</key>
+      <array>
+        <string>/Users/youruser/.local/bin/pass-cli</string>
+        <string>ssh-agent</string>
+        <string>start</string>
+      </array>
+      <key>RunAtLoad</key>
+      <true/>
+      <key>KeepAlive</key>
+      <true/>
+    </dict>
+    </plist>
+    ```
+
+    Then load it:
+
+    ```bash
+    launchctl load ~/Library/LaunchAgents/com.proton.pass-cli.ssh-agent.plist
+    ```
+
+=== "Windows (Task Scheduler)"
+
+    Open Task Scheduler, create a new task with:
+
+    - **Trigger:** At log on
+    - **Action:** Start a program
+    - **Program:** `pass-cli`
+    - **Arguments:** `ssh-agent start`
+    - **Settings:** Check "Run whether user is logged on or not" if you want it to run in the background without a visible window.
+
+    Alternatively, from an elevated PowerShell prompt:
+
+    ```powershell
+    $action = New-ScheduledTaskAction -Execute "pass-cli" -Argument "ssh-agent start"
+    $trigger = New-ScheduledTaskTrigger -AtLogOn
+    $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit 0
+    Register-ScheduledTask -TaskName "ProtonPassSSHAgent" -Action $action -Trigger $trigger -Settings $settings
+    ```
+
+The `daemon start` / `daemon stop` commands are a simpler alternative when you just want to start and stop the agent on demand, without setting up a system service.
+
 ## Debugging SSH key items
 
 The `ssh-agent debug` command helps you understand why your items are or aren't usable as SSH keys. This is useful when you have items in your vault but they're not being detected by the SSH agent.
