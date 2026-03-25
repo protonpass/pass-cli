@@ -15,7 +15,7 @@ They're particularly useful for the following scenarios:
 
 ### Access control
 
-When you create a personal access token, it has no access to anything until you explicitly grant it. You can grant access at two levels:
+When you create a personal access token, it does not have access to any resource your account has until you explicitly allow it. You can grant access for two resource types:
 
 - **Vault level** - the token can read (or write) all items in the vault
 - **Item level** - the token can only access a specific item, even if it's inside a shared vault
