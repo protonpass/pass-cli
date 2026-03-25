@@ -221,9 +221,16 @@ pub fn run_daemon_status(pid_file: Option<PathBuf>) -> Result<()> {
 }
 
 fn last_lines(path: &Path, n: usize) -> Result<Vec<String>> {
-    let content = std::fs::read_to_string(path)
+    use std::io::{Read, Seek, SeekFrom};
+    let mut file = std::fs::File::open(path)
         .with_context(|| format!("Failed to read {}", path.display()))?;
-    let lines: Vec<&str> = content.lines().collect();
+    let file_len = file.seek(SeekFrom::End(0))?;
+    let offset = file_len.saturating_sub(1024);
+    file.seek(SeekFrom::Start(offset))?;
+    let mut buf = String::new();
+    file.read_to_string(&mut buf)
+        .with_context(|| format!("Failed to read {}", path.display()))?;
+    let lines: Vec<&str> = buf.lines().collect();
     let start = lines.len().saturating_sub(n);
     Ok(lines[start..].iter().map(|s| s.to_string()).collect())
 }
