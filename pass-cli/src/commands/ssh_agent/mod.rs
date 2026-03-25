@@ -1,4 +1,5 @@
 mod agent;
+mod daemon;
 mod debug;
 mod event_handler;
 mod event_processor;
@@ -66,6 +67,65 @@ pub enum SshAgentCommands {
         #[arg(short, long, value_enum, help = "Output format")]
         output: Option<crate::commands::OutputFormat>,
     },
+    #[command(about = "Manage the SSH agent as a background daemon")]
+    Daemon {
+        #[command(subcommand)]
+        command: DaemonCommands,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum DaemonCommands {
+    #[command(about = "Start the SSH agent as a background daemon")]
+    Start {
+        #[arg(
+            long,
+            help = "Path to the SSH agent socket (Unix) or named pipe identifier (Windows)"
+        )]
+        socket_path: Option<String>,
+        #[arg(long, help = "Share ID of the vault to load keys from")]
+        share_id: Option<String>,
+        #[arg(long, help = "Name of the vault to load keys from")]
+        vault_name: Option<String>,
+        #[arg(
+            long,
+            help = "Interval in seconds to check for new SSH keys in Proton Pass",
+            default_value = "30"
+        )]
+        refresh_interval: u64,
+        #[arg(
+            long,
+            value_name = "VAULT_NAME_OR_SHARE_ID",
+            help = "Automatically create new SSH key items in the specified vault when identities are added via ssh-add. Specify either a vault name or share ID."
+        )]
+        create_new_identities: Option<String>,
+        #[arg(
+            long,
+            help = "Path to the PID file (default: ~/.ssh/proton-pass-agent.pid)"
+        )]
+        pid_file: Option<PathBuf>,
+        #[arg(
+            long,
+            help = "Redirect daemon stdout/stderr to this file instead of discarding them"
+        )]
+        log_file: Option<PathBuf>,
+    },
+    #[command(about = "Show the status of the SSH agent daemon")]
+    Status {
+        #[arg(
+            long,
+            help = "Path to the PID file (default: ~/.ssh/proton-pass-agent.pid)"
+        )]
+        pid_file: Option<PathBuf>,
+    },
+    #[command(about = "Stop the SSH agent daemon")]
+    Stop {
+        #[arg(
+            long,
+            help = "Path to the PID file (default: ~/.ssh/proton-pass-agent.pid)"
+        )]
+        pid_file: Option<PathBuf>,
+    },
 }
 
 #[derive(Clone)]
@@ -131,6 +191,27 @@ pub async fn run(command: SshAgentCommands, client: PassClient) -> Result<()> {
             item_title,
             output,
         } => debug::run_debug(share_id, vault_name, item_id, item_title, output, client).await,
+        SshAgentCommands::Daemon { command } => match command {
+            DaemonCommands::Start {
+                socket_path,
+                share_id,
+                vault_name,
+                refresh_interval,
+                create_new_identities,
+                pid_file,
+                log_file,
+            } => daemon::run_daemon_start(
+                socket_path,
+                share_id,
+                vault_name,
+                refresh_interval,
+                create_new_identities,
+                pid_file,
+                log_file,
+            ),
+            DaemonCommands::Status { pid_file } => daemon::run_daemon_status(pid_file),
+            DaemonCommands::Stop { pid_file } => daemon::run_daemon_stop(pid_file),
+        },
     }
 }
 
