@@ -98,7 +98,7 @@ pass-cli pat renew (--personal-access-token-id <ID> | --personal-access-token-na
     --expiration <EXPIRATION> [--output human|json]
 ```
 
-Renews a token with a new expiration date, starting from now. A renewed token outputs a new token string - treat it the same as a freshly created token and update your secrets accordingly. Any access you had granted to that token will not be affected, so the token will continue to have access to it.
+Renews a token with a new expiration date, starting from now. A renewed token outputs a new token string - treat it the same as a freshly created token and update your secrets accordingly. Any access you had granted to that token will not be affected, so the token will continue to have access to it. **The old token will stop working after you issue this command**
 
 ### Arguments
 
