@@ -265,6 +265,18 @@ pass-cli ssh-agent daemon status --pid-file /tmp/my-agent.pid
 pass-cli ssh-agent daemon stop --pid-file /tmp/my-agent.pid
 ```
 
+As an alternative to passing `--pid-file` every time, you can set the `PROTON_PASS_SSH_DAEMON_PIDFILE` environment variable in your shell profile. When the variable is set and `--pid-file` is not provided, it is used instead of the built-in default:
+
+```bash
+export PROTON_PASS_SSH_DAEMON_PIDFILE=/tmp/my-agent.pid
+```
+
+The lookup order is:
+
+1. `--pid-file` CLI flag (highest priority)
+2. `PROTON_PASS_SSH_DAEMON_PIDFILE` environment variable
+3. `~/.ssh/proton-pass-agent.pid` (built-in default)
+
 ### Setting SSH_AUTH_SOCK automatically on login
 
 The daemon does not modify your shell environment. You need to set `SSH_AUTH_SOCK` yourself so that SSH tools can find the socket.
