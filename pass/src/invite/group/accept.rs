@@ -4,7 +4,7 @@ use crate::crypto::reencrypt_group_invite_keys::{
     GroupInviteKeyToReencrypt, ReencryptGroupInviteKeysFlow,
 };
 use crate::invite::accept::{AcceptInviteKey, AcceptInviteRequest};
-use crate::invite::list::InviteWithKeys;
+use crate::invite::group::list::GroupInviteWithKeys;
 use crate::permission::PermissionAction;
 use anyhow::{Context, Result};
 use muon::POST;
@@ -20,7 +20,7 @@ impl PassClient {
             .context("Error getting pending group invites")?;
         let invite = invites
             .into_iter()
-            .find(|i| i.invite.id.eq(invite_id))
+            .find(|i| i.invite_with_keys.invite.id.eq(invite_id))
             .ok_or_else(|| anyhow::anyhow!("Group invite not found"))?;
 
         let request = self
@@ -46,8 +46,11 @@ impl PassClient {
 
     async fn accept_group_invite_request(
         &self,
-        invite: InviteWithKeys,
+        invite: GroupInviteWithKeys,
     ) -> Result<AcceptInviteRequest> {
+        let is_group_owner = invite.is_group_owner;
+        let invite = invite.invite_with_keys;
+
         let inviter_keys = self
             .get_keys_for_email(&invite.invite.inviter_email, true)
             .await
@@ -63,10 +66,17 @@ impl PassClient {
             .find(|a| a.address.email == invite.invite.invited_email)
             .ok_or_else(|| anyhow::anyhow!("Invited Group Address not found"))?;
 
-        let invited_group_address_keys = self
-            .open_group_keys(invited_group_address.address.keys)
-            .await
-            .context("Error opening group address keys")?;
+        let invited_group_address_keys = if is_group_owner {
+            // Accepting the invite as a group owner
+            self.open_address_keys(invited_group_address.address.keys)
+                .await
+                .context("Error opening group address keys for owner")?
+        } else {
+            // Accepting the invite as org admin
+            self.open_group_keys(invited_group_address.address.keys)
+                .await
+                .context("Error opening group address keys for admin")?
+        };
 
         let crypto = self.client_features.get_pgp_crypto().await;
         let flow =

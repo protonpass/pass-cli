@@ -36,7 +36,10 @@ pub async fn run(client: PassClient, output: OutputFormat) -> Result<()> {
         .list_group_invites()
         .await
         .context("Error fetching group invites")?;
-    let invites: Vec<Invite> = invites.into_iter().map(|i| i.invite).collect();
+    let invites: Vec<Invite> = invites
+        .into_iter()
+        .map(|i| i.invite_with_keys.invite)
+        .collect();
 
     match output {
         OutputFormat::Human => {

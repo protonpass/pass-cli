@@ -32,7 +32,7 @@ struct PendingInvite {
     pub vault_data: Option<PendingInviteVaultData>,
 }
 
-#[derive(Clone, Debug, serde::Deserialize)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub(crate) struct PendingInviteVaultData {
     #[serde(rename = "Content")]
     pub content: String,
@@ -44,7 +44,7 @@ pub(crate) struct PendingInviteVaultData {
     pub item_count: u32,
 }
 
-#[derive(Clone, Debug, serde::Deserialize)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub(crate) struct InviteKeyResponse {
     #[serde(rename = "Key")]
     pub key: String,
