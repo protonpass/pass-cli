@@ -18,7 +18,7 @@ jobs:
       run:
         working-directory: docs/public
     steps:
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
       - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v7
       - run: uv sync --locked --all-extras
