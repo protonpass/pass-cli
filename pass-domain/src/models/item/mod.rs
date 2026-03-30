@@ -435,11 +435,11 @@ impl ItemData {
 
     fn update_ssh_field(ssh: &mut SshKeyItem, field_name: &str, field_value: &str) -> bool {
         match field_name {
-            "private_key" => {
+            "private_key" | "private key" => {
                 ssh.private_key = field_value.to_string();
                 true
             }
-            "public_key" => {
+            "public_key" | "public key" => {
                 ssh.public_key = field_value.to_string();
                 true
             }

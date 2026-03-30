@@ -292,16 +292,14 @@ impl Item {
 
     fn add_ssh_fields(&self, ssh: &SshKeyItem, fields: &mut Vec<(String, Field)>) {
         if !ssh.private_key.is_empty() {
-            fields.push((
-                "private_key".to_string(),
-                Field::Text(ssh.private_key.clone()),
-            ));
+            for k in ["private_key", "private key"] {
+                fields.push((k.to_string(), Field::Text(ssh.private_key.clone())));
+            }
         }
         if !ssh.public_key.is_empty() {
-            fields.push((
-                "public_key".to_string(),
-                Field::Text(ssh.public_key.clone()),
-            ));
+            for k in ["public_key", "public key"] {
+                fields.push((k.to_string(), Field::Text(ssh.public_key.clone())));
+            }
         }
     }
 
