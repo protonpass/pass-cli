@@ -126,7 +126,7 @@ The [`view`](view.md) command displays item contents:
 
 ```bash
 export DB_PASSWORD='pass://Production/Database/password'
-pass-cli view $DB_PASSWORD
+pass-cli item view $DB_PASSWORD
 ```
 
 ### With `run` command
