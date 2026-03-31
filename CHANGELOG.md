@@ -1,3 +1,19 @@
+## 1.9.0 (2026-03-23)
+
+## Features :tada:
+
+- Support for `ssh-agent daemon` to have the SSH agent run in the background.
+
+## Fixes :bug:
+
+- Improve invite acceptance flow.
+- Allow to print SSH Key keys with `private key` and `public key` field specifiers.
+
+## Other
+
+- Updated dependencies.
+- Fixed docs typos.
+
 ## 1.8.0 (2026-03-23)
 
 ## Features :tada:
