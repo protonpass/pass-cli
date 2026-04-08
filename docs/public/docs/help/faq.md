@@ -17,3 +17,7 @@ We send anonymized telemetry that **never** includes any personal or sensitive d
 Certainly! There are many ways of disabling it. If you want to disable it for this application you can set an environment variable `PROTON_PASS_DISABLE_TELEMETRY`. If the environment variable is set telemetry will not be saved and the currently saved locally will be cleared.
 
 If you want to disable it globally you can go to your [Account security settings](https://account.proton.me/pass/security) and disable `Collect usage diagnostics`
+
+## **How can I contribute?**
+
+We welcome contributions! Please check our [Contributing guide](contributing.md) for details on how to set up your development environment and report issues.
