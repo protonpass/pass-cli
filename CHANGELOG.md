@@ -1,3 +1,9 @@
+## 1.10.0 (2026-04-08)
+
+## Features :tada:
+
+- Personal Access Token support.
+
 ## 1.9.0 (2026-03-23)
 
 ## Features :tada:
