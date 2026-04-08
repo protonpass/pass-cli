@@ -25,6 +25,7 @@ nav = [
     "commands/test.md",
     "commands/ssh-agent.md",
     "commands/update.md",
+    "commands/personal-access-token.md",
     {"View item contents" = [
       "commands/contents/secret-references.md",
       "commands/contents/view.md",

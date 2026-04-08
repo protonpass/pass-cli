@@ -6,6 +6,7 @@ Authenticate with Proton Pass and establish a session.
 
 ```bash
 pass-cli login [--interactive]
+pass-cli login --personal-access-token <TOKEN>
 ```
 
 ## Description
@@ -146,6 +147,28 @@ pass-cli login --interactive user@proton.me
 
 You have 3 attempts to enter the correct extra password before the CLI logs out.
 
+## Personal access token login
+
+Personal access tokens allow logging in with a scoped credential instead of your full account. This is the recommended approach for CI pipelines, automated scripts, and any system where you want to limit what the session has access to.
+
+You need to create a token first using the [`pat create`](personal-access-token.md) command, then grant it access to the relevant vaults or items.
+
+**Via environment variable (recommended):**
+
+```bash
+PROTON_PASS_PERSONAL_ACCESS_TOKEN=pst_xxxx...xxxx::TOKENKEY pass-cli login
+```
+
+**Via command-line flag:**
+
+```bash
+pass-cli login --personal-access-token "pst_xxxx...xxxx::TOKENKEY"
+```
+
+Once logged in, the session works like any other. Run `pass-cli info` to verify it. It will show the token name under "Personal Access Token" instead of a user email.
+
+For more details on creating tokens and managing their access, see the [`pat` command reference](personal-access-token.md).
+
 ## Checking authentication status
 
 After logging in, verify your session:
@@ -232,6 +255,7 @@ pass-cli login --interactive alice@proton.me
 - **Username/Password**: Standard authentication
 - **Two-Factor Authentication (TOTP)**: Time-based one-time passwords
 - **FIDO authentication**: Only supported in web login
+- **Personal access token**: Scoped credential for CI and automation
 
 ## Session management
 

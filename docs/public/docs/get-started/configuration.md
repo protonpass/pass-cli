@@ -2,6 +2,52 @@
 
 This section defines which parts of the CLI are configurable and how to do so.
 
+## Personal access tokens
+
+Personal access tokens are a way to authenticate with Proton Pass without using your full account credentials. Instead of logging in as your user account, you authenticate as a named token that you control, with access restricted to exactly the vaults and items you choose.
+
+They're particularly useful for the following scenarios:
+
+- **Automated executions**: Automate secret retrieval without embedding your account password. For instance when running in a CI/CD pipeline, cron jobs, deployment scripts...
+- **Restricted access control**: Grant limited permissions to PAT to reduce the impact if the token is compromised.
+- **Headless or remote environments**: Run `pass-cli` in a container or headless server where you cannot do web login.
+- **Temporary access**: Limit the time the access is granted to a PAT without affecting your main account.
+
+### Access control
+
+When you create a personal access token, it does not have access to any resource your account has until you explicitly allow it. You can grant access for two resource types:
+
+- **Vault resource** - the token can read (or write) all items in the vault.
+- **Item resource** - the token can only access a specific item, even if it's inside a shared vault.
+
+Each grant also carries a role (`viewer`, `editor`, or `manager`), so you can further limit what the token can do with the items it can see.
+
+Tokens also have a mandatory expiration date, so they stop working automatically after a set period. This limits the damage if a token is ever leaked.
+
+### Logging in with a personal access token
+
+There are two ways to provide the token when logging in.
+
+**Via environment variable (recommended for CI):**
+
+```bash
+PROTON_PASS_PERSONAL_ACCESS_TOKEN=pst_xxxx...xxxx::TOKENKEY pass-cli login
+```
+
+This keeps the token out of your shell history and is the easiest option for automated environments.
+
+**Via command-line flag:**
+
+```bash
+pass-cli login --personal-access-token "pst_xxxx...xxxx::TOKENKEY"
+```
+
+Once logged in, the CLI behaves normally. Commands like `pass-cli info` will show the token name under "Personal Access Token" instead of a user email.
+
+For instructions on creating and managing tokens, see the [`pat` command reference](../commands/personal-access-token.md).
+
+---
+
 ## Configuring logging
 
 Control log output verbosity with this environment variable:

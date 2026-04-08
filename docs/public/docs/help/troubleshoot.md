@@ -28,8 +28,8 @@ this means the D-Bus Secret Service (e.g. GNOME Keyring) is unavailable or has n
 
 **Solutions:**
 
-- **Unlock your desktop session** — log in to your graphical session to unlock GNOME Keyring, then retry.
-- **Switch back to the kernel keyring** (default) — unset or remove `PROTON_PASS_LINUX_KEYRING` from your environment:
+- **Unlock your desktop session**: log in to your graphical session to unlock GNOME Keyring, then retry.
+- **Switch back to the kernel keyring** (default): unset or remove `PROTON_PASS_LINUX_KEYRING` from your environment:
   ```bash
   unset PROTON_PASS_LINUX_KEYRING
   ```
@@ -40,7 +40,7 @@ this means the D-Bus Secret Service (e.g. GNOME Keyring) is unavailable or has n
   pass-cli login
   ```
 
-See the [Configuration — Linux keyring note](../get-started/configuration.md#linux-keyring-note) for a full explanation of the available backends.
+See the [Configuration - Linux keyring note](../get-started/configuration.md#linux-keyring-note) for a full explanation of the available backends.
 
 ## **On Windows it complains about `install.ps1` cannot be loaded because running scripts is disabled**
 
