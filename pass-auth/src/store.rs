@@ -1,26 +1,18 @@
 use crate::storage::SessionStorage;
 use anyhow::{Context, anyhow};
 use muon::app::{AppName, AppVersion, SemVer};
-use muon::client::Auth;
-use muon::common::{Endpoint, Host, Server};
-use muon::env::{Env, EnvId};
-use muon::store::{Store, StoreError};
-use muon::tls::{TlsCert, TlsPinSet, Verifier, VerifyRes};
-use pass::PassSessionKeyType;
+use muon::auth::Auth;
+use muon::common::Server;
+use muon::env::{Env, Environment};
+use muon::store::Store;
+use muon::tls::pins::TlsPinSet;
 use pass_domain::crypto::EncryptionTag;
 use pass_domain::{AccountType, LocalKeyProvider};
 use std::collections::HashMap;
 use std::str::FromStr;
-use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::{Arc, Mutex, RwLock};
 
-pub struct AllowAllPinVerifier;
-
-impl Verifier for AllowAllPinVerifier {
-    fn verify(&self, _host: &Host, _head: &TlsCert, _tail: &[TlsCert]) -> muon::Result<VerifyRes> {
-        Ok(VerifyRes::Accept)
-    }
-}
+pub type PassSessionKeyType = ();
 
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub enum CustomEnv {
@@ -32,24 +24,41 @@ impl Env for CustomEnv {
     fn servers(&self, _version: &AppVersion) -> Vec<Server> {
         match self {
             CustomEnv::CustomUrl(url) => {
-                let without_start = url
-                    .trim_start_matches("http://")
-                    .trim_start_matches("https://");
-                if without_start.contains("/") {
-                    warn!("Path in custom url is not used. /api will be used")
-                }
-                let endpoint = Endpoint::from_str(url).expect("error parsing endpoint");
-                vec![Server::new(endpoint, "/api")]
+                let server_url = if url.ends_with("/api") || url.contains("/api/") {
+                    url.to_string()
+                } else {
+                    // Strip any trailing path and use /api
+                    let base = url
+                        .trim_start_matches("http://")
+                        .trim_start_matches("https://");
+                    if base.contains("/") {
+                        warn!("Path in custom url is not used. /api will be used");
+                    }
+                    let host_port = base.split('/').next().unwrap_or(base);
+                    let scheme = if url.starts_with("http://") {
+                        "http"
+                    } else {
+                        "https"
+                    };
+                    format!("{scheme}://{host_port}/api")
+                };
+                let server: Server = server_url.parse().expect("error parsing server URL");
+                vec![server]
             }
             CustomEnv::Localhost => {
-                let endpoint =
-                    Endpoint::from_str("https://localhost").expect("error parsing endpoint");
-                vec![Server::new(endpoint, "/api")]
+                let server: Server = "https://localhost/api"
+                    .parse()
+                    .expect("error parsing localhost");
+                vec![server]
             }
         }
     }
 
-    fn pins(&self, _: &Server) -> Option<TlsPinSet> {
+    fn ar_pins(&self) -> Option<&TlsPinSet> {
+        None
+    }
+
+    fn api_pins(&self) -> Option<&TlsPinSet> {
         None
     }
 }
@@ -61,39 +70,67 @@ pub enum SerializedEnv {
     Custom(CustomEnv),
 }
 
-impl From<SerializedEnv> for EnvId {
+impl From<SerializedEnv> for Environment {
     fn from(env: SerializedEnv) -> Self {
         match env {
-            SerializedEnv::Prod => EnvId::Prod,
-            SerializedEnv::Atlas(atlas) => EnvId::Atlas(atlas),
-            SerializedEnv::Custom(env) => EnvId::new_custom(env),
+            SerializedEnv::Prod => Environment::new_prod(),
+            SerializedEnv::Atlas(None) => Environment::new_atlas(),
+            SerializedEnv::Atlas(Some(name)) => Environment::new_atlas_name(name),
+            SerializedEnv::Custom(env) => Environment::new_custom(env),
         }
     }
 }
 
-impl From<EnvId> for SerializedEnv {
-    fn from(env: EnvId) -> Self {
+impl From<Environment> for SerializedEnv {
+    fn from(env: Environment) -> Self {
         match env {
-            EnvId::Prod => SerializedEnv::Prod,
-            EnvId::Atlas(atlas) => SerializedEnv::Atlas(atlas),
-            EnvId::Custom(env) => {
+            Environment::Prod(_) => SerializedEnv::Prod,
+            Environment::Atlas(_) => SerializedEnv::Atlas(None),
+            Environment::Scientist(s) => {
+                // AtlasScientist wraps a Scientist(String). Access via pattern.
+                // We need the inner name - use the servers() call to extract host info
+                let servers = s.servers(&AppVersion::Other);
+                debug!("SerializedEnv Servers: {servers:?}");
+                let host_str = servers
+                    .first()
+                    .map(|srv| format!("{}", srv.host().name()))
+                    .unwrap_or_default();
+                debug!("SerializedEnv host_str: {host_str:?}");
+                // host format is "{product}-api.{name}.proton.black" or "{name}.proton.black"
+                // extract the scientist name
+                let name = extract_scientist_name(&host_str);
+                debug!("SerializedEnv name: {host_str:?}");
+                SerializedEnv::Atlas(Some(name))
+            }
+            Environment::Custom(env) => {
                 let servers = env.servers(&AppVersion::Named {
                     name: AppName::from_str("cli-pass").expect("Invalid AppName"),
                     version: SemVer::from_str(env!("CARGO_PKG_VERSION")).expect("Invalid SemVer"),
                 });
-                let endpoint = servers
-                    .first()
-                    .cloned()
-                    .expect("should have one server")
-                    .endpoint;
-                let host_name = format!("{}", endpoint.host.name());
+                let server = servers.first().cloned().expect("should have one server");
+                let host_name = format!("{}", server.host().name());
                 if host_name == "localhost" {
                     SerializedEnv::Custom(CustomEnv::Localhost)
                 } else {
-                    SerializedEnv::Custom(CustomEnv::CustomUrl(format!("https://{endpoint}")))
+                    let scheme = server.scheme();
+                    let port = server.port();
+                    SerializedEnv::Custom(CustomEnv::CustomUrl(format!(
+                        "{scheme}://{host_name}:{port}"
+                    )))
                 }
             }
         }
+    }
+}
+
+fn extract_scientist_name(host: &str) -> String {
+    // Expected formats: "{name}.proton.black" or "{product}-api.{name}.proton.black"
+    // Strip .proton.black suffix, then take the last component before it
+    let without_tld = host.trim_end_matches(".proton.black");
+    if let Some(pos) = without_tld.rfind('.') {
+        without_tld[pos + 1..].to_string()
+    } else {
+        without_tld.to_string()
     }
 }
 
@@ -111,94 +148,67 @@ fn default_account_type() -> AccountType {
 
 #[derive(Clone)]
 pub struct PassSessionStore {
-    pub env: EnvId,
-    pub auth: Arc<RwLock<Option<Auth>>>,
+    pub env: Environment,
+    pub auth: Arc<Mutex<Option<Auth>>>,
     pub storage: Arc<dyn SessionStorage>,
     pub key_provider: Arc<dyn LocalKeyProvider>,
     pub account_type: AccountType,
 }
 
-impl PassSessionStore {
-    async fn inner_set_auth(&mut self, auth: Option<Auth>) -> Result<(), StoreError> {
-        {
-            let mut lock = self.auth.write().await;
-            *lock = auth;
-        }
-
-        if let Err(e) = self.serialize().await {
-            error!("Error serializing auth: {e:?}");
-            Err(StoreError)
-        } else {
-            debug!("Session updated");
-            Ok(())
-        }
+impl std::fmt::Debug for PassSessionStore {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PassSessionStore")
+            .field("env", &self.env)
+            .field("account_type", &self.account_type)
+            .finish()
     }
 }
 
-#[async_trait::async_trait]
-impl Store<PassSessionKeyType> for PassSessionStore {
-    fn env(&self) -> EnvId {
-        self.env.clone()
-    }
-
-    async fn get_auth(&self, _key: &PassSessionKeyType) -> Result<Auth, StoreError> {
-        trace!("[STORE] PassSessionStore::get_auth()");
-        let auth_data = self.auth.read().await;
-        match auth_data.as_ref() {
-            Some(auth) => Ok(auth.clone()),
-            None => Ok(Auth::default()),
+impl PassSessionStore {
+    fn inner_set_auth(&mut self, auth: Option<Auth>) {
+        {
+            let mut lock = self.auth.lock().expect("auth mutex poisoned");
+            *lock = auth;
         }
-    }
 
-    async fn set_auth(&mut self, _key: &PassSessionKeyType, auth: Auth) -> Result<(), StoreError> {
+        // Spawn async persistence task (fire-and-forget)
+        let store_clone = self.clone();
+        tokio::spawn(async move {
+            if let Err(e) = store_clone.serialize().await {
+                error!("Error serializing auth: {e:?}");
+            } else {
+                debug!("Session updated");
+            }
+        });
+    }
+}
+
+impl Store for PassSessionStore {
+    type Key = PassSessionKeyType;
+
+    fn set_auth(&mut self, _key: PassSessionKeyType, auth: Auth) {
         trace!("[STORE] PassSessionStore::set_auth()");
-        self.inner_set_auth(Some(auth)).await
+        self.inner_set_auth(Some(auth));
     }
 
-    async fn remove_auth(&mut self, _key: &PassSessionKeyType) -> Result<Option<Auth>, StoreError> {
+    fn remove_auth(&mut self, _key: &PassSessionKeyType) {
         trace!("[STORE] PassSessionStore::remove_auth()");
-
-        let old_value = {
-            let lock = self.auth.read().await;
-            lock.clone()
-        };
-
-        self.inner_set_auth(None).await?;
-        Ok(old_value)
+        self.inner_set_auth(None);
     }
 
-    async fn get_all_auth(&self) -> Result<HashMap<PassSessionKeyType, Auth>, StoreError> {
+    fn get_all_auth(&self) -> HashMap<PassSessionKeyType, Auth> {
         trace!("[STORE] PassSessionStore::get_all_auth()");
-        let lock = self.auth.read().await;
-
+        let lock = self.auth.lock().expect("auth mutex poisoned");
         let mut res = HashMap::new();
         if let Some(auth) = lock.as_ref() {
             res.insert((), auth.clone());
         }
-
-        Ok(res)
-    }
-
-    async fn set_all_auth(
-        &mut self,
-        auth: HashMap<PassSessionKeyType, Auth>,
-    ) -> Result<(), StoreError> {
-        trace!("[STORE] PassSessionStore::set_all_auth()");
-        if let Some(auth_value) = auth.get(&()) {
-            self.inner_set_auth(Some(auth_value.clone())).await?;
-        }
-        Ok(())
-    }
-
-    async fn remove_all_auth(&mut self) -> Result<(), StoreError> {
-        trace!("[STORE] PassSessionStore::remove_all_auth()");
-        self.inner_set_auth(None).await?;
-        Ok(())
+        res
     }
 }
 
 /// Wrapper around `Arc<RwLock<PassSessionStore>>` that implements Store
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SharedPassSessionStore {
     pub inner: Arc<RwLock<PassSessionStore>>,
 }
@@ -211,50 +221,22 @@ impl SharedPassSessionStore {
     }
 }
 
-#[async_trait::async_trait]
-impl Store<PassSessionKeyType> for SharedPassSessionStore {
-    fn env(&self) -> EnvId {
-        // We need to block here since env() is not async
-        // This is safe because env is read-only and cloned
-        tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current().block_on(async {
-                let store = self.inner.read().await;
-                store.env.clone()
-            })
-        })
+impl Store for SharedPassSessionStore {
+    type Key = PassSessionKeyType;
+
+    fn set_auth(&mut self, key: PassSessionKeyType, auth: Auth) {
+        let mut inner = self.inner.write().expect("store rwlock poisoned");
+        inner.set_auth(key, auth);
     }
 
-    async fn get_auth(&self, key: &PassSessionKeyType) -> Result<Auth, StoreError> {
-        let inner = self.inner.read().await;
-        inner.get_auth(key).await
+    fn remove_auth(&mut self, key: &PassSessionKeyType) {
+        let mut inner = self.inner.write().expect("store rwlock poisoned");
+        inner.remove_auth(key);
     }
 
-    async fn set_auth(&mut self, key: &PassSessionKeyType, auth: Auth) -> Result<(), StoreError> {
-        let mut inner = self.inner.write().await;
-        inner.set_auth(key, auth).await
-    }
-
-    async fn remove_auth(&mut self, key: &PassSessionKeyType) -> Result<Option<Auth>, StoreError> {
-        let mut inner = self.inner.write().await;
-        inner.remove_auth(key).await
-    }
-
-    async fn get_all_auth(&self) -> Result<HashMap<PassSessionKeyType, Auth>, StoreError> {
-        let inner = self.inner.read().await;
-        inner.get_all_auth().await
-    }
-
-    async fn set_all_auth(
-        &mut self,
-        auth: HashMap<PassSessionKeyType, Auth>,
-    ) -> Result<(), StoreError> {
-        let mut inner = self.inner.write().await;
-        inner.set_all_auth(auth).await
-    }
-
-    async fn remove_all_auth(&mut self) -> Result<(), StoreError> {
-        let mut inner = self.inner.write().await;
-        inner.remove_all_auth().await
+    fn get_all_auth(&self) -> HashMap<PassSessionKeyType, Auth> {
+        let inner = self.inner.read().expect("store rwlock poisoned");
+        inner.get_all_auth()
     }
 }
 
@@ -266,12 +248,12 @@ pub enum GetStoreError {
 
 impl PassSessionStore {
     pub fn new(
-        env: EnvId,
+        env: Environment,
         storage: Arc<dyn SessionStorage>,
         key_provider: Arc<dyn LocalKeyProvider>,
     ) -> Self {
         Self {
-            auth: Arc::new(RwLock::new(None)),
+            auth: Arc::new(Mutex::new(None)),
             env,
             storage,
             key_provider,
@@ -335,8 +317,8 @@ impl PassSessionStore {
         };
 
         Ok(Some(PassSessionStore {
-            env: EnvId::from(deserialized.env),
-            auth: Arc::new(RwLock::new(deserialized.auth)),
+            env: Environment::from(deserialized.env),
+            auth: Arc::new(Mutex::new(deserialized.auth)),
             storage,
             key_provider,
             account_type: deserialized.account_type,
@@ -345,7 +327,7 @@ impl PassSessionStore {
 
     pub async fn serialize(&self) -> anyhow::Result<()> {
         let serialized = {
-            let auth = self.auth.read().await;
+            let auth = self.auth.lock().expect("auth mutex poisoned");
             SerializedStore {
                 env: SerializedEnv::from(self.env.clone()),
                 auth: auth.clone(),
@@ -385,8 +367,8 @@ impl PassSessionStore {
         Ok(())
     }
 
-    pub async fn needs_extra_password(&self) -> bool {
-        let auth = self.auth.read().await;
+    pub fn needs_extra_password(&self) -> bool {
+        let auth = self.auth.lock().expect("auth mutex poisoned");
         if let Some(ref auth) = *auth {
             !auth.has_scope("pass")
         } else {

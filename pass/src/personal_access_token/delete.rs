@@ -1,10 +1,10 @@
-use crate::PassClient;
 use crate::common::CodeResponse;
+use crate::{PassClient, PassClientContext};
 use anyhow::Context;
 use muon::DELETE;
 use pass_domain::PersonalAccessTokenId;
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn delete_personal_access_token(
         &self,
         personal_access_token_id: &PersonalAccessTokenId,

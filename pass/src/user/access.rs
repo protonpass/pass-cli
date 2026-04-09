@@ -1,4 +1,4 @@
-use crate::PassClient;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
 use muon::GET;
 
@@ -117,7 +117,7 @@ pub struct GetUserInfoResponse {
     pub access: UserInfo,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn get_user_access(&self) -> Result<UserInfo> {
         let res = self
             .send(GET!("/pass/v1/user/access"))

@@ -1,4 +1,4 @@
-use crate::PassClient;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
 use muon::GET;
 use pass_domain::{
@@ -89,7 +89,7 @@ fn share_response_to_share(value: ShareResponse, is_pat: bool) -> Result<Share> 
     })
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn list_shares(&self) -> Result<Vec<Share>> {
         match self.get_cached_shares().await {
             Some(s) => Ok(s),
@@ -154,20 +154,19 @@ impl PassClient {
 mod tests {
     use super::*;
     use crate::test_tools::*;
-    use std::sync::Arc;
 
-    use muon::test::server::{HTTP, Server};
     use pass_domain::TargetType;
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_fetch_shares_empty_list(server: Arc<Server>) {
-        let client = server.pass_client().await;
+    #[muon_test::test]
+    async fn test_fetch_shares_empty_list(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
 
-        let handled = server.handler_with_method(Method::GET, "/pass/v1/share", move |_| {
+        let handled = api.handler_with_method(Method::GET, "/pass/v1/share", move |_| {
             success(GetSharesResponse { shares: vec![] })
         });
 
-        let recorder = server.new_recorder();
+        let recorder = api.new_recorder();
         let shares = client
             .list_shares()
             .await
@@ -180,15 +179,16 @@ mod tests {
         assert!(shares.is_empty());
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_fetch_shares_caches_result(server: Arc<Server>) {
-        let client = server.pass_client().await;
+    #[muon_test::test]
+    async fn test_fetch_shares_caches_result(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
 
-        let handled = server.handler_with_method(Method::GET, "/pass/v1/share", move |_| {
+        let handled = api.handler_with_method(Method::GET, "/pass/v1/share", move |_| {
             success(GetSharesResponse { shares: vec![] })
         });
 
-        let recorder = server.new_recorder();
+        let recorder = api.new_recorder();
 
         // First fetch
         client
@@ -207,13 +207,14 @@ mod tests {
         assert_eq!(1, requests.len());
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_fetch_shares_cache_used_for_get_share(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_fetch_shares_cache_used_for_get_share(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const SHARE_ID: &str = "Share1ID";
 
-        let client = server.pass_client().await;
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
 
-        server.handler_with_method(Method::GET, "/pass/v1/share", move |_| {
+        api.handler_with_method(Method::GET, "/pass/v1/share", move |_| {
             success(GetSharesResponse {
                 shares: vec![ShareResponse {
                     share_id: SHARE_ID.to_string(),
@@ -234,7 +235,7 @@ mod tests {
             })
         });
 
-        let recorder = server.new_recorder();
+        let recorder = api.new_recorder();
 
         // All shares fetch
         client
@@ -256,8 +257,9 @@ mod tests {
         assert_eq!(SHARE_ID, share.id.value());
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_fetch_shares_processes_response(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_fetch_shares_processes_response(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const SHARE_1_ID: &str = "Share1ID";
         const SHARE_1_ADDRESS_ID: &str = "Share1AddressID";
         const SHARE_1_VAULT_ID: &str = "Share1VaultID";
@@ -266,7 +268,7 @@ mod tests {
         const SHARE_2_VAULT_ID: &str = "Share2VaultID";
         const SHARE_2_ITEM_ID: &str = "Share2ItemID";
 
-        let client = server.pass_client().await;
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
 
         let content_1 = crate::utils::b64_encode(random_string(10).as_bytes());
         let share_response_1 = ShareResponse {
@@ -304,7 +306,7 @@ mod tests {
             group_id: None,
         };
         let share_response_2_clone = share_response_2.clone();
-        let handled = server.handler_with_method(Method::GET, "/pass/v1/share", move |_| {
+        let handled = api.handler_with_method(Method::GET, "/pass/v1/share", move |_| {
             success(GetSharesResponse {
                 shares: vec![
                     share_response_1_clone.clone(),
@@ -313,7 +315,7 @@ mod tests {
             })
         });
 
-        let recorder = server.new_recorder();
+        let recorder = api.new_recorder();
 
         let shares = client
             .list_shares()

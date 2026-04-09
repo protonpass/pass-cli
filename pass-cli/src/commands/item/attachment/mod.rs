@@ -1,6 +1,6 @@
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::Result;
 use clap::Subcommand;
-use pass::PassClient;
 use std::path::PathBuf;
 
 pub mod download;

@@ -1,5 +1,5 @@
-use crate::PassClient;
 use crate::folder::list::FolderResponse;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use muon::POST;
 use pass_domain::{FolderData, FolderId, ShareId, crypto};
@@ -29,7 +29,7 @@ struct CreateFolderResponse {
     folder: FolderResponse,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn create_folder(
         &self,
         share_id: &ShareId,

@@ -1,7 +1,7 @@
-use crate::PassClient;
+use crate::{PassClient, PassClientContext};
 use muon::GET;
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn ping(&self) -> anyhow::Result<()> {
         info!(">>> Sending ping");
         let res = self.send(GET!("/tests/ping")).await?.ok()?;

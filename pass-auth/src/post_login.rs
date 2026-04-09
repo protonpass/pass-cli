@@ -1,12 +1,12 @@
 use crate::config::PostLoginConfig;
+use crate::os::ProdContext;
 use crate::store::PassSessionStore;
 use anyhow::{Context, Result};
 use pass::{CreateVaultArgs, FirstTimeSetupKey, PassClient};
-use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::{Arc, RwLock};
 
 pub async fn perform_post_login_setup(
-    client: &PassClient,
+    client: &PassClient<ProdContext>,
     key: FirstTimeSetupKey,
     config: &PostLoginConfig,
 ) -> Result<()> {
@@ -35,11 +35,16 @@ pub async fn perform_post_login_setup(
 }
 
 pub async fn get_user_id_from_store(store: Arc<RwLock<PassSessionStore>>) -> Result<String> {
-    let store_guard = store.read().await;
-    if let Some(auth) = store_guard.auth.read().await.as_ref() {
+    let store_guard = store.read().expect("store rwlock poisoned");
+    let auth_guard = store_guard.auth.lock().expect("auth mutex poisoned");
+    if let Some(auth) = auth_guard.as_ref() {
         match auth {
-            muon::client::Auth::Internal { user_id, .. } => Ok(user_id.clone()),
-            _ => Err(anyhow::anyhow!("No user ID in auth")),
+            muon::auth::Auth::Internal { user_id, .. } => Ok(user_id.clone()),
+            muon::auth::Auth::External { user_id, .. } => Ok(user_id.clone()),
+            muon::auth::Auth::None => Err(anyhow::anyhow!("No user ID: auth is None")),
+            muon::auth::Auth::Anonymous { .. } => {
+                Err(anyhow::anyhow!("No user ID: anonymous auth"))
+            }
         }
     } else {
         Err(anyhow::anyhow!("No auth in store"))

@@ -1,6 +1,6 @@
-use crate::PassClient;
 use crate::invite::create::{CreateInvitesRequest, InviteRequest, NewUserInvitesRequest};
 use crate::permission::PermissionAction;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use muon::POST;
 use pass_domain::{ShareId, ShareRole};
@@ -13,7 +13,7 @@ struct CreateInvitesResponse {
     code: u32,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn share_vault(
         &self,
         share_id: &ShareId,

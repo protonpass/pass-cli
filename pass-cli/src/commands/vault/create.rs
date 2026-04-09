@@ -1,5 +1,6 @@
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result};
-use pass::{CreateVaultArgs, PassClient};
+use pass::CreateVaultArgs;
 
 pub async fn run(client: PassClient, name: String) -> Result<()> {
     let args = CreateVaultArgs::new(name).context("invalid args for create vault")?;

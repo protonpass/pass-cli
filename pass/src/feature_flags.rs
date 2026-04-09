@@ -1,4 +1,4 @@
-use crate::PassClient;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
 use muon::GET;
 use pass_domain::FeatureFlag;
@@ -24,7 +24,7 @@ struct FeatureFlagVariant {
     enabled: bool,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn has_feature_flag(&self, feature_flag: FeatureFlag) -> Result<bool> {
         let feature_flags = self
             .get_feature_flags()

@@ -1,6 +1,6 @@
-use crate::PassClient;
 use crate::permission::PermissionAction;
 use crate::utils::debug_response;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use muon::POST;
 use pass_domain::crypto::EncryptionTag;
@@ -45,7 +45,7 @@ struct CreateVaultResponseContent {
     pub vault_id: String,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn create_vault(&self, args: CreateVaultArgs) -> Result<(ShareId, VaultId)> {
         self.action_guard(PermissionAction::CreateVault).await?;
         let req = self
@@ -127,18 +127,16 @@ impl PassClient {
 mod tests {
     use super::*;
     use crate::test_tools::*;
-    use std::sync::Arc;
 
-    use muon::test::server::{HTTP, Server};
-
-    #[muon::test(scheme(HTTP))]
-    async fn test_create_vault(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_create_vault(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const VAULT_NAME: &str = "MyTestVault";
         const SHARE_ID: &str = "MyShareID";
         const VAULT_ID: &str = "MyVaultID";
 
-        let client = server.pass_client().await;
-        let handled = server.handler("/pass/v1/vault", |_| {
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
+        let handled = api.handler("/pass/v1/vault", |_| {
             success(CreateVaultResponse {
                 share: CreateVaultResponseContent {
                     share_id: SHARE_ID.to_string(),
@@ -147,7 +145,7 @@ mod tests {
             })
         });
 
-        let recorder = server.new_recorder();
+        let recorder = api.new_recorder();
         let (share_id, vault_id) = client
             .create_vault(CreateVaultArgs::new(VAULT_NAME.to_string()).unwrap())
             .await

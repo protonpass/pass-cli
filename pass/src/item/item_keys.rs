@@ -1,5 +1,5 @@
-use crate::PassClient;
 use crate::share::{EncryptedShareKey, ShareKey};
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use bytes::Bytes;
 use muon::GET;
@@ -115,7 +115,7 @@ struct ItemKeyResponse {
     pub key: String,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub(crate) async fn get_item_keys(
         &self,
         share_id: &ShareId,

@@ -1,6 +1,6 @@
-use crate::PassClient;
 use crate::permission::PermissionAction;
 use crate::utils::debug_response;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use muon::DELETE;
 use pass_domain::{ItemId, ItemType, ShareId, TelemetryEvent};
@@ -39,7 +39,7 @@ impl TelemetryEvent for ItemDeletedEvent {
     }
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn delete_item(&self, share_id: &ShareId, item_id: &ItemId) -> Result<()> {
         self.action_guard(PermissionAction::DeleteItem {
             share_id: share_id.clone(),

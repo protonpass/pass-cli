@@ -1,7 +1,7 @@
 pub mod event;
 
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result};
-use pass::PassClient;
 use pass_db::{ActivityTimeModel, DatabaseManager, TelemetryEventModel};
 use pass_domain::{TelemetryEvent, TelemetryEventData, TelemetryHandler};
 use std::sync::Arc;

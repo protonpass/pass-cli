@@ -1,7 +1,7 @@
 use crate::commands::OutputFormat;
 use crate::commands::item::common::ShareQuery;
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result};
-use pass::PassClient;
 use pass_domain::ItemId;
 
 #[derive(serde::Serialize)]

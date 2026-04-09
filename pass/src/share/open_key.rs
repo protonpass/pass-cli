@@ -1,10 +1,10 @@
-use crate::PassClient;
 use crate::crypto::share_key::{OpenShareKeyFlow, OpenShareKeyForGroupFlow};
 use crate::share::ShareKey;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use pass_domain::{AccountType, AddressId, DecryptedShareKey, GroupId, Share, ShareId};
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub(crate) async fn get_all_opened_share_keys(
         &self,
         share_id: &ShareId,
@@ -233,12 +233,13 @@ mod tests {
     use muon::rest::core::v4::{addresses, keys};
     use pass_domain::{DataToArmor, PlainText, PublicKey, ShareRole, ShareType, crypto};
 
-    #[muon::test(scheme(HTTP))]
-    async fn open_share_key_for_direct_share(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn open_share_key_for_direct_share(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const SHARE_ID: &str = "SHARE_ID";
         const VAULT_ID: &str = "VAULT_ID";
 
-        let client = server.pass_client().await;
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
 
         let share_key_content = crypto::generate_encryption_key();
         let encrypted_share_key = client.encrypt_for_user_key(share_key_content.clone()).await;
@@ -263,8 +264,9 @@ mod tests {
         assert_eq!(share_key_content, opened_share_key.value());
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn open_share_key_for_group_share(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn open_share_key_for_group_share(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const SHARE_ID: &str = "SHARE_ID";
         const VAULT_ID: &str = "VAULT_ID";
         const GROUP_ID: &str = "GROUP_ID";
@@ -272,7 +274,7 @@ mod tests {
         const GROUP_ADDRESS_EMAIL: &str = "group@address.test";
         const GROUP_ADDRESS_KEY_ID: &str = "GROUP_ADDRESS_KEY_ID";
 
-        let client = server.pass_client().await;
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
         let (group_private_key, group_armored_public_key) = {
             let crypto = client.client_features.get_pgp_crypto().await;
             let (private, public) = crypto
@@ -291,7 +293,7 @@ mod tests {
             (private, public_armored)
         };
 
-        server.handler_with_method(Method::GET, "/core/v4/groups", move |_| {
+        api.handler_with_method(Method::GET, "/core/v4/groups", move |_| {
             success(GetGroupsResponse {
                 groups: vec![GroupResponse {
                     id: GROUP_ID.to_string(),
@@ -319,7 +321,7 @@ mod tests {
         });
 
         let group_armored_public_key_clone = group_armored_public_key.clone();
-        server.handler_with_method(Method::GET, "/core/v4/keys/all", move |_| {
+        api.handler_with_method(Method::GET, "/core/v4/keys/all", move |_| {
             success(ActivePublicKeysResponse {
                 address: AddressDataResponse {
                     keys: vec![PublicAddressKeyResponse {

@@ -1,9 +1,9 @@
-use crate::PassClient;
 use crate::permission::PermissionAction;
+use crate::{PassClient, PassClientContext};
 use anyhow::Context;
 use pass_domain::{ItemId, ShareId, ShareRole};
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn share_item(
         &self,
         share_id: &ShareId,

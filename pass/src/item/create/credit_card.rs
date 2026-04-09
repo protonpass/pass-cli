@@ -1,6 +1,6 @@
 use super::ItemCreatedEvent;
-use crate::PassClient;
 use crate::permission::PermissionAction;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, bail};
 use pass_domain::{CardType, CreditCardItem, FolderId, ItemContent, ItemId, ItemType, ShareId};
 
@@ -93,7 +93,7 @@ fn validate_expiration_date(date: &str) -> Result<()> {
     Ok(())
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn create_credit_card(
         &self,
         share_id: &ShareId,
@@ -150,11 +150,9 @@ impl PassClient {
 mod tests {
     use super::*;
     use crate::test_tools::*;
-    use std::sync::Arc;
 
     use crate::item::create::common::{CreateItemRequest, CreateItemResponse};
     use crate::item::list::ItemRevision;
-    use muon::test::server::{HTTP, Server};
     use pass_domain::ItemData;
     use pass_domain::crypto::EncryptionTag;
 
@@ -286,8 +284,9 @@ mod tests {
         assert!(validate_expiration_date("2025-AB").is_err());
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_create_credit_card_full_data(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_create_credit_card_full_data(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const ITEM_TITLE: &str = "My Visa Card";
         const CARDHOLDER_NAME: &str = "John Doe";
         const CARD_NUMBER: &str = "4111111111111111";
@@ -298,17 +297,17 @@ mod tests {
         const SHARE_ID: &str = "MyShareID";
         const ITEM_ID: &str = "MyItemID";
 
-        setup(&server); // Set up user data
-        setup_paid_user(&server); // Override with paid plan
-        let client = server.pass_client_no_setup().await;
+        setup(&api); // Set up user data
+        setup_paid_user(&api); // Override with paid plan
+        let client = make_test_pass_client(raw_client, &api).await;
         client
             .setup_key_passphrases(TEST_PASSPHRASE)
             .await
             .expect("Error setting up passphrases");
-        setup_share_keys(&server, SHARE_ID);
-        setup_vault_share(&server, SHARE_ID);
+        setup_share_keys(&api, SHARE_ID);
+        setup_vault_share(&api, SHARE_ID);
 
-        let handled = server.handler_with_method(
+        let handled = api.handler_with_method(
             Method::POST,
             format!("/pass/v1/share/{SHARE_ID}/item"),
             move |_| {
@@ -331,7 +330,7 @@ mod tests {
             },
         );
 
-        let recorder = server.new_recorder();
+        let recorder = api.new_recorder();
         let item_id = client
             .create_credit_card(
                 &share_id!(SHARE_ID),
@@ -390,23 +389,24 @@ mod tests {
         assert_eq!(PIN, credit_card.pin);
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_create_credit_card_minimal_data(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_create_credit_card_minimal_data(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const ITEM_TITLE: &str = "Minimal Card";
         const SHARE_ID: &str = "MyShareID";
         const ITEM_ID: &str = "MyItemID";
 
-        setup(&server); // Set up user data
-        setup_paid_user(&server); // Override with paid plan
-        let client = server.pass_client_no_setup().await;
+        setup(&api); // Set up user data
+        setup_paid_user(&api); // Override with paid plan
+        let client = make_test_pass_client(raw_client, &api).await;
         client
             .setup_key_passphrases(TEST_PASSPHRASE)
             .await
             .expect("Error setting up passphrases");
-        setup_share_keys(&server, SHARE_ID);
-        setup_vault_share(&server, SHARE_ID);
+        setup_share_keys(&api, SHARE_ID);
+        setup_vault_share(&api, SHARE_ID);
 
-        let handled = server.handler_with_method(
+        let handled = api.handler_with_method(
             Method::POST,
             format!("/pass/v1/share/{SHARE_ID}/item"),
             move |_| {
@@ -429,7 +429,7 @@ mod tests {
             },
         );
 
-        let recorder = server.new_recorder();
+        let recorder = api.new_recorder();
         let item_id = client
             .create_credit_card(
                 &share_id!(SHARE_ID),
@@ -487,20 +487,21 @@ mod tests {
         }
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_create_credit_card_invalid_expiration_date(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_create_credit_card_invalid_expiration_date(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const ITEM_TITLE: &str = "Invalid Date Card";
         const SHARE_ID: &str = "MyShareID";
 
-        setup(&server); // Set up user data
-        setup_paid_user(&server); // Override with paid plan
-        let client = server.pass_client_no_setup().await;
+        setup(&api); // Set up user data
+        setup_paid_user(&api); // Override with paid plan
+        let client = make_test_pass_client(raw_client, &api).await;
         client
             .setup_key_passphrases(TEST_PASSPHRASE)
             .await
             .expect("Error setting up passphrases");
-        setup_share_keys(&server, SHARE_ID);
-        setup_vault_share(&server, SHARE_ID);
+        setup_share_keys(&api, SHARE_ID);
+        setup_vault_share(&api, SHARE_ID);
 
         // Test with invalid format (wrong separator)
         let result = client
@@ -528,25 +529,26 @@ mod tests {
         );
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_create_credit_card_sanitizes_card_number(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_create_credit_card_sanitizes_card_number(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const ITEM_TITLE: &str = "Card with Formatted Number";
         const CARD_NUMBER_WITH_SPACES: &str = "4111 1111 1111 1111";
         const CARD_NUMBER_SANITIZED: &str = "4111111111111111";
         const SHARE_ID: &str = "MyShareID";
         const ITEM_ID: &str = "MyItemID";
 
-        setup(&server); // Set up user data
-        setup_paid_user(&server); // Override with paid plan
-        let client = server.pass_client_no_setup().await;
+        setup(&api); // Set up user data
+        setup_paid_user(&api); // Override with paid plan
+        let client = make_test_pass_client(raw_client, &api).await;
         client
             .setup_key_passphrases(TEST_PASSPHRASE)
             .await
             .expect("Error setting up passphrases");
-        setup_share_keys(&server, SHARE_ID);
-        setup_vault_share(&server, SHARE_ID);
+        setup_share_keys(&api, SHARE_ID);
+        setup_vault_share(&api, SHARE_ID);
 
-        let handled = server.handler_with_method(
+        let handled = api.handler_with_method(
             Method::POST,
             format!("/pass/v1/share/{SHARE_ID}/item"),
             move |_| {
@@ -569,7 +571,7 @@ mod tests {
             },
         );
 
-        let recorder = server.new_recorder();
+        let recorder = api.new_recorder();
         let item_id = client
             .create_credit_card(
                 &share_id!(SHARE_ID),
@@ -623,25 +625,26 @@ mod tests {
         }
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_create_credit_card_sanitizes_card_number_with_hyphens(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_create_credit_card_sanitizes_card_number_with_hyphens(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const ITEM_TITLE: &str = "Card with Hyphens";
         const CARD_NUMBER_WITH_HYPHENS: &str = "4111-1111-1111-1111";
         const CARD_NUMBER_SANITIZED: &str = "4111111111111111";
         const SHARE_ID: &str = "MyShareID";
         const ITEM_ID: &str = "MyItemID";
 
-        setup(&server); // Set up user data
-        setup_paid_user(&server); // Override with paid plan
-        let client = server.pass_client_no_setup().await;
+        setup(&api); // Set up user data
+        setup_paid_user(&api); // Override with paid plan
+        let client = make_test_pass_client(raw_client, &api).await;
         client
             .setup_key_passphrases(TEST_PASSPHRASE)
             .await
             .expect("Error setting up passphrases");
-        setup_share_keys(&server, SHARE_ID);
-        setup_vault_share(&server, SHARE_ID);
+        setup_share_keys(&api, SHARE_ID);
+        setup_vault_share(&api, SHARE_ID);
 
-        let handled = server.handler_with_method(
+        let handled = api.handler_with_method(
             Method::POST,
             format!("/pass/v1/share/{SHARE_ID}/item"),
             move |_| {
@@ -664,7 +667,7 @@ mod tests {
             },
         );
 
-        let recorder = server.new_recorder();
+        let recorder = api.new_recorder();
         let item_id = client
             .create_credit_card(
                 &share_id!(SHARE_ID),

@@ -1,4 +1,4 @@
-use crate::PassClient;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
 use muon::GET;
 use pass_domain::{
@@ -93,7 +93,7 @@ struct GetEventsResponse {
     pub events: Events,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn listen_for_events(&self, handler: Arc<dyn UserEventsHandler>) -> Result<()> {
         let initial_event = handler
             .get_last_user_event_id()

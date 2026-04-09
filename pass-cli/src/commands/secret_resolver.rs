@@ -1,6 +1,7 @@
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result, anyhow};
 use async_trait::async_trait;
-use pass::{FindItemQuery, PassClient};
+use pass::FindItemQuery;
 use regex::Regex;
 use std::collections::HashMap;
 use std::sync::Arc;

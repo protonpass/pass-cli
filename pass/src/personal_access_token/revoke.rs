@@ -1,10 +1,10 @@
-use crate::PassClient;
 use crate::common::CodeResponse;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
 use muon::DELETE;
 use pass_domain::{PersonalAccessTokenId, ShareId};
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn revoke_personal_access_token_access(
         &self,
         personal_access_token_id: &PersonalAccessTokenId,
@@ -40,20 +40,18 @@ impl PassClient {
 mod tests {
     use super::*;
     use crate::test_tools::*;
-    use std::sync::Arc;
 
-    use muon::test::server::{HTTP, Server};
-
-    #[muon::test(scheme(HTTP))]
-    async fn test_revoke_access(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_revoke_access(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const PERSONAL_ACCESS_TOKEN_ID: &str = "test_sa_id";
         const SHARE_ID: &str = "test_share_id";
         const REVOKE_PATH: &str = "/pass/v1/personal-access-token/test_sa_id/access/test_share_id";
 
-        let client = server.pass_client().await;
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
 
         let revoke_handled =
-            server.handler_with_method(Method::DELETE, REVOKE_PATH, |_| success_code());
+            api.handler_with_method(Method::DELETE, REVOKE_PATH, |_| success_code());
 
         client
             .revoke_personal_access_token_access(

@@ -1,4 +1,4 @@
-use crate::PassClient;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use futures::stream::{self, StreamExt};
 use pass_domain::crypto::EncryptionTag;
@@ -8,7 +8,7 @@ const MAX_CONCURRENCY: usize = 20;
 
 struct VaultListCacheType;
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn list_vaults(&self) -> Result<Vec<Vault>> {
         {
             let cached: Option<Vec<Vault>> = self.cache.get(VaultListCacheType).await;
@@ -106,21 +106,20 @@ impl PassClient {
 mod tests {
     use super::*;
     use crate::test_tools::*;
-    use std::sync::Arc;
 
     use crate::share::list::{GetSharesResponse, ShareResponse};
-    use muon::test::server::{HTTP, Server};
     use pass_domain::{PermissionFlag, TargetType, VaultColor, VaultDisplayPreferences, VaultIcon};
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_list_vaults_empty(server: Arc<Server>) {
-        let client = server.pass_client().await;
+    #[muon_test::test]
+    async fn test_list_vaults_empty(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
 
-        let handled = server.handler_with_method(Method::GET, "/pass/v1/share", move |_| {
+        let handled = api.handler_with_method(Method::GET, "/pass/v1/share", move |_| {
             success(GetSharesResponse { shares: vec![] })
         });
 
-        let recorder = server.new_recorder();
+        let recorder = api.new_recorder();
         let vaults = client
             .list_vaults()
             .await
@@ -133,8 +132,9 @@ mod tests {
         assert!(vaults.is_empty());
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_list_vaults_with_content_filters_item_share(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_list_vaults_with_content_filters_item_share(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const SHARE_1_ID: &str = "Share1ID";
         const SHARE_1_VAULT_ID: &str = "Vault1";
         const SHARE_1_VAULT_NAME: &str = "Vault name";
@@ -143,8 +143,8 @@ mod tests {
         const SHARE_2_VAULT_ID: &str = "Share2VaultID";
         const SHARE_2_ITEM_ID: &str = "Share2ItemID";
 
-        let client = server.pass_client().await;
-        setup_share_keys(&server, SHARE_1_ID);
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
+        setup_share_keys(&api, SHARE_1_ID);
 
         let vault_data = VaultData::new(
             SHARE_1_VAULT_NAME.to_string(),
@@ -160,7 +160,7 @@ mod tests {
         let encrypted_vault_data =
             encrypt_for_vault_key(&serialized_vault_data, EncryptionTag::VaultContent);
         let encoded_encrypted_vault_data = crate::utils::b64_encode(&encrypted_vault_data);
-        let handled = server.handler_with_method(Method::GET, "/pass/v1/share", move |_| {
+        let handled = api.handler_with_method(Method::GET, "/pass/v1/share", move |_| {
             success(GetSharesResponse {
                 shares: vec![
                     ShareResponse {
@@ -199,7 +199,7 @@ mod tests {
             })
         });
 
-        let recorder = server.new_recorder();
+        let recorder = api.new_recorder();
         let vaults = client
             .list_vaults()
             .await

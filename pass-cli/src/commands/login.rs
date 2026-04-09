@@ -1,11 +1,13 @@
 use crate::auth::auth_helpers::create_authenticator;
 use crate::features::CliClientFeatures;
+use crate::helpers::CliPassClient as PassClient;
 use crate::helpers::{PassClientExt, SessionExt};
 use anyhow::{Context, Result};
-use pass::{Client, FirstTimeSetupKey, PassClient};
+use pass::FirstTimeSetupKey;
 use pass_auth::PassSessionStore;
+use pass_auth::os::ProdClient;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::RwLock;
 
 #[cfg(feature = "no-login-restriction")]
 async fn is_login_allowed(_client: &PassClient) -> Result<bool> {
@@ -53,7 +55,7 @@ pub(crate) async fn after_login(
 pub async fn run(
     username: Option<&str>,
     interactive: bool,
-    client: Client,
+    client: ProdClient,
     client_features: Arc<CliClientFeatures>,
     store: Arc<RwLock<PassSessionStore>>,
 ) -> Result<()> {

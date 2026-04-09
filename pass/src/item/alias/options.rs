@@ -1,4 +1,4 @@
-use crate::PassClient;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use muon::GET;
 use pass_domain::ShareId;
@@ -34,7 +34,7 @@ pub(crate) struct GetAliasOptionsResponse {
     pub options: AliasOptionsResponse,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub(crate) async fn get_alias_options(
         &self,
         share_id: &ShareId,

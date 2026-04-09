@@ -1,20 +1,19 @@
 use crate::callbacks::{AuthEventHandler, CredentialProvider};
 use crate::extra_password;
+use crate::os::{ProdClient, ProdContext};
 use crate::store::PassSessionStore;
 use anyhow::{Context, bail};
-use muon::client::flow::LoginFlow;
+use muon::auth::LoginFlow;
 use muon::{GET, Session};
-use pass::{Client, PassSessionKeyType};
-use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::{Arc, RwLock};
 
 pub struct AuthenticationResult {
-    pub client: Client,
+    pub client: ProdClient,
     pub password: String,
 }
 
 pub async fn perform_interactive_login(
-    client: Client,
+    client: ProdClient,
     username: &str,
     store: Arc<RwLock<PassSessionStore>>,
     credential_provider: Arc<dyn CredentialProvider>,
@@ -64,8 +63,8 @@ pub async fn perform_interactive_login(
 
     // Check if it needs extra password
     let needs_extra_password = {
-        let store_guard = store.read().await;
-        store_guard.needs_extra_password().await
+        let store_guard = store.read().expect("store rwlock poisoned");
+        store_guard.needs_extra_password()
     };
 
     if needs_extra_password {
@@ -81,7 +80,7 @@ pub async fn perform_interactive_login(
     Ok(AuthenticationResult { client, password })
 }
 
-async fn init_session(session: &Session<PassSessionKeyType>) -> anyhow::Result<()> {
+async fn init_session(session: &Session<ProdContext>) -> anyhow::Result<()> {
     session
         .send(GET!("/tests/ping"))
         .await

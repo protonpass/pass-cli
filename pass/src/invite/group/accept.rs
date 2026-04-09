@@ -1,4 +1,3 @@
-use crate::PassClient;
 use crate::common::CodeResponse;
 use crate::crypto::reencrypt_group_invite_keys::{
     GroupInviteKeyToReencrypt, ReencryptGroupInviteKeysFlow,
@@ -6,11 +5,12 @@ use crate::crypto::reencrypt_group_invite_keys::{
 use crate::invite::accept::{AcceptInviteKey, AcceptInviteRequest};
 use crate::invite::group::list::GroupInviteWithKeys;
 use crate::permission::PermissionAction;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
 use muon::POST;
 use pass_domain::InviteId;
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn accept_group_invite(&self, invite_id: &InviteId) -> Result<()> {
         self.action_guard(PermissionAction::AcceptInvite).await?;
 

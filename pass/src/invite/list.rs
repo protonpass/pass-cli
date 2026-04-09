@@ -1,6 +1,6 @@
-use crate::PassClient;
 use crate::crypto::open_invite_key::OpenInviteKeyFlow;
 use crate::permission::PermissionAction;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use muon::GET;
 use pass_domain::{Invite, InviteId, InviteVaultData, TargetType, VaultData, crypto};
@@ -82,7 +82,7 @@ pub struct InviteWithKeys {
     pub keys: Vec<InviteKey>,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn list_user_invites(&self) -> Result<Vec<InviteWithKeys>> {
         self.action_guard(PermissionAction::ListInvites).await?;
 

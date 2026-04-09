@@ -1,4 +1,4 @@
-use crate::PassClient;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use muon::GET;
 use muon::rest::core::v4::keys::Key;
@@ -35,7 +35,7 @@ struct UserKeysResponse {
     pub keys: Vec<Key>,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn get_user_keys(&self) -> Result<Vec<UserKey>> {
         if self.account_type() == AccountType::PersonalAccessToken {
             return Err(anyhow!(PERSONAL_ACCESS_TOKEN_ERROR));

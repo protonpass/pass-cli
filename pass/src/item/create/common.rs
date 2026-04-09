@@ -1,6 +1,6 @@
-use crate::PassClient;
 use crate::constants::ITEM_CONTENT_CONTENT_FORMAT_VERSION;
 use crate::item::list::ItemRevision;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use muon::POST;
 use pass_domain::{FolderId, ItemContent, ItemData, ItemId, ShareId, crypto};
@@ -25,7 +25,7 @@ pub(crate) struct CreateItemResponse {
     pub item: ItemRevision,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub(crate) async fn create_item_request(
         &self,
         share_id: &ShareId,

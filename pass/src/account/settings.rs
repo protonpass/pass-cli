@@ -1,4 +1,4 @@
-use crate::PassClient;
+use crate::{PassClient, PassClientContext};
 use anyhow::Result;
 use muon::GET;
 
@@ -13,7 +13,7 @@ struct AccountUserSettingsResponse {
     pub telemetry: u8,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn get_account_user_settings(&self) -> Result<AccountUserSettings> {
         let res = self.send(GET!("/core/v4/settings")).await?;
         let response: AccountUserSettingsResponse = assert_response!(res);

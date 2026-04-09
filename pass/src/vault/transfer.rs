@@ -1,5 +1,5 @@
-use crate::PassClient;
 use crate::common::CodeResponse;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
 use muon::PUT;
 use pass_domain::ShareId;
@@ -10,7 +10,7 @@ struct TransferOwnershipRequest {
     pub new_owner_share_id: String,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn transfer_ownership(
         &self,
         share_id: &ShareId,
@@ -43,12 +43,10 @@ mod tests {
     use super::*;
     use crate::test_tools::*;
 
-    use muon::Method;
-    use muon::test::server::Server;
+    use muon::http::Method;
     use pass_domain::{PermissionFlag, TargetType};
-    use std::sync::Arc;
 
-    fn setup_vault_share_with_owner(server: &Arc<Server>, share_id: &str, is_owner: bool) {
+    fn setup_vault_share_with_owner(server: &ProtonAPI, share_id: &str, is_owner: bool) {
         let share_response = crate::share::list::ShareResponse {
             share_id: share_id.to_string(),
             address_id: TEST_ADDRESS_ID.to_string(),
@@ -78,7 +76,7 @@ mod tests {
         });
     }
 
-    fn setup_item_share(server: &Arc<Server>, share_id: &str) {
+    fn setup_item_share(server: &ProtonAPI, share_id: &str) {
         let share_response = crate::share::list::ShareResponse {
             share_id: share_id.to_string(),
             address_id: TEST_ADDRESS_ID.to_string(),
@@ -108,16 +106,17 @@ mod tests {
         });
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_transfer_ownership_success(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_transfer_ownership_success(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const SHARE_ID: &str = "OwnerShareID";
         const MEMBER_SHARE_ID: &str = "MemberShareID";
 
-        let client = server.pass_client().await;
-        setup_vault_share_with_owner(&server, SHARE_ID, true);
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
+        setup_vault_share_with_owner(&api, SHARE_ID, true);
 
-        let recorder = server.new_recorder();
-        let handled = server.handler_with_method(
+        let recorder = api.new_recorder();
+        let handled = api.handler_with_method(
             Method::PUT,
             format!("/pass/v1/vault/{}/owner", SHARE_ID),
             |_| success_code(),
@@ -134,15 +133,16 @@ mod tests {
         assert_eq!(request.new_owner_share_id, MEMBER_SHARE_ID);
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_transfer_ownership_not_owner(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_transfer_ownership_not_owner(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const SHARE_ID: &str = "NonOwnerShareID";
         const MEMBER_SHARE_ID: &str = "MemberShareID";
 
-        let client = server.pass_client().await;
-        setup_vault_share_with_owner(&server, SHARE_ID, false);
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
+        setup_vault_share_with_owner(&api, SHARE_ID, false);
 
-        let handled = server.handler_with_method(
+        let handled = api.handler_with_method(
             Method::PUT,
             format!("/pass/v1/vault/{}/owner", SHARE_ID),
             |_| success(Empty),
@@ -164,15 +164,16 @@ mod tests {
         assert_not_hit!(handled);
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_transfer_ownership_item_share(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_transfer_ownership_item_share(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const SHARE_ID: &str = "ItemShareID";
         const MEMBER_SHARE_ID: &str = "MemberShareID";
 
-        let client = server.pass_client().await;
-        setup_item_share(&server, SHARE_ID);
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
+        setup_item_share(&api, SHARE_ID);
 
-        let handled = server.handler_with_method(
+        let handled = api.handler_with_method(
             Method::PUT,
             format!("/pass/v1/vault/{}/owner", SHARE_ID),
             |_| success(Empty),

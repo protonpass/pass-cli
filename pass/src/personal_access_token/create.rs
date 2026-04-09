@@ -1,4 +1,4 @@
-use crate::PassClient;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use base64::Engine;
 use muon::POST;
@@ -71,7 +71,7 @@ pub struct CreatePersonalAccessTokenResponse {
     pub env_var: String,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn create_personal_access_token(
         &self,
         args: CreatePersonalAccessTokenArgs,
@@ -160,12 +160,10 @@ impl PassClient {
 mod tests {
     use super::*;
     use crate::test_tools::*;
-    use std::sync::Arc;
 
-    use muon::test::server::{HTTP, Server};
-
-    #[muon::test(scheme(HTTP))]
-    async fn test_create_personal_access_token(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_create_personal_access_token(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const PERSONAL_ACCESS_TOKEN_NAME: &str = "MyTestPersonalAccessToken";
         const PERSONAL_ACCESS_TOKEN_ID: &str = "MyPersonalAccessTokenID";
         const TOKEN: &str = "pst_test_token_123";
@@ -173,8 +171,8 @@ mod tests {
         const MODIFY_TIME: i64 = 1704067200;
         const EXPIRATION_TIME: i64 = 1735689600;
 
-        let client = server.pass_client().await;
-        let handled = server.handler("/account/v4/personal-access-token", |_| {
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
+        let handled = api.handler("/account/v4/personal-access-token", |_| {
             success(CreatePersonalAccessTokenResponseData {
                 personal_access_token: PersonalAccessTokenData {
                     personal_access_token_id: PERSONAL_ACCESS_TOKEN_ID.to_string(),
@@ -188,7 +186,7 @@ mod tests {
             })
         });
 
-        let recorder = server.new_recorder();
+        let recorder = api.new_recorder();
         let response = client
             .create_personal_access_token(
                 CreatePersonalAccessTokenArgs::new(

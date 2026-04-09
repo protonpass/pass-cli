@@ -1,8 +1,8 @@
 use super::PersonalAccessTokenQuery;
 use crate::commands::Role;
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::Result;
 use clap::Subcommand;
-use pass::PassClient;
 
 mod grant;
 mod list_access;

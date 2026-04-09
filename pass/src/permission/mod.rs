@@ -1,4 +1,4 @@
-use crate::{PassClient, PassPlan, PlanType};
+use crate::{PassClient, PassClientContext, PassPlan, PlanType};
 use anyhow::{Context, Result, anyhow};
 use pass_domain::{AccountType, ItemContent, ItemId, PermissionFlag, ShareId, ShareType};
 
@@ -28,7 +28,7 @@ pub enum PermissionAction {
 
 display_for_enum!(PermissionAction);
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub(crate) fn not_personal_access_token_guard(&self) -> Result<()> {
         if self.account_type() == AccountType::PersonalAccessToken {
             return Err(anyhow!(

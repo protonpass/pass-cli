@@ -1,5 +1,5 @@
-use crate::PassClient;
 use crate::pagination::SincePagination;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use muon::GET;
 use pass_domain::{ItemId, PersonalAccessTokenId, ShareId, ShareRole, TargetType};
@@ -48,7 +48,7 @@ pub(crate) struct PersonalAccessTokenShare {
     pub expire_time: Option<i64>,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn list_personal_access_token_access(
         &self,
         personal_access_token_id: &PersonalAccessTokenId,
@@ -170,12 +170,10 @@ impl PassClient {
 mod tests {
     use super::*;
     use crate::test_tools::*;
-    use std::sync::Arc;
 
-    use muon::test::server::{HTTP, Server};
-
-    #[muon::test(scheme(HTTP))]
-    async fn test_list_personal_access_token_access_vault(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_list_personal_access_token_access_vault(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         use crate::share::keys::{GetShareKeysResponse, ShareKeyList, ShareKeyResponse};
         use crate::share::list::{GetSharesResponse, ShareResponse};
         use pass_domain::{VaultData, VaultDisplayPreferences, crypto};
@@ -188,7 +186,7 @@ mod tests {
         const LIST_ACCESS_PATH: &str = "/pass/v1/personal-access-token/test_sa_id/access";
         const SHARE_KEY_PATH: &str = "/pass/v1/share/parent_share_1/key";
 
-        let client = server.pass_client().await;
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
 
         // Prepare vault content
         let vault_data = VaultData {
@@ -211,7 +209,7 @@ mod tests {
         let encrypted_share_key_b64 = crate::utils::b64_encode(encrypted_share_key);
 
         // Mock share key endpoint
-        server.handler(SHARE_KEY_PATH, move |_| {
+        api.handler(SHARE_KEY_PATH, move |_| {
             success(GetShareKeysResponse {
                 keys: ShareKeyList {
                     keys: vec![ShareKeyResponse {
@@ -225,7 +223,7 @@ mod tests {
         });
 
         // Mock shares endpoint
-        server.handler_with_method(Method::GET, "/pass/v1/share", move |_| {
+        api.handler_with_method(Method::GET, "/pass/v1/share", move |_| {
             success(GetSharesResponse {
                 shares: vec![ShareResponse {
                     share_id: PARENT_SHARE_ID.to_string(),
@@ -246,7 +244,7 @@ mod tests {
             })
         });
 
-        let list_access_handled = server.handler(LIST_ACCESS_PATH, move |_| {
+        let list_access_handled = api.handler(LIST_ACCESS_PATH, move |_| {
             success(ListPersonalAccessTokenAccessResponse {
                 shares: vec![PersonalAccessTokenShare {
                     share_id: SHARE_ID.to_string(),

@@ -6,9 +6,9 @@ mod note;
 mod ssh_key;
 mod wifi;
 
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::Result;
 use clap::Subcommand;
-use pass::PassClient;
 
 #[derive(Subcommand)]
 pub enum CreateCommands {

@@ -1,7 +1,7 @@
 use super::VaultQuery;
 use crate::commands::Role;
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result};
-use pass::PassClient;
 use pass_domain::ShareRole;
 
 pub async fn run(client: PassClient, query: VaultQuery, email: String, role: Role) -> Result<()> {

@@ -1,5 +1,5 @@
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result, anyhow};
-use pass::PassClient;
 use pass_domain::PersonalAccessTokenId;
 
 pub async fn run(client: PassClient, personal_access_token_id: String) -> Result<()> {

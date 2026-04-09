@@ -1,6 +1,6 @@
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result, bail};
 use clap::Args;
-use pass::PassClient;
 use pass::custom::{
     CustomFieldContentPayload, CustomFieldPayload, CustomItemCreatePayload, CustomSectionPayload,
 };

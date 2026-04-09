@@ -1,20 +1,20 @@
 use crate::auth::auth_helpers::create_authenticator;
 use crate::features::CliClientFeatures;
-use crate::helpers::{PassClientExt, SessionExt};
+use crate::helpers::{CliPassClient as PassClient, PassClientExt, SessionExt};
 use anyhow::{Context, Result};
-use pass::{Client, FirstTimeSetupKey};
+use pass::FirstTimeSetupKey;
+use pass_auth::Authenticator;
 use pass_auth::PassSessionStore;
-use std::sync::Arc;
-use tokio::sync::RwLock;
+use pass_auth::os::ProdClient;
+use std::sync::{Arc, RwLock};
 
-pub async fn run(
+pub async fn login_personal_access_token(
+    authenticator: Authenticator,
     token_string_arg: Option<String>,
-    client: Client,
+    client: ProdClient,
     client_features: Arc<CliClientFeatures>,
     store: Arc<RwLock<PassSessionStore>>,
-) -> Result<()> {
-    let authenticator = create_authenticator(client_features.clone())?;
-
+) -> Result<PassClient> {
     // Perform personal access token login
     let (pass_client, personal_access_token_key) = authenticator
         .login_personal_access_token(
@@ -36,6 +36,25 @@ pub async fn run(
         ))
         .await
         .context("Error performing first time setup")?;
+
+    Ok(pass_client)
+}
+
+pub async fn run(
+    token_string_arg: Option<String>,
+    client: ProdClient,
+    client_features: Arc<CliClientFeatures>,
+    store: Arc<RwLock<PassSessionStore>>,
+) -> Result<()> {
+    let authenticator = create_authenticator(client_features.clone())?;
+    let pass_client = login_personal_access_token(
+        authenticator,
+        token_string_arg,
+        client,
+        client_features,
+        store,
+    )
+    .await?;
 
     // Get and display personal access token name
     let personal_access_token_name = pass_client

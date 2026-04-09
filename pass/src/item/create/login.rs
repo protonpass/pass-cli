@@ -1,5 +1,5 @@
 use super::ItemCreatedEvent;
-use crate::PassClient;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
 use pass_domain::{FolderId, ItemContent, ItemId, ItemType, LoginItem, ShareId};
 
@@ -12,7 +12,7 @@ pub struct LoginItemCreatePayload {
     pub urls: Vec<String>,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn create_login(
         &self,
         share_id: &ShareId,
@@ -52,16 +52,15 @@ impl PassClient {
 mod tests {
     use super::*;
     use crate::test_tools::*;
-    use std::sync::Arc;
 
     use crate::item::create::common::{CreateItemRequest, CreateItemResponse};
     use crate::item::list::ItemRevision;
-    use muon::test::server::{HTTP, Server};
     use pass_domain::ItemData;
     use pass_domain::crypto::EncryptionTag;
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_create_login(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_create_login(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const ITEM_TITLE: &str = "MyItem";
         const ITEM_EMAIL: &str = "my@item.email.local";
         const ITEM_USERNAME: &str = "MyUsername";
@@ -70,11 +69,11 @@ mod tests {
         const SHARE_ID: &str = "MyShareID";
         const ITEM_ID: &str = "MyItemID";
 
-        let client = server.pass_client().await;
-        setup_share_keys(&server, SHARE_ID);
-        setup_vault_share(&server, SHARE_ID);
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
+        setup_share_keys(&api, SHARE_ID);
+        setup_vault_share(&api, SHARE_ID);
 
-        let handled = server.handler_with_method(
+        let handled = api.handler_with_method(
             Method::POST,
             format!("/pass/v1/share/{SHARE_ID}/item"),
             move |_| {
@@ -97,7 +96,7 @@ mod tests {
             },
         );
 
-        let recorder = server.new_recorder();
+        let recorder = api.new_recorder();
         let item_id = client
             .create_login(
                 &share_id!(SHARE_ID),

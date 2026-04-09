@@ -1,5 +1,5 @@
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result};
-use pass::PassClient;
 use pass_domain::ShareId;
 
 pub async fn run(client: PassClient, share_id: ShareId, member_share_id: ShareId) -> Result<()> {

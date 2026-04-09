@@ -1,9 +1,10 @@
 use crate::commands::item::common::{ItemQuery, ShareQuery};
 use crate::commands::secret_resolver::ItemReference;
 use crate::commands::{OutputFormat, settings_helper};
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result, anyhow, bail};
 use jiff::Timestamp;
-use pass::{FindItemQuery, PassClient};
+use pass::FindItemQuery;
 use pass_domain::Field;
 use proton_pass_common::totp::TOTP;
 use serde::Serialize;

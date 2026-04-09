@@ -1,7 +1,7 @@
+use crate::helpers::CliPassClient as PassClient;
 use crate::telemetry::event::CommandEvent;
 use crate::utils::get_base_dir;
 use anyhow::{Context, Result, anyhow};
-use pass::PassClient;
 use tracing::warn;
 
 async fn remove_local_data() -> Result<()> {

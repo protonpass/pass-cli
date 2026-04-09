@@ -1,6 +1,6 @@
-use crate::PassClient;
 use crate::common::CodeResponse;
 use crate::item::item_keys::OpenedItemKey;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use muon::PUT;
 use pass_domain::{FolderId, ItemId, ShareId, crypto};
@@ -31,7 +31,7 @@ struct MoveItemToFolderRequest {
     items: Vec<MoveItemToFolderItem>,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn move_item_to_folder(
         &self,
         share_id: &ShareId,

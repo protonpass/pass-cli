@@ -1,7 +1,7 @@
 use super::secret_resolver::{PassClientResolver, SecretReference, SecretResolver};
+use crate::helpers::CliPassClient as PassClient;
 use crate::telemetry::event::CommandEvent;
 use anyhow::{Context, Result, anyhow};
-use pass::PassClient;
 use regex::Regex;
 use std::collections::HashMap;
 use std::fs;

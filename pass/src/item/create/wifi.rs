@@ -1,6 +1,6 @@
 use super::ItemCreatedEvent;
-use crate::PassClient;
 use crate::permission::PermissionAction;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, bail};
 use pass_domain::{FolderId, ItemContent, ItemId, ItemType, ShareId, WifiItem, WifiSecurity};
 
@@ -27,7 +27,7 @@ fn validate_ssid(ssid: &str) -> Result<()> {
     Ok(())
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn create_wifi(
         &self,
         share_id: &ShareId,
@@ -75,11 +75,9 @@ impl PassClient {
 mod tests {
     use super::*;
     use crate::test_tools::*;
-    use std::sync::Arc;
 
     use crate::item::create::common::{CreateItemRequest, CreateItemResponse};
     use crate::item::list::ItemRevision;
-    use muon::test::server::{HTTP, Server};
     use pass_domain::ItemData;
     use pass_domain::crypto::EncryptionTag;
 
@@ -113,8 +111,9 @@ mod tests {
     }
 
     // Integration tests using muon test server
-    #[muon::test(scheme(HTTP))]
-    async fn test_create_wifi_full_data(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_create_wifi_full_data(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const ITEM_TITLE: &str = "Office WiFi";
         const SSID: &str = "Office-Network-5G";
         const PASSWORD: &str = "secure_password123";
@@ -122,18 +121,18 @@ mod tests {
         const SHARE_ID: &str = "MyShareID";
         const ITEM_ID: &str = "MyItemID";
 
-        setup(&server); // Set up user data
-        setup_paid_user(&server); // Override with paid plan
-        let client = server.pass_client_no_setup().await;
+        setup(&api); // Set up user data
+        setup_paid_user(&api); // Override with paid plan
+        let client = make_test_pass_client(raw_client, &api).await;
         client
             .setup_key_passphrases(TEST_PASSPHRASE)
             .await
             .expect("Error setting up passphrases");
-        setup_share_keys(&server, SHARE_ID);
-        setup_vault_share(&server, SHARE_ID);
+        setup_share_keys(&api, SHARE_ID);
+        setup_vault_share(&api, SHARE_ID);
 
-        let recorder = server.new_recorder();
-        server.handler("/pass/v1/share/MyShareID/item", move |_| {
+        let recorder = api.new_recorder();
+        api.handler("/pass/v1/share/MyShareID/item", move |_| {
             success(CreateItemResponse {
                 item: ItemRevision {
                     item_id: ITEM_ID.to_string(),
@@ -204,25 +203,26 @@ mod tests {
         }
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_create_wifi_minimal_data(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_create_wifi_minimal_data(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const ITEM_TITLE: &str = "Open Network";
         const SSID: &str = "GuestWiFi";
         const SHARE_ID: &str = "MyShareID";
         const ITEM_ID: &str = "MyItemID";
 
-        setup(&server); // Set up user data
-        setup_paid_user(&server); // Override with paid plan
-        let client = server.pass_client_no_setup().await;
+        setup(&api); // Set up user data
+        setup_paid_user(&api); // Override with paid plan
+        let client = make_test_pass_client(raw_client, &api).await;
         client
             .setup_key_passphrases(TEST_PASSPHRASE)
             .await
             .expect("Error setting up passphrases");
-        setup_share_keys(&server, SHARE_ID);
-        setup_vault_share(&server, SHARE_ID);
+        setup_share_keys(&api, SHARE_ID);
+        setup_vault_share(&api, SHARE_ID);
 
-        let recorder = server.new_recorder();
-        server.handler("/pass/v1/share/MyShareID/item", move |_| {
+        let recorder = api.new_recorder();
+        api.handler("/pass/v1/share/MyShareID/item", move |_| {
             success(CreateItemResponse {
                 item: ItemRevision {
                     item_id: ITEM_ID.to_string(),
@@ -292,26 +292,27 @@ mod tests {
         }
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_create_wifi_different_security_types(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_create_wifi_different_security_types(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const ITEM_TITLE: &str = "Test Network";
         const SSID: &str = "TestSSID";
         const PASSWORD: &str = "password";
         const SHARE_ID: &str = "MyShareID";
         const ITEM_ID: &str = "MyItemID";
 
-        setup(&server);
-        setup_paid_user(&server);
-        let client = server.pass_client_no_setup().await;
+        setup(&api);
+        setup_paid_user(&api);
+        let client = make_test_pass_client(raw_client, &api).await;
         client
             .setup_key_passphrases(TEST_PASSPHRASE)
             .await
             .expect("Error setting up passphrases");
-        setup_share_keys(&server, SHARE_ID);
-        setup_vault_share(&server, SHARE_ID);
+        setup_share_keys(&api, SHARE_ID);
+        setup_vault_share(&api, SHARE_ID);
 
-        let recorder = server.new_recorder();
-        server.handler("/pass/v1/share/MyShareID/item", move |_| {
+        let recorder = api.new_recorder();
+        api.handler("/pass/v1/share/MyShareID/item", move |_| {
             success(CreateItemResponse {
                 item: ItemRevision {
                     item_id: ITEM_ID.to_string(),
@@ -372,19 +373,20 @@ mod tests {
         }
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_create_wifi_invalid_ssid_empty(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_create_wifi_invalid_ssid_empty(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const SHARE_ID: &str = "MyShareID";
 
-        setup(&server);
-        setup_paid_user(&server);
-        let client = server.pass_client_no_setup().await;
+        setup(&api);
+        setup_paid_user(&api);
+        let client = make_test_pass_client(raw_client, &api).await;
         client
             .setup_key_passphrases(TEST_PASSPHRASE)
             .await
             .expect("Error setting up passphrases");
-        setup_share_keys(&server, SHARE_ID);
-        setup_vault_share(&server, SHARE_ID);
+        setup_share_keys(&api, SHARE_ID);
+        setup_vault_share(&api, SHARE_ID);
 
         let result = client
             .create_wifi(
@@ -409,19 +411,20 @@ mod tests {
         );
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_create_wifi_invalid_ssid_whitespace(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_create_wifi_invalid_ssid_whitespace(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const SHARE_ID: &str = "MyShareID";
 
-        setup(&server);
-        setup_paid_user(&server);
-        let client = server.pass_client_no_setup().await;
+        setup(&api);
+        setup_paid_user(&api);
+        let client = make_test_pass_client(raw_client, &api).await;
         client
             .setup_key_passphrases(TEST_PASSPHRASE)
             .await
             .expect("Error setting up passphrases");
-        setup_share_keys(&server, SHARE_ID);
-        setup_vault_share(&server, SHARE_ID);
+        setup_share_keys(&api, SHARE_ID);
+        setup_vault_share(&api, SHARE_ID);
 
         let result = client
             .create_wifi(
@@ -446,25 +449,26 @@ mod tests {
         );
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_create_wifi_unicode_ssid(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_create_wifi_unicode_ssid(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const ITEM_TITLE: &str = "Unicode Network";
         const SSID: &str = "网络-测试";
         const SHARE_ID: &str = "MyShareID";
         const ITEM_ID: &str = "MyItemID";
 
-        setup(&server);
-        setup_paid_user(&server);
-        let client = server.pass_client_no_setup().await;
+        setup(&api);
+        setup_paid_user(&api);
+        let client = make_test_pass_client(raw_client, &api).await;
         client
             .setup_key_passphrases(TEST_PASSPHRASE)
             .await
             .expect("Error setting up passphrases");
-        setup_share_keys(&server, SHARE_ID);
-        setup_vault_share(&server, SHARE_ID);
+        setup_share_keys(&api, SHARE_ID);
+        setup_vault_share(&api, SHARE_ID);
 
-        let recorder = server.new_recorder();
-        server.handler("/pass/v1/share/MyShareID/item", move |_| {
+        let recorder = api.new_recorder();
+        api.handler("/pass/v1/share/MyShareID/item", move |_| {
             success(CreateItemResponse {
                 item: ItemRevision {
                     item_id: ITEM_ID.to_string(),

@@ -2,9 +2,9 @@ mod list;
 
 use crate::commands::OutputFormat;
 use crate::commands::share::list::ShareListMode;
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result};
 use clap::Subcommand;
-use pass::PassClient;
 
 #[derive(Subcommand)]
 pub enum ShareCommands {

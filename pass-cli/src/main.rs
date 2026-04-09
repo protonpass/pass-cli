@@ -2,10 +2,11 @@
 extern crate tracing;
 
 use crate::features::CliClientFeatures;
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result, anyhow};
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::{Shell, generate};
-use pass::{AnyhowErrorExt, PassClient};
+use pass::AnyhowErrorExt;
 use std::sync::Arc;
 use zeroizing_alloc::ZeroAlloc;
 
@@ -303,18 +304,18 @@ async fn run() -> Result<()> {
             };
         }
         Some(session) => {
-            if !session.is_logged_in().await {
+            if !session.is_authenticated().await {
                 error!("Session is some but is not logged in");
                 commands::logout::cleanup().await?;
                 return Err(anyhow!("This operation requires an authenticated client"));
             }
             // Check if session needs extra password and get account type
             let (needs_extra_password, user_id, account_type) = {
-                let store_guard = store.read().await;
-                let needs_extra_password = store_guard.needs_extra_password().await;
-                let auth = store_guard.auth.read().await;
+                let store_guard = store.read().expect("store rwlock poisoned");
+                let needs_extra_password = store_guard.needs_extra_password();
+                let auth = store_guard.auth.lock().expect("auth mutex poisoned");
                 let user_id = auth
-                    .clone()
+                    .as_ref()
                     .and_then(|a| a.user_id().map(|u| u.to_string()));
                 let account_type = store_guard.account_type();
 

@@ -1,6 +1,6 @@
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result, anyhow};
 use clap::{Args, Subcommand};
-use pass::PassClient;
 use pass::ssh_key::SshKeyItemCreatePayload;
 use std::io::Read;
 use std::path::PathBuf;

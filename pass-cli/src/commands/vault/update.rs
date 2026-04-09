@@ -1,6 +1,7 @@
 use super::VaultQuery;
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result};
-use pass::{PassClient, UpdateVaultArgs};
+use pass::UpdateVaultArgs;
 
 pub async fn run(client: PassClient, query: VaultQuery, name: String) -> Result<()> {
     let share_id = query.resolve(&client).await?;

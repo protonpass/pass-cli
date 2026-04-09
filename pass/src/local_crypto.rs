@@ -1,9 +1,9 @@
-use crate::PassClient;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use pass_domain::LocalKey;
 use pass_domain::crypto::EncryptionTag;
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn encrypt_with_local_key(&self, data: &[u8]) -> Result<Vec<u8>> {
         let local_key = self.get_local_key().await?;
         match pass_domain::crypto::encrypt(data, local_key.as_ref(), EncryptionTag::Unknown) {

@@ -1,6 +1,6 @@
-use crate::PassClient;
 use crate::item::open::ItemWithItemKey;
 use crate::pagination::SincePagination;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
 use muon::GET;
 use pass_domain::{Item, ShareId};
@@ -76,7 +76,7 @@ pub(crate) struct ItemRevision {
     pub folder_id: Option<String>,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn list_items(&self, share_id: &ShareId) -> Result<Vec<Item>> {
         {
             let share_id = share_id.clone();
@@ -189,7 +189,7 @@ mod tests {
     use std::sync::{Arc, atomic::AtomicBool};
 
     fn setup_list_items_endpoint(
-        server: &Arc<Server>,
+        server: &ProtonAPI,
         share_id: &str,
         revisions: Vec<ItemRevision>,
     ) -> Arc<AtomicBool> {
@@ -385,20 +385,21 @@ mod tests {
         }
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_list_items_empty_response(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_list_items_empty_response(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const SHARE_ID: &str = "TestShareID1";
 
-        let client = server.pass_client().await;
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
 
         // Setup vault share and keys
-        setup_vault_share(&server, SHARE_ID);
-        setup_share_keys(&server, SHARE_ID);
+        setup_vault_share(&api, SHARE_ID);
+        setup_share_keys(&api, SHARE_ID);
 
         // Setup empty items list
-        let handled = setup_list_items_endpoint(&server, SHARE_ID, vec![]);
+        let handled = setup_list_items_endpoint(&api, SHARE_ID, vec![]);
 
-        let recorder = server.new_recorder();
+        let recorder = api.new_recorder();
         let items = client
             .list_items(&share_id!(SHARE_ID))
             .await
@@ -418,22 +419,23 @@ mod tests {
         assert!(items.is_empty(), "Expected empty items list");
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_list_items_two_shares_with_one_item_each(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_list_items_two_shares_with_one_item_each(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const SHARE_ID_1: &str = "TestShareID1";
         const SHARE_ID_2: &str = "TestShareID2";
         const ITEM_ID_1: &str = "Item1";
         const ITEM_ID_2: &str = "Item2";
 
-        let client = server.pass_client().await;
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
 
         // Setup first share
-        setup_vault_share(&server, SHARE_ID_1);
-        setup_share_keys(&server, SHARE_ID_1);
+        setup_vault_share(&api, SHARE_ID_1);
+        setup_share_keys(&api, SHARE_ID_1);
 
         // Setup second share
-        setup_vault_share(&server, SHARE_ID_2);
-        setup_share_keys(&server, SHARE_ID_2);
+        setup_vault_share(&api, SHARE_ID_2);
+        setup_share_keys(&api, SHARE_ID_2);
 
         // Create item data for first share
         let item_data_1 = create_random_item();
@@ -462,8 +464,8 @@ mod tests {
             .build();
 
         // Setup endpoints
-        let handled_1 = setup_list_items_endpoint(&server, SHARE_ID_1, vec![revision_1]);
-        let handled_2 = setup_list_items_endpoint(&server, SHARE_ID_2, vec![revision_2]);
+        let handled_1 = setup_list_items_endpoint(&api, SHARE_ID_1, vec![revision_1]);
+        let handled_2 = setup_list_items_endpoint(&api, SHARE_ID_2, vec![revision_2]);
 
         // Fetch items for first share
         let items_1 = client
@@ -488,16 +490,17 @@ mod tests {
         assert_eq!(item_data_2.title, items_2[0].content.title);
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_list_items_cache_is_used(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_list_items_cache_is_used(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const SHARE_ID: &str = "TestShareID1";
         const ITEM_ID: &str = "Item1";
 
-        let client = server.pass_client().await;
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
 
         // Setup vault share and keys
-        setup_vault_share(&server, SHARE_ID);
-        setup_share_keys(&server, SHARE_ID);
+        setup_vault_share(&api, SHARE_ID);
+        setup_share_keys(&api, SHARE_ID);
 
         // Create item data
         let item_data = create_random_item();
@@ -511,9 +514,9 @@ mod tests {
             .build();
 
         // Setup endpoint
-        let handled = setup_list_items_endpoint(&server, SHARE_ID, vec![revision]);
+        let handled = setup_list_items_endpoint(&api, SHARE_ID, vec![revision]);
 
-        let recorder = server.new_recorder();
+        let recorder = api.new_recorder();
 
         // First fetch - should hit the endpoint
         let items_1 = client

@@ -1,7 +1,7 @@
 use crate::commands::OutputFormat;
+use crate::helpers::CliPassClient as PassClient;
 use crate::helpers::PassClientExt;
 use anyhow::{Context, Result};
-use pass::PassClient;
 use pass_db::{Setting, UserSettingModel};
 use pass_domain::ShareId;
 

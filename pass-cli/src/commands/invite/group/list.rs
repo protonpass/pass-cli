@@ -1,6 +1,6 @@
 use crate::commands::OutputFormat;
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result};
-use pass::PassClient;
 use pass_domain::Invite;
 
 #[derive(serde::Serialize)]

@@ -1,8 +1,8 @@
 use super::{PatExpiration, PersonalAccessTokenQuery, expiration_to_timestamp};
 use crate::commands::OutputFormat;
 use crate::commands::settings_helper::get_format;
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::Result;
-use pass::PassClient;
 use serde::Serialize;
 
 #[derive(Clone, Debug, Serialize)]

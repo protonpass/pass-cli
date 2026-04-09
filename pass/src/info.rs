@@ -1,12 +1,12 @@
-use crate::PassClient;
+use crate::{PassClient, PassClientContext};
 use anyhow::Result;
 use muon::GET;
-use muon::env::EnvId;
+use muon::env::Environment;
 
 #[derive(Debug)]
 pub struct UserInfo {
     pub user: UserInfoUser,
-    pub env: EnvId,
+    pub env: Environment,
 }
 
 #[derive(Debug)]
@@ -42,7 +42,7 @@ struct UserResponse {
     pub email: String,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn get_info(&self) -> Result<UserInfo> {
         let res = self.send(GET!("/core/v4/users")).await?;
         let response: GetUserResponse = assert_response!(res);

@@ -11,9 +11,10 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
-muon = { version = "1.9.0", registry = "proton", features = ["tls-tokio-rustls", "unsealed", "util", "testing-runner", "testing-server", "other-platform"] }
-proton-crypto = { version = "0.11.0", registry = "proton", default-features = false, features = ["rustpgp"] }
-proton-crypto-account = { version = "0.16.0", registry = "proton", default-features = false, features = ["rustpgp"] }
+muon = { version = "2.2.0", registry = "proton", features = ["transport-hyper", "full-base", "unsealed", "other-platform"] }
+muon-test = { version = "1.0.0", registry = "proton" }
+proton-crypto = { version = "0.12.0", registry = "proton", default-features = false, features = ["rustpgp"] }
+proton-crypto-account = { version = "0.18.0", registry = "proton", default-features = false, features = ["rustpgp"] }
 
 proton-pass-common = {  git = "https://github.com/protonpass/proton-pass-common.git", tag = "1.0.0" }
 

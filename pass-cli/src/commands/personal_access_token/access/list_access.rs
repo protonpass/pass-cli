@@ -1,9 +1,10 @@
 use super::super::PersonalAccessTokenQuery;
 use crate::commands::{OutputFormat, settings_helper};
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result};
 use jiff::Timestamp;
 use jiff::tz::TimeZone;
-use pass::{PassClient, PersonalAccessTokenAccess};
+use pass::PersonalAccessTokenAccess;
 
 pub async fn run(
     client: PassClient,

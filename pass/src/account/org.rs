@@ -1,4 +1,4 @@
-use crate::PassClient;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use muon::GET;
 use pass_domain::{
@@ -29,7 +29,7 @@ impl OrganizationKey {
     }
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub(crate) async fn get_organization_key(&self) -> Result<OrganizationKey> {
         {
             let cached = self.cache.get(OrgKeyCacheType).await;

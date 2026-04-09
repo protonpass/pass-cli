@@ -28,7 +28,7 @@ pub(crate) mod muon_ext;
 mod pagination;
 pub mod password;
 mod permission;
-mod personal_access_token;
+pub(crate) mod personal_access_token;
 mod ping;
 mod share;
 mod telemetry;
@@ -38,7 +38,7 @@ mod utils;
 mod vault;
 
 pub use account::settings::AccountUserSettings;
-pub use client::{Client, PassClient, PassSessionKeyType};
+pub use client::{PassClient, PassClientContext, PassSessionKeyType};
 pub use error::{AnyhowErrorExt, SessionInvalidatedError};
 pub use first_time_setup::FirstTimeSetupKey;
 pub use folder::create::CreateFolderPayload;

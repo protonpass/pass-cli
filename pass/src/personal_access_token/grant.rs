@@ -1,5 +1,5 @@
-use crate::PassClient;
 use crate::common::CodeResponse;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use muon::POST;
 use pass_domain::crypto::EncryptionTag;
@@ -27,7 +27,7 @@ struct PersonalAccessTokenGrantAccessRequest {
     keys: Vec<KeyRotationKeyPair>,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn grant_personal_access_token_access(
         &self,
         personal_access_token_id: &PersonalAccessTokenId,
@@ -212,19 +212,17 @@ mod tests {
     };
     use crate::test_tools::*;
     use pass_domain::PlainText;
-    use std::sync::Arc;
 
-    use muon::test::server::{HTTP, Server};
-
-    #[muon::test(scheme(HTTP))]
-    async fn test_grant_vault_access(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_grant_vault_access(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const PERSONAL_ACCESS_TOKEN_ID: &str = "test_sa_id";
         const SHARE_ID: &str = "test_share_id";
         const VAULT_ID: &str = "test_vault_id";
         const GRANT_PATH: &str = "/pass/v1/personal-access-token/test_sa_id/access";
         const SHARE_KEY_PATH: &str = "/pass/v1/share/test_share_id/key";
 
-        let client = server.pass_client().await;
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
 
         let personal_access_token_key = crypto::generate_encryption_key();
 
@@ -245,7 +243,7 @@ mod tests {
         let name = "TestPersonalAccessToken".to_string();
         let encrypted_key_b64 = crate::utils::b64_encode(encrypted_personal_access_token_key);
 
-        let list_handled = server.handler("/account/v4/personal-access-token", move |_| {
+        let list_handled = api.handler("/account/v4/personal-access-token", move |_| {
             success(ListPersonalAccessTokensResponse {
                 personal_access_tokens: PersonalAccessTokensWrapper {
                     personal_access_tokens: vec![PersonalAccessTokenData {
@@ -267,7 +265,7 @@ mod tests {
         let encrypted_share_key = client.encrypt_for_user_key(share_key_raw.clone()).await;
         let encrypted_share_key_b64 = crate::utils::b64_encode(encrypted_share_key.clone());
 
-        let share_key_handled = server.handler(SHARE_KEY_PATH, move |_| {
+        let share_key_handled = api.handler(SHARE_KEY_PATH, move |_| {
             use crate::share::keys::{GetShareKeysResponse, ShareKeyList, ShareKeyResponse};
             success(GetShareKeysResponse {
                 keys: ShareKeyList {
@@ -282,7 +280,7 @@ mod tests {
         });
 
         // Mock shares list endpoint
-        let share_handled = server.handler_with_method(Method::GET, "/pass/v1/share", move |_| {
+        let share_handled = api.handler_with_method(Method::GET, "/pass/v1/share", move |_| {
             use crate::share::list::{GetSharesResponse, ShareResponse};
             success(GetSharesResponse {
                 shares: vec![ShareResponse {
@@ -304,9 +302,9 @@ mod tests {
             })
         });
 
-        let grant_handled = server.handler(GRANT_PATH, |_| success_code());
+        let grant_handled = api.handler(GRANT_PATH, |_| success_code());
 
-        let recorder = server.new_recorder();
+        let recorder = api.new_recorder();
 
         client
             .grant_personal_access_token_access(

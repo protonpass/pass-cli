@@ -1,6 +1,6 @@
-use crate::PassClient;
 use crate::pagination::Pagination;
 use crate::share::{EncryptedShareKey, ShareKey, ShareKeys};
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
 use async_lock::{Mutex, RwLock};
 use muon::GET;
@@ -106,7 +106,7 @@ pub struct ShareKeyResponse {
     pub create_time: i64,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub(crate) async fn get_share_keys(&self, share_id: &ShareId) -> Result<ShareKeys> {
         // Ensure the ShareKeyCache exists in the client cache
         self.cache

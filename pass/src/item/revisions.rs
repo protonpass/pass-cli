@@ -1,6 +1,6 @@
-use crate::PassClient;
 use crate::item::list::ItemRevision;
 use crate::pagination::SincePagination;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
 use muon::GET;
 use pass_domain::{ItemId, ShareId};
@@ -41,7 +41,7 @@ impl ItemRevisionsCacheKey {
 
 type ItemRevisionsForShareItemCache = HashMap<ItemRevisionsCacheKey, Vec<ItemRevision>>;
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub(crate) async fn get_item_revisions(
         &self,
         share_id: &ShareId,

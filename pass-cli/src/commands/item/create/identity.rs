@@ -1,6 +1,6 @@
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result};
 use clap::Args;
-use pass::PassClient;
 use pass::identity::IdentityItemCreatePayload;
 use std::io::{self, Read};
 

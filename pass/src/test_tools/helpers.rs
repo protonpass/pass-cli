@@ -1,16 +1,16 @@
 use crate::item::item_keys::DecryptedItemKey;
 use crate::item::list::ItemRevision;
 use crate::share::keys::{ShareKeyList, ShareKeyResponse};
-use crate::test_tools::{MuonServerExt, TEST_ADDRESS_ID, success};
-use muon::Method;
-use muon::test::server::Server;
+use crate::test_tools::{MuonServerExt, ProtonAPI, TEST_ADDRESS_ID, success};
+use muon::http::Method;
+use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
+
 pub use pass_domain::utils::random_string;
 use pass_domain::{
     CustomItem, CustomSection, ItemContent, ItemData, ItemExtraField, ItemExtraFieldContent,
     PermissionFlag, TargetType, crypto,
 };
-use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
 
 #[macro_export]
 macro_rules! share_id {
@@ -57,7 +57,7 @@ pub const TEST_SHARE_KEY_ENCRYPTED: &str = "wV4D9Cy1x6t9568SAQdAQILzqjxAcyKkNsah
 
 pub const TEST_VAULT_ID: &str = "TEST_VAULT_ID";
 
-pub fn setup_vault_share(server: &Arc<Server>, share_id: &str) {
+pub fn setup_vault_share(server: &ProtonAPI, share_id: &str) {
     let share_id_string = share_id.to_string();
     let share_response = crate::share::list::ShareResponse {
         share_id: share_id_string.to_string(),
@@ -88,7 +88,7 @@ pub fn setup_vault_share(server: &Arc<Server>, share_id: &str) {
     });
 }
 
-pub fn setup_share_keys(server: &Arc<Server>, share_id: &str) {
+pub fn setup_share_keys(server: &ProtonAPI, share_id: &str) {
     server.handler_with_method(
         Method::GET,
         format!("/pass/v1/share/{}/key", share_id),
@@ -108,7 +108,7 @@ pub fn setup_share_keys(server: &Arc<Server>, share_id: &str) {
 }
 
 pub fn setup_item_revision(
-    server: &Arc<Server>,
+    server: &ProtonAPI,
     share_id: &str,
     item_id: &str,
     item_revision: ItemRevision,

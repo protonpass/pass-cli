@@ -1,4 +1,4 @@
-use crate::PassClient;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use muon::GET;
 use muon::rest::core::v4::addresses;
@@ -25,7 +25,7 @@ pub(crate) fn api_address_to_domain_address(value: addresses::Address) -> Addres
     }
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn get_addresses(&self) -> Result<Vec<Address>> {
         {
             let cached: Option<Vec<Address>> = self.cache.get(AddressCacheType).await;
@@ -75,17 +75,15 @@ impl PassClient {
 mod tests {
     use super::*;
     use crate::test_tools::*;
-    use std::sync::Arc;
 
-    use muon::test::server::{HTTP, Server};
-
-    #[muon::test(scheme(HTTP))]
-    async fn can_handle_empty_addresses(s: Arc<Server>) {
-        s.handler("/addresses", |_| {
+    #[muon_test::test]
+    async fn can_handle_empty_addresses(s: muon_test::Server) {
+        let (raw_client, api) = s.client::<()>();
+        api.handler("/addresses", |_| {
             success(addresses::GetRes { addresses: vec![] })
         });
 
-        let client = s.pass_client_no_setup().await;
+        let client = make_test_pass_client(raw_client, &api).await;
         let addresses = client
             .get_addresses()
             .await
@@ -93,14 +91,15 @@ mod tests {
         assert!(addresses.is_empty());
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn can_handle_addresses(s: Arc<Server>) {
+    #[muon_test::test]
+    async fn can_handle_addresses(s: muon_test::Server) {
+        let (raw_client, api) = s.client::<()>();
         const A1_ID: &str = "address1";
         const A1_EMAIL: &str = "address1@test.com";
         const A2_ID: &str = "address2";
         const A2_EMAIL: &str = "address2@test.com";
 
-        s.handler("/addresses", |_| {
+        api.handler("/addresses", |_| {
             success(addresses::GetRes {
                 addresses: vec![
                     addresses::Address {
@@ -117,7 +116,7 @@ mod tests {
             })
         });
 
-        let client = s.pass_client_no_setup().await;
+        let client = make_test_pass_client(raw_client, &api).await;
         let addresses = client
             .get_addresses()
             .await
@@ -129,12 +128,13 @@ mod tests {
         assert_eq!(A2_EMAIL, addresses[1].email);
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn caches_addresses(s: Arc<Server>) {
+    #[muon_test::test]
+    async fn caches_addresses(s: muon_test::Server) {
+        let (raw_client, api) = s.client::<()>();
         const A1_ID: &str = "address1";
         const A1_EMAIL: &str = "address1@test.com";
 
-        s.handler("/addresses", |_| {
+        api.handler("/addresses", |_| {
             success(addresses::GetRes {
                 addresses: vec![addresses::Address {
                     id: A1_ID.to_string(),
@@ -144,9 +144,9 @@ mod tests {
             })
         });
 
-        let client = s.pass_client_no_setup().await;
+        let client = make_test_pass_client(raw_client, &api).await;
 
-        let recorder = s.new_recorder();
+        let recorder = api.new_recorder();
 
         // First request
         client

@@ -1,9 +1,9 @@
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result, bail};
 use clap::Args;
 use pass::login::LoginItemCreatePayload;
-use pass::{
-    PassClient,
-    password::{PassphraseConfig, PasswordGenerationArgs, RandomPasswordConfig, WordSeparator},
+use pass::password::{
+    PassphraseConfig, PasswordGenerationArgs, RandomPasswordConfig, WordSeparator,
 };
 use std::io::{self, Read};
 

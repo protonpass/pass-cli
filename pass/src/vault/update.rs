@@ -1,6 +1,6 @@
-use crate::PassClient;
 use crate::permission::PermissionAction;
 use crate::utils::debug_response;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use muon::PUT;
 use pass_domain::{ShareId, VaultData, crypto};
@@ -28,7 +28,7 @@ struct UpdateVaultRequest {
     pub key_rotation: u8,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn update_vault(&self, share_id: &ShareId, args: UpdateVaultArgs) -> Result<()> {
         self.action_guard(PermissionAction::UpdateVault {
             share_id: share_id.clone(),

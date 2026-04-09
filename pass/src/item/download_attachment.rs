@@ -1,11 +1,11 @@
-use crate::PassClient;
 use crate::utils::debug_response;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use muon::GET;
 use pass_domain::{AttachmentChunk, AttachmentId, ItemAttachment, ItemId, ShareId, crypto};
 use std::future::Future;
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn download_attachment<F, Fut>(
         &self,
         share_id: &ShareId,
@@ -140,7 +140,6 @@ mod tests {
     use crate::item::get_one::GetItemResponse;
 
     use crate::test_tools::*;
-    use muon::test::server::{HTTP, Server};
     use pass_domain::{
         CustomItem, CustomSection, ItemAttachmentContent, ItemContent, ItemData, ItemExtraField,
         ItemExtraFieldContent, ItemFlag, ItemState, crypto,
@@ -233,7 +232,7 @@ mod tests {
 
     // Helper function to setup item revision with attachment - now returns the encrypted data
     fn setup_item_with_attachment(
-        server: &Arc<Server>,
+        server: &ProtonAPI,
         share_id: &str,
         item_id: &str,
     ) -> crate::test_tools::EncryptItemContentsResult {
@@ -264,7 +263,7 @@ mod tests {
 
     // Helper function to setup chunk download endpoints
     fn setup_chunk_downloads(
-        server: &Arc<Server>,
+        server: &ProtonAPI,
         share_id: &str,
         item_id: &str,
         attachment_id: &str,
@@ -280,9 +279,9 @@ mod tests {
                 ),
                 move |_| {
                     Some(
-                        muon::test::server::Response::builder()
+                        muon_test::server::Response::builder()
                             .status(200)
-                            .body(axum_core::body::Body::from(data_clone.clone()))
+                            .body(axum::body::Body::from(data_clone.clone()))
                             .unwrap(),
                     )
                 },
@@ -290,8 +289,9 @@ mod tests {
         }
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_download_attachment_single_chunk_v1(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_download_attachment_single_chunk_v1(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const SHARE_ID: &str = "TEST_SHARE_ID";
         const ITEM_ID: &str = "TEST_ITEM_ID";
         const ATTACHMENT_ID: &str = "TEST_ATTACHMENT_ID";
@@ -299,12 +299,12 @@ mod tests {
         const FILE_NAME: &str = "test_file.txt";
         const FILE_CONTENT: &[u8] = b"Hello, World! This is test file content.";
 
-        let client = server.pass_client().await;
-        setup_vault_share(&server, SHARE_ID);
-        setup_share_keys(&server, SHARE_ID);
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
+        setup_vault_share(&api, SHARE_ID);
+        setup_share_keys(&api, SHARE_ID);
 
         // Setup item and get the encrypted data to use the same item key
-        let encrypted_data = setup_item_with_attachment(&server, SHARE_ID, ITEM_ID);
+        let encrypted_data = setup_item_with_attachment(&api, SHARE_ID, ITEM_ID);
         let item_key = encrypted_data.item_key.clone();
 
         // Generate file key
@@ -325,7 +325,7 @@ mod tests {
         let encrypted_chunk_data = create_encrypted_chunk_data(FILE_CONTENT, &file_key, 1, 0, 1);
         let mut chunk_data = HashMap::new();
         chunk_data.insert(CHUNK_ID.to_string(), encrypted_chunk_data);
-        setup_chunk_downloads(&server, SHARE_ID, ITEM_ID, ATTACHMENT_ID, chunk_data);
+        setup_chunk_downloads(&api, SHARE_ID, ITEM_ID, ATTACHMENT_ID, chunk_data);
 
         // Test download
         let downloaded_data = Arc::new(Mutex::new(Vec::new()));
@@ -354,19 +354,20 @@ mod tests {
         );
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_download_attachment_multiple_chunks_v2(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_download_attachment_multiple_chunks_v2(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const SHARE_ID: &str = "TEST_SHARE_ID";
         const ITEM_ID: &str = "TEST_ITEM_ID";
         const ATTACHMENT_ID: &str = "TEST_ATTACHMENT_ID";
         const FILE_NAME: &str = "large_file.bin";
 
-        let client = server.pass_client().await;
-        setup_vault_share(&server, SHARE_ID);
-        setup_share_keys(&server, SHARE_ID);
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
+        setup_vault_share(&api, SHARE_ID);
+        setup_share_keys(&api, SHARE_ID);
 
         // Setup item and get the encrypted data to use the same item key
-        let encrypted_data = setup_item_with_attachment(&server, SHARE_ID, ITEM_ID);
+        let encrypted_data = setup_item_with_attachment(&api, SHARE_ID, ITEM_ID);
         let item_key = encrypted_data.item_key.clone();
 
         // Generate file key
@@ -412,7 +413,7 @@ mod tests {
             "CHUNK_3".to_string(),
             create_encrypted_chunk_data(chunk3_data, &file_key, 2, 2, 3),
         );
-        setup_chunk_downloads(&server, SHARE_ID, ITEM_ID, ATTACHMENT_ID, chunk_data);
+        setup_chunk_downloads(&api, SHARE_ID, ITEM_ID, ATTACHMENT_ID, chunk_data);
 
         // Test download with chunks received in order
         let downloaded_chunks = Arc::new(Mutex::new(Vec::new()));
@@ -447,19 +448,20 @@ mod tests {
         assert_eq!(total_data, expected_data);
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_download_attachment_unordered_chunks(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_download_attachment_unordered_chunks(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const SHARE_ID: &str = "TEST_SHARE_ID";
         const ITEM_ID: &str = "TEST_ITEM_ID";
         const ATTACHMENT_ID: &str = "TEST_ATTACHMENT_ID";
         const FILE_NAME: &str = "unordered_file.txt";
 
-        let client = server.pass_client().await;
-        setup_vault_share(&server, SHARE_ID);
-        setup_share_keys(&server, SHARE_ID);
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
+        setup_vault_share(&api, SHARE_ID);
+        setup_share_keys(&api, SHARE_ID);
 
         // Setup item and get the encrypted data to use the same item key
-        let encrypted_data = setup_item_with_attachment(&server, SHARE_ID, ITEM_ID);
+        let encrypted_data = setup_item_with_attachment(&api, SHARE_ID, ITEM_ID);
         let item_key = encrypted_data.item_key.clone();
 
         // Generate file key
@@ -505,7 +507,7 @@ mod tests {
             "CHUNK_C".to_string(),
             create_encrypted_chunk_data(chunk_c_data, &file_key, 1, 2, 3),
         );
-        setup_chunk_downloads(&server, SHARE_ID, ITEM_ID, ATTACHMENT_ID, chunk_data);
+        setup_chunk_downloads(&api, SHARE_ID, ITEM_ID, ATTACHMENT_ID, chunk_data);
 
         // Test download - chunks should be processed in index order despite attachment order
         let downloaded_chunks = Arc::new(Mutex::new(Vec::new()));
@@ -539,18 +541,19 @@ mod tests {
         assert_eq!(total_data, expected_data);
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_download_attachment_chunk_download_error(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_download_attachment_chunk_download_error(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const SHARE_ID: &str = "TEST_SHARE_ID";
         const ITEM_ID: &str = "TEST_ITEM_ID";
         const ATTACHMENT_ID: &str = "TEST_ATTACHMENT_ID";
         const CHUNK_ID: &str = "MISSING_CHUNK";
 
-        let client = server.pass_client().await;
-        setup_vault_share(&server, SHARE_ID);
-        setup_share_keys(&server, SHARE_ID);
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
+        setup_vault_share(&api, SHARE_ID);
+        setup_share_keys(&api, SHARE_ID);
         // Setup item and get the encrypted data to use the same item key
-        let encrypted_data = setup_item_with_attachment(&server, SHARE_ID, ITEM_ID);
+        let encrypted_data = setup_item_with_attachment(&api, SHARE_ID, ITEM_ID);
         let item_key = encrypted_data.item_key.clone();
 
         // Generate file key
@@ -568,7 +571,7 @@ mod tests {
         );
 
         // Setup chunk endpoint to return 404
-        server.handler_with_method(
+        api.handler_with_method(
             Method::GET,
             format!(
                 "/pass/v1/share/{}/item/{}/file/{}/chunk/{}",
@@ -576,9 +579,9 @@ mod tests {
             ),
             |_| {
                 Some(
-                    muon::test::server::Response::builder()
+                    muon_test::server::Response::builder()
                         .status(404)
-                        .body(axum_core::body::Body::from(Vec::<u8>::new()))
+                        .body(axum::body::Body::from(Vec::<u8>::new()))
                         .unwrap(),
                 )
             },
@@ -603,18 +606,19 @@ mod tests {
         );
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_download_attachment_write_callback_error(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_download_attachment_write_callback_error(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const SHARE_ID: &str = "TEST_SHARE_ID";
         const ITEM_ID: &str = "TEST_ITEM_ID";
         const ATTACHMENT_ID: &str = "TEST_ATTACHMENT_ID";
         const CHUNK_ID: &str = "TEST_CHUNK";
 
-        let client = server.pass_client().await;
-        setup_vault_share(&server, SHARE_ID);
-        setup_share_keys(&server, SHARE_ID);
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
+        setup_vault_share(&api, SHARE_ID);
+        setup_share_keys(&api, SHARE_ID);
         // Setup item and get the encrypted data to use the same item key
-        let encrypted_data = setup_item_with_attachment(&server, SHARE_ID, ITEM_ID);
+        let encrypted_data = setup_item_with_attachment(&api, SHARE_ID, ITEM_ID);
         let item_key = encrypted_data.item_key.clone();
 
         // Generate file key
@@ -636,7 +640,7 @@ mod tests {
         let encrypted_chunk_data = create_encrypted_chunk_data(test_data, &file_key, 1, 0, 1);
         let mut chunk_data = HashMap::new();
         chunk_data.insert(CHUNK_ID.to_string(), encrypted_chunk_data);
-        setup_chunk_downloads(&server, SHARE_ID, ITEM_ID, ATTACHMENT_ID, chunk_data);
+        setup_chunk_downloads(&api, SHARE_ID, ITEM_ID, ATTACHMENT_ID, chunk_data);
 
         // Test download with failing callback
         let result = client
@@ -656,18 +660,19 @@ mod tests {
         );
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_download_attachment_invalid_encryption_version(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_download_attachment_invalid_encryption_version(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const SHARE_ID: &str = "TEST_SHARE_ID";
         const ITEM_ID: &str = "TEST_ITEM_ID";
         const ATTACHMENT_ID: &str = "TEST_ATTACHMENT_ID";
         const CHUNK_ID: &str = "TEST_CHUNK";
 
-        let client = server.pass_client().await;
-        setup_vault_share(&server, SHARE_ID);
-        setup_share_keys(&server, SHARE_ID);
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
+        setup_vault_share(&api, SHARE_ID);
+        setup_share_keys(&api, SHARE_ID);
         // Setup item and get the encrypted data to use the same item key
-        let encrypted_data = setup_item_with_attachment(&server, SHARE_ID, ITEM_ID);
+        let encrypted_data = setup_item_with_attachment(&api, SHARE_ID, ITEM_ID);
         let item_key = encrypted_data.item_key.clone();
 
         // Generate file key
@@ -689,7 +694,7 @@ mod tests {
         let encrypted_chunk_data = create_encrypted_chunk_data(test_data, &file_key, 1, 0, 1);
         let mut chunk_data = HashMap::new();
         chunk_data.insert(CHUNK_ID.to_string(), encrypted_chunk_data);
-        setup_chunk_downloads(&server, SHARE_ID, ITEM_ID, ATTACHMENT_ID, chunk_data);
+        setup_chunk_downloads(&api, SHARE_ID, ITEM_ID, ATTACHMENT_ID, chunk_data);
 
         // Test download should fail
         let result = client
@@ -713,18 +718,19 @@ mod tests {
         );
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_download_attachment_corrupted_chunk_data(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_download_attachment_corrupted_chunk_data(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const SHARE_ID: &str = "TEST_SHARE_ID";
         const ITEM_ID: &str = "TEST_ITEM_ID";
         const ATTACHMENT_ID: &str = "TEST_ATTACHMENT_ID";
         const CHUNK_ID: &str = "CORRUPTED_CHUNK";
 
-        let client = server.pass_client().await;
-        setup_vault_share(&server, SHARE_ID);
-        setup_share_keys(&server, SHARE_ID);
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
+        setup_vault_share(&api, SHARE_ID);
+        setup_share_keys(&api, SHARE_ID);
         // Setup item and get the encrypted data to use the same item key
-        let encrypted_data = setup_item_with_attachment(&server, SHARE_ID, ITEM_ID);
+        let encrypted_data = setup_item_with_attachment(&api, SHARE_ID, ITEM_ID);
         let item_key = encrypted_data.item_key.clone();
 
         // Generate file key
@@ -745,7 +751,7 @@ mod tests {
         let corrupted_data = vec![0xFF; 100];
         let mut chunk_data = HashMap::new();
         chunk_data.insert(CHUNK_ID.to_string(), corrupted_data);
-        setup_chunk_downloads(&server, SHARE_ID, ITEM_ID, ATTACHMENT_ID, chunk_data);
+        setup_chunk_downloads(&api, SHARE_ID, ITEM_ID, ATTACHMENT_ID, chunk_data);
 
         // Test download should fail
         let result = client
@@ -768,17 +774,18 @@ mod tests {
         );
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_download_attachment_empty_file(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_download_attachment_empty_file(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const SHARE_ID: &str = "TEST_SHARE_ID";
         const ITEM_ID: &str = "TEST_ITEM_ID";
         const ATTACHMENT_ID: &str = "TEST_ATTACHMENT_ID";
 
-        let client = server.pass_client().await;
-        setup_vault_share(&server, SHARE_ID);
-        setup_share_keys(&server, SHARE_ID);
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
+        setup_vault_share(&api, SHARE_ID);
+        setup_share_keys(&api, SHARE_ID);
         // Setup item and get the encrypted data to use the same item key
-        let encrypted_data = setup_item_with_attachment(&server, SHARE_ID, ITEM_ID);
+        let encrypted_data = setup_item_with_attachment(&api, SHARE_ID, ITEM_ID);
         let item_key = encrypted_data.item_key.clone();
 
         // Generate file key

@@ -1,8 +1,8 @@
-use crate::PassClient;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
 use pass_domain::{AddressKey, UnlockedAddressKeys};
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn open_address_keys(
         &self,
         address_keys: Vec<AddressKey>,

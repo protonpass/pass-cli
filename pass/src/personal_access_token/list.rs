@@ -1,4 +1,4 @@
-use crate::PassClient;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
 use muon::GET;
 use pass_domain::PersonalAccessTokenId;
@@ -49,7 +49,7 @@ pub struct PersonalAccessToken {
     pub(crate) pat_key: Option<Vec<u8>>,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn list_personal_access_tokens(&self) -> Result<Vec<PersonalAccessToken>> {
         self.personal_access_token_operation_guard()?;
         info!("Fetching personal access tokens");
@@ -142,14 +142,12 @@ mod tests {
     use crate::test_tools::*;
     use pass_domain::PlainText;
     use pass_domain::crypto;
-    use std::sync::Arc;
 
-    use muon::test::server::{HTTP, Server};
-
-    #[muon::test(scheme(HTTP))]
-    async fn test_list_personal_access_tokens_empty(server: Arc<Server>) {
-        let client = server.pass_client().await;
-        let handled = server.handler("/account/v4/personal-access-token", |_| {
+    #[muon_test::test]
+    async fn test_list_personal_access_tokens_empty(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
+        let handled = api.handler("/account/v4/personal-access-token", |_| {
             success(ListPersonalAccessTokensResponse {
                 personal_access_tokens: PersonalAccessTokensWrapper {
                     personal_access_tokens: vec![],
@@ -168,14 +166,15 @@ mod tests {
         assert_hit!(handled);
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_list_personal_access_tokens_single(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_list_personal_access_tokens_single(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const PERSONAL_ACCESS_TOKEN_NAME: &str = "MyTestPersonalAccessToken";
         const PERSONAL_ACCESS_TOKEN_ID: &str = "test_id_123";
         const CREATE_TIME: i64 = 1704067200;
         const MODIFY_TIME: i64 = 1704067200;
 
-        let client = server.pass_client().await;
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
 
         let personal_access_token_key = crypto::generate_encryption_key();
 
@@ -195,7 +194,7 @@ mod tests {
 
         let encrypted_key_b64 = crate::utils::b64_encode(encrypted_personal_access_token_key);
 
-        let handled = server.handler("/account/v4/personal-access-token", move |_| {
+        let handled = api.handler("/account/v4/personal-access-token", move |_| {
             success(ListPersonalAccessTokensResponse {
                 personal_access_tokens: PersonalAccessTokensWrapper {
                     personal_access_tokens: vec![PersonalAccessTokenData {
@@ -225,13 +224,14 @@ mod tests {
         assert_hit!(handled);
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_list_personal_access_tokens_with_expiration(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_list_personal_access_tokens_with_expiration(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const PERSONAL_ACCESS_TOKEN_NAME: &str = "ExpiringAccount";
         const PERSONAL_ACCESS_TOKEN_ID: &str = "expiring_id";
         const EXPIRATION_TIME: i64 = 1735689600;
 
-        let client = server.pass_client().await;
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
 
         let personal_access_token_key = crypto::generate_encryption_key();
 
@@ -251,7 +251,7 @@ mod tests {
 
         let encrypted_key_b64 = crate::utils::b64_encode(encrypted_personal_access_token_key);
 
-        let handled = server.handler("/account/v4/personal-access-token", move |_| {
+        let handled = api.handler("/account/v4/personal-access-token", move |_| {
             success(ListPersonalAccessTokensResponse {
                 personal_access_tokens: PersonalAccessTokensWrapper {
                     personal_access_tokens: vec![PersonalAccessTokenData {

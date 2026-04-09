@@ -1,6 +1,6 @@
 use super::common::{ItemQuery, ShareQuery};
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result, anyhow};
-use pass::PassClient;
 use pass_domain::UpdateFieldResult;
 
 fn parse_fields(fields: Vec<String>) -> Result<Vec<(String, String)>> {

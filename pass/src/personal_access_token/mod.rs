@@ -1,4 +1,4 @@
-use crate::PassClient;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Result, anyhow};
 
 mod create;
@@ -12,7 +12,7 @@ mod revoke;
 const PERSONAL_ACCESS_TOKEN_OPERATION_ERROR: &str =
     "Cannot manage or act on personal access tokens while logged in with a personal access token";
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub(crate) fn personal_access_token_operation_guard(&self) -> Result<()> {
         if self.is_pat_account() {
             return Err(anyhow!(PERSONAL_ACCESS_TOKEN_OPERATION_ERROR));
@@ -33,10 +33,11 @@ mod tests {
     use crate::test_tools::*;
     use pass_domain::{PersonalAccessTokenId, ShareId, ShareRole};
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_create_personal_access_token_blocked_for_pat_session(server: Arc<Server>) {
-        let client = server.pass_pat_client_no_setup().await;
-        let handled = server.handler("/account/v4/personal-access-token", |_| success_code());
+    #[muon_test::test]
+    async fn test_create_personal_access_token_blocked_for_pat_session(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
+        let client = make_test_pass_pat_client(raw_client, &api).await;
+        let handled = api.handler("/account/v4/personal-access-token", |_| success_code());
 
         let error = client
             .create_personal_access_token(
@@ -50,10 +51,11 @@ mod tests {
         assert_not_hit!(handled);
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_list_personal_access_tokens_blocked_for_pat_session(server: Arc<Server>) {
-        let client = server.pass_pat_client_no_setup().await;
-        let handled = server.handler("/account/v4/personal-access-token", |_| success_code());
+    #[muon_test::test]
+    async fn test_list_personal_access_tokens_blocked_for_pat_session(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
+        let client = make_test_pass_pat_client(raw_client, &api).await;
+        let handled = api.handler("/account/v4/personal-access-token", |_| success_code());
 
         let error = client
             .list_personal_access_tokens()
@@ -64,10 +66,11 @@ mod tests {
         assert_not_hit!(handled);
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_delete_personal_access_token_blocked_for_pat_session(server: Arc<Server>) {
-        let client = server.pass_pat_client_no_setup().await;
-        let handled = server.handler_with_method(
+    #[muon_test::test]
+    async fn test_delete_personal_access_token_blocked_for_pat_session(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
+        let client = make_test_pass_pat_client(raw_client, &api).await;
+        let handled = api.handler_with_method(
             Method::DELETE,
             "/account/v4/personal-access-token/test_pat",
             |_| success_code(),
@@ -82,10 +85,11 @@ mod tests {
         assert_not_hit!(handled);
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_renew_personal_access_token_blocked_for_pat_session(server: Arc<Server>) {
-        let client = server.pass_pat_client_no_setup().await;
-        let handled = server.handler_with_method(
+    #[muon_test::test]
+    async fn test_renew_personal_access_token_blocked_for_pat_session(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
+        let client = make_test_pass_pat_client(raw_client, &api).await;
+        let handled = api.handler_with_method(
             Method::POST,
             "/account/v4/personal-access-token/test_pat/renew",
             |_| success_code(),
@@ -104,10 +108,13 @@ mod tests {
         assert_not_hit!(handled);
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_list_personal_access_token_access_blocked_for_pat_session(server: Arc<Server>) {
-        let client = server.pass_pat_client_no_setup().await;
-        let handled = server.handler("/pass/v1/personal-access-token/test_pat/access", |_| {
+    #[muon_test::test]
+    async fn test_list_personal_access_token_access_blocked_for_pat_session(
+        server: muon_test::Server,
+    ) {
+        let (raw_client, api) = server.client::<()>();
+        let client = make_test_pass_pat_client(raw_client, &api).await;
+        let handled = api.handler("/pass/v1/personal-access-token/test_pat/access", |_| {
             success_code()
         });
 
@@ -120,10 +127,13 @@ mod tests {
         assert_not_hit!(handled);
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_grant_personal_access_token_access_blocked_for_pat_session(server: Arc<Server>) {
-        let client = server.pass_pat_client_no_setup().await;
-        let handled = server.handler("/pass/v1/personal-access-token/test_pat/access", |_| {
+    #[muon_test::test]
+    async fn test_grant_personal_access_token_access_blocked_for_pat_session(
+        server: muon_test::Server,
+    ) {
+        let (raw_client, api) = server.client::<()>();
+        let client = make_test_pass_pat_client(raw_client, &api).await;
+        let handled = api.handler("/pass/v1/personal-access-token/test_pat/access", |_| {
             success_code()
         });
 
@@ -141,10 +151,13 @@ mod tests {
         assert_not_hit!(handled);
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_revoke_personal_access_token_access_blocked_for_pat_session(server: Arc<Server>) {
-        let client = server.pass_pat_client_no_setup().await;
-        let handled = server.handler_with_method(
+    #[muon_test::test]
+    async fn test_revoke_personal_access_token_access_blocked_for_pat_session(
+        server: muon_test::Server,
+    ) {
+        let (raw_client, api) = server.client::<()>();
+        let client = make_test_pass_pat_client(raw_client, &api).await;
+        let handled = api.handler_with_method(
             Method::DELETE,
             "/pass/v1/personal-access-token/test_pat/access/test_share",
             |_| success_code(),

@@ -1,5 +1,5 @@
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result};
-use pass::PassClient;
 use pass_domain::{ItemId, ShareId};
 use std::path::PathBuf;
 use std::sync::Arc;

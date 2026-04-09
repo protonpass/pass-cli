@@ -10,7 +10,6 @@ mod setup_user_data;
 
 pub use client_ext::*;
 pub use helpers::*;
-pub use muon::test::server::{HTTP, Server};
 pub use muon_ext::*;
+pub use muon_test::server::ProtonAPI;
 pub use setup_user_data::*;
-pub use std::sync::Arc;

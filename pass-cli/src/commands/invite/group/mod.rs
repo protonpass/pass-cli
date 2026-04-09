@@ -2,9 +2,9 @@ mod accept;
 mod list;
 
 use crate::commands::OutputFormat;
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::Result;
 use clap::Subcommand;
-use pass::PassClient;
 use pass_domain::InviteId;
 
 #[derive(Subcommand)]

@@ -29,5 +29,5 @@ serde_repr = "0.1.20"
 [dev-dependencies]
 pass-fs = {path = "../pass-fs"}
 pass-pgp = {path = "../pass-pgp"}
-
-axum-core = "0.4"
+muon-test = { workspace = true }
+axum = "0.8"

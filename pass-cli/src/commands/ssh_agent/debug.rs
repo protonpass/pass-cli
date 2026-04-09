@@ -1,8 +1,8 @@
 use super::key_load::load_and_decrypt_key;
 use crate::commands::OutputFormat;
 use crate::commands::item::ItemQuery;
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result};
-use pass::PassClient;
 use pass_domain::{Item, ItemContent, ItemState, ShareId};
 use serde::Serialize;
 use ssh_key::HashAlg;

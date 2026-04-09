@@ -1,8 +1,8 @@
 use super::super::PersonalAccessTokenQuery;
 use crate::commands::Role;
 use crate::commands::item::ShareQuery;
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result, anyhow};
-use pass::PassClient;
 use pass_domain::{ItemId, ShareRole};
 
 pub async fn run(

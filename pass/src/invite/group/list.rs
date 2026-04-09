@@ -1,10 +1,10 @@
-use crate::PassClient;
 use crate::crypto::open_invite_key::OpenInviteKeyFlow;
 use crate::invite::list::{
     EncryptedInviteKey, InviteKey, InviteKeyResponse, InviteWithKeys, OpenedInviteKey,
     PendingInviteVaultData,
 };
 use crate::permission::PermissionAction;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use muon::GET;
 use pass_domain::{GroupId, Invite, InviteId, InviteVaultData, TargetType, VaultData};
@@ -49,7 +49,7 @@ struct GetGroupInvitesResponse {
     pub invites: GroupInvitesResponse,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn list_group_invites(&self) -> Result<Vec<GroupInviteWithKeys>> {
         self.action_guard(PermissionAction::ListInvites).await?;
 
@@ -215,8 +215,6 @@ impl PassClient {
 mod tests {
     use super::*;
     use crate::test_tools::*;
-    use muon::test::server::{HTTP, Server};
-    use std::sync::Arc;
 
     fn make_group_invite_response(is_group_owner: bool) -> GetGroupInvitesResponse {
         GetGroupInvitesResponse {
@@ -236,11 +234,12 @@ mod tests {
         }
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_list_group_invites_is_group_owner_true(server: Arc<Server>) {
-        let client = server.pass_client().await;
+    #[muon_test::test]
+    async fn test_list_group_invites_is_group_owner_true(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
 
-        let handled = server.handler_with_method(Method::GET, "/pass/v1/invite/group", move |_| {
+        let handled = api.handler_with_method(Method::GET, "/pass/v1/invite/group", move |_| {
             success(make_group_invite_response(true))
         });
 
@@ -255,11 +254,12 @@ mod tests {
         assert_eq!("token123", invites[0].invite_with_keys.invite.id.value());
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_list_group_invites_is_group_owner_false(server: Arc<Server>) {
-        let client = server.pass_client().await;
+    #[muon_test::test]
+    async fn test_list_group_invites_is_group_owner_false(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
 
-        let handled = server.handler_with_method(Method::GET, "/pass/v1/invite/group", move |_| {
+        let handled = api.handler_with_method(Method::GET, "/pass/v1/invite/group", move |_| {
             success(make_group_invite_response(false))
         });
 
@@ -276,11 +276,12 @@ mod tests {
         );
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_list_group_invites_empty(server: Arc<Server>) {
-        let client = server.pass_client().await;
+    #[muon_test::test]
+    async fn test_list_group_invites_empty(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
 
-        let handled = server.handler_with_method(Method::GET, "/pass/v1/invite/group", move |_| {
+        let handled = api.handler_with_method(Method::GET, "/pass/v1/invite/group", move |_| {
             success(GetGroupInvitesResponse {
                 invites: GroupInvitesResponse { invites: vec![] },
             })
@@ -295,11 +296,12 @@ mod tests {
         assert!(invites.is_empty());
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_list_group_invites_preserves_invite_fields(server: Arc<Server>) {
-        let client = server.pass_client().await;
+    #[muon_test::test]
+    async fn test_list_group_invites_preserves_invite_fields(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
 
-        server.handler_with_method(Method::GET, "/pass/v1/invite/group", move |_| {
+        api.handler_with_method(Method::GET, "/pass/v1/invite/group", move |_| {
             success(GetGroupInvitesResponse {
                 invites: GroupInvitesResponse {
                     invites: vec![GroupInviteContent {

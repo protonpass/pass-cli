@@ -1,13 +1,14 @@
 use crate::callbacks::{AuthEventHandler, CredentialProvider};
 use crate::error::AuthError;
+use crate::os::ProdContext;
 use anyhow::{Context, anyhow};
-use muon::{GET, POST, Session, Status};
-use pass::PassSessionKeyType;
+use muon::transport::http::Status;
+use muon::{GET, POST, Session};
 use proton_crypto::srp::SRPProvider;
 use std::sync::Arc;
 
 async fn perform_extra_password_auth(
-    session: &Session<PassSessionKeyType>,
+    session: &Session<ProdContext>,
     password: String,
 ) -> Result<(), AuthError> {
     let srp_info = get_srp_info(session).await?;
@@ -58,9 +59,7 @@ struct ExtraPasswordSrpInfo {
     srp_salt: String,
 }
 
-async fn get_srp_info(
-    session: &Session<PassSessionKeyType>,
-) -> anyhow::Result<ExtraPasswordSrpInfo> {
+async fn get_srp_info(session: &Session<ProdContext>) -> anyhow::Result<ExtraPasswordSrpInfo> {
     let res = session
         .send(GET!("/pass/v1/user/srp/info"))
         .await
@@ -84,7 +83,7 @@ struct ExtraPasswordProofs {
 }
 
 async fn send_srp_proofs(
-    session: &Session<PassSessionKeyType>,
+    session: &Session<ProdContext>,
     proofs: ExtraPasswordProofs,
 ) -> Result<(), AuthError> {
     let req = POST!("/pass/v1/user/srp/auth")
@@ -105,7 +104,7 @@ async fn send_srp_proofs(
 }
 
 pub async fn handle_extra_password(
-    session: &Session<PassSessionKeyType>,
+    session: &Session<ProdContext>,
     credential_provider: Arc<dyn CredentialProvider>,
     event_handler: Arc<dyn AuthEventHandler>,
 ) -> Result<(), anyhow::Error> {

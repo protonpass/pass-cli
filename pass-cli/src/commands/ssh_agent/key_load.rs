@@ -1,9 +1,9 @@
 use super::VaultQuery;
 use super::key_storage::{IdentitySource, SshIdentity};
 use super::ssh_key_parsing::parse_private_key_with_rsa_pem_fallback;
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result, anyhow};
 use futures::stream::{self, StreamExt};
-use pass::PassClient;
 use pass_domain::{Item, ItemContent, ItemState};
 use ssh_key::private::PrivateKey as SshPrivateKey;
 use std::collections::HashSet;

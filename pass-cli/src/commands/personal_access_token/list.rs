@@ -1,7 +1,7 @@
 use crate::commands::{OutputFormat, settings_helper};
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result};
 use jiff::{Timestamp, tz::TimeZone};
-use pass::PassClient;
 
 pub async fn run(client: PassClient, output: Option<OutputFormat>) -> Result<()> {
     let output = match output {

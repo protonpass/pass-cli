@@ -1,4 +1,4 @@
-use crate::PassClient;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
 use muon::GET;
 use pass_domain::{Folder, FolderData, FolderId, ShareId};
@@ -104,7 +104,7 @@ fn topological_sort_folders(revisions: &[FolderResponse]) -> Vec<String> {
     sorted_ids
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub(crate) async fn list_all_folder_revisions(
         &self,
         share_id: &ShareId,

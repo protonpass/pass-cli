@@ -1,19 +1,18 @@
 use crate::callbacks::AuthEventHandler;
+use crate::os::ProdContext;
 use crate::store::PassSessionStore;
 use aes::Aes256;
 use anyhow::{Context, Result, anyhow, bail};
 use base64::Engine;
-use muon::client::{Auth, Tokens};
-use muon::env::EnvId;
-use muon::store::Store;
+use muon::SessionCredentials;
+use muon::auth::{Auth, Tokens};
+use muon::env::{Env, Environment};
 use muon::{GET, Session};
-use pass::PassSessionKeyType;
 use pass_domain::aes_gcm::aead::consts::U16;
 use pass_domain::aes_gcm::aead::generic_array::GenericArray;
 use pass_domain::aes_gcm::aead::{Aead, Payload};
 use pass_domain::aes_gcm::{AesGcm, KeyInit};
-use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::{Arc, RwLock};
 
 const POLL_INTERVAL_SECONDS: u64 = 10;
 const MAX_POLL_ATTEMPTS: u32 = 60; // 60 times every 10 seconds -> 10 minutes total
@@ -51,20 +50,45 @@ pub struct SessionPayload {
     pub key_password: String,
 }
 
+pub struct WebLoginResult {
+    pub credentials: SessionCredentials,
+    pub session_payload: SessionPayload,
+}
+
 impl SessionPayload {
     pub fn passphrase(&self) -> Vec<u8> {
         self.key_password.as_bytes().to_vec()
     }
 }
 
-fn get_account_url_for_env(env: &EnvId) -> Result<String> {
+fn get_account_url_for_env(env: &Environment) -> Result<String> {
     match env {
-        EnvId::Prod => Ok("https://account.proton.me".to_string()),
-        EnvId::Atlas(None) => Ok("https://account.proton.black".to_string()),
-        EnvId::Atlas(Some(atlas_env)) => Ok(format!("https://account.{}.proton.black", atlas_env)),
-        EnvId::Custom(_) => {
+        Environment::Prod(_) => Ok("https://account.proton.me".to_string()),
+        Environment::Atlas(_) => Ok("https://account.proton.black".to_string()),
+        Environment::Scientist(s) => {
+            // get the scientist name from servers
+            let servers = s.servers(&muon::app::AppVersion::Other);
+            let host = servers
+                .first()
+                .map(|srv: &muon::common::Server| format!("{}", srv.host().name()))
+                .unwrap_or_default();
+            // host is "{product}-api.{name}.proton.black" - extract name
+            // For web login URL, we need "account.{name}.proton.black"
+            let name = extract_scientist_name(&host);
+            Ok(format!("https://account.{}.proton.black", name))
+        }
+        Environment::Custom(_) => {
             bail!("Web login is not supported for custom environments")
         }
+    }
+}
+
+fn extract_scientist_name(host: &str) -> String {
+    let without_tld = host.trim_end_matches(".proton.black");
+    if let Some(pos) = without_tld.rfind('.') {
+        without_tld[pos + 1..].to_string()
+    } else {
+        without_tld.to_string()
     }
 }
 
@@ -99,7 +123,7 @@ fn decrypt_payload(encryption_key: &[u8], payload: &str) -> Result<SessionPayloa
     Ok(parsed)
 }
 
-async fn fetch_session_fork(session: &Session<PassSessionKeyType>) -> Result<SessionForkResponse> {
+async fn fetch_session_fork(session: &Session<ProdContext>) -> Result<SessionForkResponse> {
     info!("Fetching session fork...");
     let res = session
         .send(GET!("/auth/sessions/forks"))
@@ -118,7 +142,7 @@ async fn fetch_session_fork(session: &Session<PassSessionKeyType>) -> Result<Ses
 }
 
 async fn poll_session_fork(
-    session: &Session<PassSessionKeyType>,
+    session: &Session<ProdContext>,
     selector: &str,
     event_handler: Arc<dyn AuthEventHandler>,
 ) -> Result<SessionResponse> {
@@ -189,7 +213,11 @@ async fn poll_session_fork(
     ))
 }
 
-fn build_web_login_url(env: &EnvId, user_code: &str, encryption_key: &[u8]) -> Result<String> {
+fn build_web_login_url(
+    env: &Environment,
+    user_code: &str,
+    encryption_key: &[u8],
+) -> Result<String> {
     let account_url = get_account_url_for_env(env)?;
 
     let encoded_key = base64::engine::general_purpose::STANDARD.encode(encryption_key);
@@ -206,16 +234,16 @@ fn build_web_login_url(env: &EnvId, user_code: &str, encryption_key: &[u8]) -> R
 }
 
 pub async fn perform_web_login(
-    session: Session<PassSessionKeyType>,
+    session: &Session<ProdContext>,
     store: Arc<RwLock<PassSessionStore>>,
     event_handler: Arc<dyn AuthEventHandler>,
-) -> Result<SessionPayload> {
+) -> Result<WebLoginResult> {
     let env = {
-        let store_guard = store.read().await;
+        let store_guard = store.read().expect("store rwlock poisoned");
         store_guard.env.clone()
     };
 
-    let fork_response = fetch_session_fork(&session)
+    let fork_response = fetch_session_fork(session)
         .await
         .context("Error fetching session fork")?;
 
@@ -229,7 +257,7 @@ pub async fn perform_web_login(
     // Notify event handler of URL generation
     event_handler.on_web_login_url_generated(&url).await?;
 
-    let response = poll_session_fork(&session, &fork_response.selector, event_handler.clone())
+    let response = poll_session_fork(session, &fork_response.selector, event_handler.clone())
         .await
         .context("Error polling for authentication")?;
 
@@ -240,26 +268,21 @@ pub async fn perform_web_login(
     let session_payload = decrypt_payload(&encryption_key, &response.payload)?;
     info!("Payload decrypted correctly");
 
-    // Store the auth
-    {
-        let auth = Auth::Internal {
-            user_id: response.user_id,
-            uid: response.uid,
-            tok: Tokens::access(
-                response.access_token,
-                response.refresh_token,
-                response.scopes,
-            ),
-        };
+    let auth = Auth::Internal {
+        user_id: response.user_id,
+        uid: response.uid,
+        tok: Tokens::access(
+            response.access_token,
+            response.refresh_token,
+            response.scopes,
+        ),
+    };
 
-        let mut store_guard = store.write().await;
-        store_guard
-            .set_auth(&(), auth)
-            .await
-            .context("Error setting auth")?;
-        // Set account type for regular user login
-        store_guard.set_account_type(pass_domain::AccountType::User);
-    }
+    let credentials = SessionCredentials::try_from(auth)
+        .map_err(|_| anyhow!("Failed to convert web login auth into credentials"))?;
 
-    Ok(session_payload)
+    Ok(WebLoginResult {
+        credentials,
+        session_payload,
+    })
 }

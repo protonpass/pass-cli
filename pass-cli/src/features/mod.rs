@@ -60,7 +60,13 @@ pub struct CliClientFeatures {
 impl CliClientFeatures {
     pub async fn new(base_dir: PathBuf) -> Result<Self> {
         let key_provider = get_key_provider(base_dir.clone())?;
+        Self::new_with_key_provider(base_dir, key_provider).await
+    }
 
+    pub async fn new_with_key_provider(
+        base_dir: PathBuf,
+        key_provider: Arc<dyn LocalKeyProvider>,
+    ) -> Result<Self> {
         // Get the encryption key for the database
         let encryption_key = key_provider
             .get_key()

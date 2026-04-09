@@ -1,7 +1,7 @@
-use crate::PassClient;
 use crate::item::list::ItemRevision;
 use crate::permission::PermissionAction;
 use crate::utils::b64_encode;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
 use muon::PUT;
 use pass_domain::{ItemId, ShareId, crypto};
@@ -36,7 +36,7 @@ struct MoveItemResponse {
     items: Vec<ItemRevision>,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn move_item(
         &self,
         from_share_id: &ShareId,

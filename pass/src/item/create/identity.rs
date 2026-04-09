@@ -1,6 +1,6 @@
 use super::ItemCreatedEvent;
-use crate::PassClient;
 use crate::permission::PermissionAction;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
 use pass_domain::{FolderId, IdentityItem, ItemContent, ItemId, ItemType, ShareId};
 
@@ -47,7 +47,7 @@ fn trim_value(value: &str) -> String {
     value.trim().to_string()
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn create_identity(
         &self,
         share_id: &ShareId,
@@ -132,11 +132,9 @@ impl PassClient {
 mod tests {
     use super::*;
     use crate::test_tools::*;
-    use std::sync::Arc;
 
     use crate::item::create::common::{CreateItemRequest, CreateItemResponse};
     use crate::item::list::ItemRevision;
-    use muon::test::server::{HTTP, Server};
     use pass_domain::ItemData;
     use pass_domain::crypto::EncryptionTag;
 
@@ -147,8 +145,9 @@ mod tests {
         assert_eq!(trim_value("  "), "");
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_create_identity_full_data(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_create_identity_full_data(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const ITEM_TITLE: &str = "John Doe";
         const ITEM_NOTE: &str = "Personal identity";
         const FULL_NAME: &str = "John Michael Doe";
@@ -174,12 +173,12 @@ mod tests {
         const SHARE_ID: &str = "MyShareID";
         const ITEM_ID: &str = "MyItemID";
 
-        let client = server.pass_client_with_plan(PlanType::Plus).await;
-        setup_share_keys(&server, SHARE_ID);
-        setup_vault_share(&server, SHARE_ID);
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Plus).await;
+        setup_share_keys(&api, SHARE_ID);
+        setup_vault_share(&api, SHARE_ID);
 
-        let recorder = server.new_recorder();
-        server.handler("/pass/v1/share/MyShareID/item", move |_| {
+        let recorder = api.new_recorder();
+        api.handler("/pass/v1/share/MyShareID/item", move |_| {
             success(CreateItemResponse {
                 item: ItemRevision {
                     item_id: ITEM_ID.to_string(),
@@ -296,18 +295,19 @@ mod tests {
         }
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_create_identity_minimal_data(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_create_identity_minimal_data(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const ITEM_TITLE: &str = "Minimal Identity";
         const SHARE_ID: &str = "MyShareID";
         const ITEM_ID: &str = "MyItemID";
 
-        let client = server.pass_client_with_plan(PlanType::Plus).await;
-        setup_share_keys(&server, SHARE_ID);
-        setup_vault_share(&server, SHARE_ID);
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Plus).await;
+        setup_share_keys(&api, SHARE_ID);
+        setup_vault_share(&api, SHARE_ID);
 
-        let recorder = server.new_recorder();
-        server.handler("/pass/v1/share/MyShareID/item", move |_| {
+        let recorder = api.new_recorder();
+        api.handler("/pass/v1/share/MyShareID/item", move |_| {
             success(CreateItemResponse {
                 item: ItemRevision {
                     item_id: ITEM_ID.to_string(),
@@ -403,18 +403,19 @@ mod tests {
         }
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_create_identity_trimming(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_create_identity_trimming(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const ITEM_TITLE: &str = "Trimming Test";
         const SHARE_ID: &str = "MyShareID";
         const ITEM_ID: &str = "MyItemID";
 
-        let client = server.pass_client_with_plan(PlanType::Plus).await;
-        setup_share_keys(&server, SHARE_ID);
-        setup_vault_share(&server, SHARE_ID);
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Plus).await;
+        setup_share_keys(&api, SHARE_ID);
+        setup_vault_share(&api, SHARE_ID);
 
-        let recorder = server.new_recorder();
-        server.handler("/pass/v1/share/MyShareID/item", move |_| {
+        let recorder = api.new_recorder();
+        api.handler("/pass/v1/share/MyShareID/item", move |_| {
             success(CreateItemResponse {
                 item: ItemRevision {
                     item_id: ITEM_ID.to_string(),

@@ -1,11 +1,11 @@
-use crate::PassClient;
 use crate::permission::PermissionAction;
 use crate::utils::debug_response;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use muon::DELETE;
 use pass_domain::ShareId;
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn delete_vault(&self, share_id: &ShareId) -> Result<()> {
         self.action_guard(PermissionAction::DeleteVault {
             share_id: share_id.clone(),
@@ -31,21 +31,18 @@ impl PassClient {
 mod tests {
     use super::*;
     use crate::test_tools::*;
-    use std::sync::Arc;
 
-    use muon::test::server::{HTTP, Server};
-
-    #[muon::test(scheme(HTTP))]
-    async fn test_delete_vault(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_delete_vault(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const SHARE_ID: &str = "MyShareID";
 
-        let client = server.pass_client().await;
-        setup_vault_share(&server, SHARE_ID);
-        let handled = server.handler_with_method(
-            Method::DELETE,
-            format!("/pass/v1/vault/{SHARE_ID}"),
-            |_| success(Empty),
-        );
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
+        setup_vault_share(&api, SHARE_ID);
+        let handled =
+            api.handler_with_method(Method::DELETE, format!("/pass/v1/vault/{SHARE_ID}"), |_| {
+                success(Empty)
+            });
 
         client
             .delete_vault(&ShareId::new(SHARE_ID.to_string()))

@@ -1,14 +1,14 @@
 use crate::callbacks::{AuthEventHandler, CredentialProvider};
 use crate::client_builder;
 use crate::config::ClientConfig;
+use crate::os::{ProdClient, ProdContext};
 use crate::storage::SessionStorage;
 use crate::store::PassSessionStore;
 use crate::{extra_password, interactive_login, personal_access_token, post_login, web_login};
 use anyhow::{Context, Result, bail};
-use pass::{Client, FirstTimeSetupKey, PassClient};
+use pass::{FirstTimeSetupKey, PassClient};
 use pass_domain::{AccountType, LocalKeyProvider};
-use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::{Arc, RwLock};
 
 pub struct Authenticator {
     key_provider: Arc<dyn LocalKeyProvider>,
@@ -19,6 +19,20 @@ pub struct Authenticator {
 }
 
 impl Authenticator {
+    async fn persist_store(store: &Arc<RwLock<PassSessionStore>>) -> Result<()> {
+        let store_snapshot = {
+            let store_guard = store.read().expect("store rwlock poisoned");
+            store_guard.clone()
+        };
+
+        store_snapshot
+            .serialize()
+            .await
+            .context("Error persisting session store")?;
+
+        Ok(())
+    }
+
     pub fn new(
         key_provider: Arc<dyn LocalKeyProvider>,
         storage: Arc<dyn SessionStorage>,
@@ -35,7 +49,7 @@ impl Authenticator {
         }
     }
 
-    pub async fn create_client(&self) -> Result<(Client, Arc<RwLock<PassSessionStore>>)> {
+    pub async fn create_client(&self) -> Result<(ProdClient, Arc<RwLock<PassSessionStore>>)> {
         client_builder::create_client(
             self.key_provider.clone(),
             self.storage.clone(),
@@ -46,10 +60,10 @@ impl Authenticator {
 
     pub async fn login_web(
         &self,
-        client: Client,
+        client: ProdClient,
         client_features: Arc<dyn pass_domain::ClientFeatures>,
         store: Arc<RwLock<PassSessionStore>>,
-    ) -> Result<(PassClient, Vec<u8>)> {
+    ) -> Result<(PassClient<ProdContext>, Vec<u8>)> {
         // Check if already authenticated
         let session = client.get_session(()).await;
         if let Some(session) = session
@@ -68,19 +82,29 @@ impl Authenticator {
             .context("Error creating session")?;
 
         // Perform web login
-        let session_payload =
-            web_login::perform_web_login(session, store.clone(), self.event_handler.clone())
+        let login_result =
+            web_login::perform_web_login(&session, store.clone(), self.event_handler.clone())
                 .await
                 .context("Error in web login flow")?;
 
-        // Create a new PassClient (HACK to ensure store is fresh)
-        let (client, store) = self.create_client().await?;
+        session.remove_auth().await;
+        let _ = client
+            .new_session_with_credentials((), login_result.credentials)
+            .await
+            .context("Error storing web login session")?;
+
+        {
+            let mut store_guard = store.write().expect("store rwlock poisoned");
+            store_guard.set_account_type(AccountType::User);
+        }
+        Self::persist_store(&store).await?;
+
         let pass_client = PassClient::new(client, client_features, AccountType::User);
 
         // Check if extra password is needed
         let needs_extra_password = {
-            let store_guard = store.read().await;
-            store_guard.needs_extra_password().await
+            let store_guard = store.read().expect("store rwlock poisoned");
+            store_guard.needs_extra_password()
         };
 
         if needs_extra_password {
@@ -101,17 +125,17 @@ impl Authenticator {
             .on_info(&format!("Login performed by {}", user_info.user.email))
             .await?;
 
-        let passphrase = session_payload.passphrase();
+        let passphrase = login_result.session_payload.passphrase();
         Ok((pass_client, passphrase))
     }
 
     pub async fn login_interactive(
         &self,
-        client: Client,
+        client: ProdClient,
         client_features: Arc<dyn pass_domain::ClientFeatures>,
         store: Arc<RwLock<PassSessionStore>>,
         username: Option<String>,
-    ) -> Result<(PassClient, String)> {
+    ) -> Result<(PassClient<ProdContext>, String)> {
         // Check if already authenticated
         let session = client.get_session(()).await;
         if let Some(session) = session
@@ -144,9 +168,10 @@ impl Authenticator {
 
         // Set account type in store for regular user login
         {
-            let mut store_guard = store.write().await;
+            let mut store_guard = store.write().expect("store rwlock poisoned");
             store_guard.set_account_type(AccountType::User);
         }
+        Self::persist_store(&store).await?;
 
         info!("Logged in user: {}", username);
 
@@ -161,11 +186,11 @@ impl Authenticator {
 
     pub async fn login_personal_access_token(
         &self,
-        client: Client,
+        client: ProdClient,
         client_features: Arc<dyn pass_domain::ClientFeatures>,
         store: Arc<RwLock<PassSessionStore>>,
         token: Option<String>,
-    ) -> Result<(PassClient, Vec<u8>)> {
+    ) -> Result<(PassClient<ProdContext>, Vec<u8>)> {
         // Check if already authenticated
         let session = client.get_session(()).await;
         if let Some(session) = session
@@ -190,29 +215,36 @@ impl Authenticator {
             .context("Error creating session")?;
 
         // Perform personal access token login
-        let personal_access_token_key = personal_access_token::perform_personal_access_token_login(
-            session,
-            store.clone(),
-            &token,
-        )
-        .await
-        .context("Error in personal access token login flow")?;
+        let login_result =
+            personal_access_token::perform_personal_access_token_login(&session, &token)
+                .await
+                .context("Error in personal access token login flow")?;
 
         self.event_handler
             .on_auth_success("Personal access token session created successfully")
             .await?;
 
-        // Create a new PassClient (HACK to ensure store is fresh)
-        let (client, _store) = self.create_client().await?;
+        session.remove_auth().await;
+        let _ = client
+            .new_session_with_credentials((), login_result.credentials)
+            .await
+            .context("Error storing personal access token session")?;
+
+        {
+            let mut store_guard = store.write().expect("store rwlock poisoned");
+            store_guard.set_account_type(AccountType::PersonalAccessToken);
+        }
+        Self::persist_store(&store).await?;
+
         let pass_client =
             PassClient::new(client, client_features, AccountType::PersonalAccessToken);
 
-        Ok((pass_client, personal_access_token_key))
+        Ok((pass_client, login_result.personal_access_token_key))
     }
 
     pub async fn complete_login(
         &self,
-        pass_client: &PassClient,
+        pass_client: &PassClient<ProdContext>,
         key: FirstTimeSetupKey,
     ) -> Result<()> {
         post_login::perform_post_login_setup(pass_client, key, &self.config.post_login_config)

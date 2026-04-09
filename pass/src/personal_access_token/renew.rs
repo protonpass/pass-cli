@@ -1,4 +1,4 @@
-use crate::PassClient;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
 use base64::Engine;
 use muon::POST;
@@ -27,7 +27,7 @@ pub struct RenewPersonalAccessTokenResponse {
     pub env_var: String,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn renew_personal_access_token(
         &self,
         personal_access_token_id: &PersonalAccessTokenId,

@@ -8,12 +8,13 @@ mod key_storage;
 mod load_agent;
 mod ssh_key_parsing;
 
+use crate::helpers::CliPassClient as PassClient;
 use crate::telemetry::event::CommandEvent;
 use anyhow::{Context, Result, anyhow};
 use clap::Subcommand;
 use key_storage::{KeyStorage, SshIdentity};
+use pass::is_id;
 use pass::ssh_key::SshKeyItemCreatePayload;
-use pass::{PassClient, is_id};
 use pass_domain::{ItemId, PermissionFlag, ShareId};
 use ssh_agent_lib::ssh_encoding::LineEnding;
 use ssh_key::HashAlg;

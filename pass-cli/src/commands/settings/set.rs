@@ -1,8 +1,8 @@
 use crate::commands::vault::VaultQuery;
+use crate::helpers::CliPassClient as PassClient;
 use crate::helpers::PassClientExt;
 use anyhow::{Context, Result, anyhow};
 use clap::Subcommand;
-use pass::PassClient;
 use pass_db::{Setting, UserSettingModel};
 
 #[derive(Subcommand)]

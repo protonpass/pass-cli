@@ -1,9 +1,9 @@
-use crate::PassClient;
 use crate::folder::list::FolderResponse;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use pass_domain::{DecryptedFolderKey, FolderId, ShareId, crypto};
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     /// Get the name of a folder using existing caches and methods
     pub async fn get_folder_name(
         &self,

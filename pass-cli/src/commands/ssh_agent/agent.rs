@@ -16,7 +16,7 @@ use super::event_handler::SshAgentEventHandler;
 use super::event_processor::SshEventProcessor;
 use super::key_storage::{IdentitySource, KeyStorage};
 use super::{SshIdentity, VaultQuery, get_default_socket_path};
-use pass::PassClient;
+use crate::helpers::CliPassClient as PassClient;
 use ssh_key::private::KeypairData;
 use ssh_key::{Algorithm, HashAlg, Signature};
 use std::sync::Arc;

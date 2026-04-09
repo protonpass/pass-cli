@@ -1,9 +1,10 @@
 use crate::commands::item::common::{ItemQuery, ShareQuery};
 use crate::commands::secret_resolver::ItemReference;
 use crate::commands::{OutputFormat, settings_helper};
+use crate::helpers::CliPassClient as PassClient;
 use crate::telemetry::event::CommandEvent;
 use anyhow::{Context, Result, anyhow, bail};
-use pass::{FindItemQuery, PassClient};
+use pass::FindItemQuery;
 
 pub enum ViewItemQuery {
     Ids {

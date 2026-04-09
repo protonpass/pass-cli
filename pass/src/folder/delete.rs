@@ -1,5 +1,5 @@
-use crate::PassClient;
 use crate::common::CodeResponse;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
 use muon::DELETE;
 use pass_domain::{FolderId, ShareId};
@@ -10,7 +10,7 @@ struct DeleteFolderPayload {
     folder_ids: Vec<String>,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn delete_folder(&self, share_id: &ShareId, folder_id: &FolderId) -> Result<()> {
         let payload = DeleteFolderPayload {
             folder_ids: vec![folder_id.to_string()],

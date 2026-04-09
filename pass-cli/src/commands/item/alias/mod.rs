@@ -3,9 +3,9 @@ mod create;
 use crate::commands::OutputFormat;
 use crate::commands::item::common::ShareQuery;
 use crate::commands::settings_helper;
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::Result;
 use clap::Subcommand;
-use pass::PassClient;
 
 #[derive(Subcommand)]
 pub enum AliasCommands {

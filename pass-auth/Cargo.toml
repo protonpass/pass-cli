@@ -8,12 +8,15 @@ pass = { path = "../pass" }
 pass-domain = { path = "../pass-domain" }
 
 aes = "0.8.4"
+async-compat = "0.2"
+rand_chacha = { version = "0.9", features = ["os_rng"] }
 
 urlencoding = "2.1"
 
 anyhow.workspace = true
 async-trait.workspace = true
 base64.workspace = true
+futures.workspace = true
 muon.workspace = true
 proton-crypto.workspace = true
 serde.workspace = true

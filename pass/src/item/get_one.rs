@@ -1,8 +1,8 @@
-use crate::PassClient;
 use crate::item::item_keys::OpenedItemKey;
 use crate::item::list::ItemRevision;
 use crate::pagination::SincePagination;
 use crate::utils::debug_response;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use muon::GET;
 use pass_domain::{
@@ -62,7 +62,7 @@ struct ChunkResponse {
     pub size: usize,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn view_item(&self, share_id: &ShareId, item_id: &ItemId) -> Result<ItemDetails> {
         let item_revision = self
             .fetch_item_revision(share_id, item_id)
@@ -252,28 +252,27 @@ mod tests {
     use super::*;
     use crate::test_tools::*;
     use crate::utils::b64_encode;
-    use std::sync::Arc;
 
-    use muon::test::server::{HTTP, Server};
     use pass_domain::{
         CustomItem, CustomSection, ItemContent, ItemData, ItemExtraField, ItemExtraFieldContent,
         ItemFlag,
     };
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_fetch_item_revision(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_fetch_item_revision(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const SHARE_ID: &str = "MyShareID";
         const ITEM_ID: &str = "MyItemID";
 
-        let client = server.pass_client().await;
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
 
         let content = random_string(10);
         let revision = ItemRevisionBuilder::new(ITEM_ID.to_string())
             .with_content(content.clone())
             .build();
-        let handled = setup_item_revision(&server, SHARE_ID, ITEM_ID, revision.clone());
+        let handled = setup_item_revision(&api, SHARE_ID, ITEM_ID, revision.clone());
 
-        let recorder = server.new_recorder();
+        let recorder = api.new_recorder();
         let revision = client
             .fetch_item_revision(&share_id!(SHARE_ID), &item_id!(ITEM_ID))
             .await
@@ -287,8 +286,9 @@ mod tests {
         assert_eq!(content, revision.content);
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_view_item(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_view_item(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const SHARE_ID: &str = "MyShareID";
         const ITEM_ID: &str = "MyItemID";
         const ITEM_TITLE: &str = "My item";
@@ -298,9 +298,9 @@ mod tests {
         const ITEM_SECTION_FIELD_TITLE: &str = "Section field title";
         const ITEM_SECTION_FIELD_VALUE: &str = "Section field value";
 
-        let client = server.pass_client().await;
-        setup_vault_share(&server, SHARE_ID);
-        setup_share_keys(&server, SHARE_ID);
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
+        setup_vault_share(&api, SHARE_ID);
+        setup_share_keys(&api, SHARE_ID);
 
         let data = ItemData::new(
             ITEM_TITLE.to_string(),
@@ -325,9 +325,9 @@ mod tests {
             .with_content(encoded_data.clone())
             .with_item_key(Some(b64_encode(encrypted_data.encrypted_item_key.clone())))
             .build();
-        let handled = setup_item_revision(&server, SHARE_ID, ITEM_ID, revision.clone());
+        let handled = setup_item_revision(&api, SHARE_ID, ITEM_ID, revision.clone());
 
-        let recorder = server.new_recorder();
+        let recorder = api.new_recorder();
         let details = client
             .view_item(&share_id!(SHARE_ID), &item_id!(ITEM_ID))
             .await
@@ -342,14 +342,15 @@ mod tests {
         assert_eq!(data, details.item.content);
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_view_item_fetches_attachments(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_view_item_fetches_attachments(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const SHARE_ID: &str = "MyShareID";
         const ITEM_ID: &str = "MyItemID";
 
-        let client = server.pass_client().await;
-        setup_vault_share(&server, SHARE_ID);
-        setup_share_keys(&server, SHARE_ID);
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
+        setup_vault_share(&api, SHARE_ID);
+        setup_share_keys(&api, SHARE_ID);
 
         let data = create_random_item();
         let encrypted_data = encrypt_item_contents(data.clone());
@@ -359,10 +360,10 @@ mod tests {
             .with_item_key(Some(b64_encode(encrypted_data.encrypted_item_key.clone())))
             .with_flags(ItemFlag::ItemHasFiles as u64)
             .build();
-        setup_item_revision(&server, SHARE_ID, ITEM_ID, revision.clone());
+        setup_item_revision(&api, SHARE_ID, ITEM_ID, revision.clone());
 
         // TODO: Add test that has attachments to check they can be decrypted
-        let handled = server.handler_with_method(
+        let handled = api.handler_with_method(
             Method::GET,
             format!("/pass/v1/share/{SHARE_ID}/item/{ITEM_ID}/files"),
             move |_| {
@@ -375,7 +376,7 @@ mod tests {
             },
         );
 
-        let recorder = server.new_recorder();
+        let recorder = api.new_recorder();
         client
             .view_item(&share_id!(SHARE_ID), &item_id!(ITEM_ID))
             .await

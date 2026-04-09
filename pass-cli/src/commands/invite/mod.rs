@@ -1,8 +1,8 @@
 use crate::commands::OutputFormat;
+use crate::helpers::CliPassClient as PassClient;
 use crate::utils::is_experimental_features_disabled;
 use anyhow::Result;
 use clap::Subcommand;
-use pass::PassClient;
 use pass_domain::InviteId;
 
 pub mod accept;

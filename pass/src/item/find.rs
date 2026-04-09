@@ -1,5 +1,5 @@
-use crate::PassClient;
 use crate::utils::is_id;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use pass_domain::{Item, ItemId, ShareId};
 
@@ -31,7 +31,7 @@ impl FindItemQuery {
     }
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn find_item(&self, query: FindItemQuery) -> Result<Item> {
         match query {
             FindItemQuery::Name {

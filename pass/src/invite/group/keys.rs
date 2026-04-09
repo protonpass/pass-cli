@@ -1,4 +1,4 @@
-use crate::PassClient;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
 use muon::GET;
 use muon::rest::core::v4::addresses;
@@ -38,7 +38,7 @@ pub(crate) struct GetGroupsResponse {
     pub groups: Vec<GroupResponse>,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn get_group_addresses(&self) -> Result<Vec<GroupAddress>> {
         let res = self
             .send(GET!("/core/v4/groups"))
@@ -65,20 +65,19 @@ impl PassClient {
 mod tests {
     use super::*;
     use crate::test_tools::*;
-    use std::sync::Arc;
 
     use muon::rest::core::v4::addresses;
-    use muon::test::server::{HTTP, Server};
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_get_group_addresses_empty(server: Arc<Server>) {
-        let client = server.pass_client().await;
+    #[muon_test::test]
+    async fn test_get_group_addresses_empty(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
 
-        let handled = server.handler_with_method(Method::GET, "/core/v4/groups", move |_| {
+        let handled = api.handler_with_method(Method::GET, "/core/v4/groups", move |_| {
             success(GetGroupsResponse { groups: vec![] })
         });
 
-        let recorder = server.new_recorder();
+        let recorder = api.new_recorder();
         let group_addresses = client
             .get_group_addresses()
             .await
@@ -91,8 +90,9 @@ mod tests {
         assert!(group_addresses.is_empty());
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_get_group_addresses_with_content(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_get_group_addresses_with_content(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const GROUP_1_ID: &str = "Group1ID";
         const GROUP_1_NAME: &str = "Test Group 1";
         const GROUP_1_DESCRIPTION: &str = "First test group";
@@ -115,9 +115,9 @@ mod tests {
         const GROUP_2_GROUP_VISIBILITY: i64 = 2;
         const GROUP_2_MEMBER_VISIBILITY: i64 = 2;
 
-        let client = server.pass_client().await;
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
 
-        let handled = server.handler_with_method(Method::GET, "/core/v4/groups", move |_| {
+        let handled = api.handler_with_method(Method::GET, "/core/v4/groups", move |_| {
             success(GetGroupsResponse {
                 groups: vec![
                     GroupResponse {
@@ -154,7 +154,7 @@ mod tests {
             })
         });
 
-        let recorder = server.new_recorder();
+        let recorder = api.new_recorder();
         let group_addresses = client
             .get_group_addresses()
             .await
@@ -182,8 +182,9 @@ mod tests {
         assert!(group_2.address.keys.is_empty());
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_get_group_addresses_filters_groups_without_addresses(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_get_group_addresses_filters_groups_without_addresses(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const GROUP_WITH_ADDRESS_ID: &str = "GroupWithAddressID";
         const GROUP_WITH_ADDRESS_NAME: &str = "Group With Address";
         const GROUP_WITH_ADDRESS_DESCRIPTION: &str = "This group has an address";
@@ -194,9 +195,9 @@ mod tests {
         const GROUP_WITHOUT_ADDRESS_NAME: &str = "Group Without Address";
         const GROUP_WITHOUT_ADDRESS_DESCRIPTION: &str = "This group has no address";
 
-        let client = server.pass_client().await;
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
 
-        let handled = server.handler_with_method(Method::GET, "/core/v4/groups", move |_| {
+        let handled = api.handler_with_method(Method::GET, "/core/v4/groups", move |_| {
             success(GetGroupsResponse {
                 groups: vec![
                     GroupResponse {
@@ -229,7 +230,7 @@ mod tests {
             })
         });
 
-        let recorder = server.new_recorder();
+        let recorder = api.new_recorder();
         let group_addresses = client
             .get_group_addresses()
             .await

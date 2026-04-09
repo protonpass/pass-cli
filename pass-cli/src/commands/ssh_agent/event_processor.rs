@@ -1,8 +1,8 @@
 use super::VaultQuery;
 use super::key_load::load_and_decrypt_key;
 use super::key_storage::{IdentitySource, KeyStorage, SshIdentity};
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result};
-use pass::PassClient;
 use pass_domain::{Item, ItemContent, ItemId, ShareId, UserEvents};
 use tokio::sync::RwLock;
 

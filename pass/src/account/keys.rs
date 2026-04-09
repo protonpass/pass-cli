@@ -1,5 +1,5 @@
-use crate::PassClient;
 use crate::common::CodeResponse;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
 use muon::GET;
 use pass_domain::PublicKey;
@@ -51,7 +51,7 @@ impl PublicAddressKeyResponse {
     }
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub(crate) async fn get_keys_for_email(
         &self,
         address: &str,

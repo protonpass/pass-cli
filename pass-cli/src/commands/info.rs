@@ -1,8 +1,8 @@
 use crate::commands::update::InstallSource;
 use crate::commands::{OutputFormat, settings_helper, update};
+use crate::helpers::CliPassClient as PassClient;
 use crate::telemetry::event::CommandEvent;
 use anyhow::{Context, Result};
-use pass::PassClient;
 use pass_domain::AccountType;
 use std::path::PathBuf;
 

@@ -1,6 +1,6 @@
 use super::super::VaultQuery;
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result};
-use pass::PassClient;
 use pass_domain::ShareId;
 
 pub async fn run(client: PassClient, query: VaultQuery, member_share_id: ShareId) -> Result<()> {

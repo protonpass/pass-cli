@@ -6,7 +6,7 @@ pub trait ClientTestExt {
 }
 
 #[async_trait::async_trait(?Send)]
-impl ClientTestExt for crate::PassClient {
+impl ClientTestExt for super::muon_ext::TestPassClient {
     async fn encrypt_for_user_key(&self, data: Vec<u8>) -> Vec<u8> {
         let user_key = self
             .get_primary_user_key()

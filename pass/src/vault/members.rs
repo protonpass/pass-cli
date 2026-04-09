@@ -1,6 +1,6 @@
-use crate::PassClient;
 use crate::common::CodeResponse;
 use crate::pagination::SincePagination;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
 use muon::{DELETE, GET, PUT};
 use pass_domain::{PermissionFlag, ShareId, ShareMember, ShareRole, TargetType};
@@ -60,7 +60,7 @@ struct UpdateMemberRequest {
     expire_time: Option<i64>,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn list_vault_members(&self, share_id: &ShareId) -> Result<Vec<ShareMember>> {
         let members = self
             .fetch_members(share_id)

@@ -1,8 +1,9 @@
 use super::{PatExpiration, expiration_to_timestamp};
 use crate::commands::OutputFormat;
 use crate::commands::settings_helper::get_format;
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::Result;
-use pass::{CreatePersonalAccessTokenArgs, PassClient};
+use pass::CreatePersonalAccessTokenArgs;
 
 #[derive(Clone, Debug, serde::Serialize)]
 struct CreatePersonalAccessTokenResult {

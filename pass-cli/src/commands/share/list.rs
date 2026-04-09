@@ -1,6 +1,6 @@
 use crate::commands::OutputFormat;
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result, anyhow};
-use pass::PassClient;
 use pass_domain::{Share, ShareId, ShareRole, ShareType, TargetType};
 
 pub(crate) enum ShareListMode {

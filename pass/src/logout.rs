@@ -1,7 +1,7 @@
-use crate::PassClient;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn logout(&self) -> Result<()> {
         self.client
             .get_session(())

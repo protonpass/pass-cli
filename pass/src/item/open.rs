@@ -1,6 +1,6 @@
-use crate::PassClient;
 use crate::item::item_keys::OpenedItemKey;
 use crate::item::list::ItemRevision;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use bytes::Bytes;
 use futures::stream::{self, StreamExt};
@@ -25,7 +25,7 @@ pub(crate) struct ItemWithItemKey {
     pub item_key: OpenedItemKey,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub(crate) async fn open_items(
         &self,
         share_id: &ShareId,
@@ -321,15 +321,13 @@ mod tests {
     use crate::share::list::ShareResponse;
     use crate::test_tools::*;
     use muon::rest::core::v4::{addresses, keys};
-    use muon::test::server::{HTTP, Server};
     use pass_domain::{
         CustomItem, CustomSection, DataToArmor, ItemContent, ItemData, ItemExtraField,
         ItemExtraFieldContent, ItemFlag, ItemState, PlainText, PublicKey, TargetType, crypto,
     };
-    use std::sync::Arc;
 
     // Helper function to setup item share (target_type: Item)
-    fn setup_item_share(server: &Arc<Server>, share_id: &str, item_id: &str, vault_id: &str) {
+    fn setup_item_share(server: &ProtonAPI, share_id: &str, item_id: &str, vault_id: &str) {
         let share_response = ShareResponse {
             share_id: share_id.to_string(),
             address_id: TEST_ADDRESS_ID.to_string(),
@@ -362,7 +360,7 @@ mod tests {
 
     // Helper function to setup item share with group
     fn setup_item_share_with_group(
-        server: &Arc<Server>,
+        server: &ProtonAPI,
         share_id: &str,
         item_id: &str,
         vault_id: &str,
@@ -399,7 +397,7 @@ mod tests {
     }
 
     // Helper function to setup vault share with group
-    fn setup_vault_share_with_group(server: &Arc<Server>, share_id: &str, group_id: &str) {
+    fn setup_vault_share_with_group(server: &ProtonAPI, share_id: &str, group_id: &str) {
         let share_response = ShareResponse {
             share_id: share_id.to_string(),
             address_id: TEST_ADDRESS_ID.to_string(),
@@ -432,7 +430,7 @@ mod tests {
 
     // Helper function to setup group crypto infrastructure
     fn setup_group_crypto(
-        server: &Arc<Server>,
+        server: &ProtonAPI,
         group_id: String,
         group_address_id: String,
         group_address_email: String,
@@ -481,7 +479,7 @@ mod tests {
 
     // Helper function to setup share keys for group shares
     fn setup_share_keys_for_group(
-        server: &Arc<Server>,
+        server: &ProtonAPI,
         share_id: &str,
         encrypted_share_key: Vec<u8>,
     ) {
@@ -523,13 +521,14 @@ mod tests {
         .expect("Error creating item data")
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_open_items_empty_list(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_open_items_empty_list(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const SHARE_ID: &str = "EMPTY_SHARE_ID";
 
-        let client = server.pass_client().await;
-        setup_vault_share(&server, SHARE_ID);
-        setup_share_keys(&server, SHARE_ID);
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
+        setup_vault_share(&api, SHARE_ID);
+        setup_share_keys(&api, SHARE_ID);
 
         let result = client
             .open_items(&share_id!(SHARE_ID), vec![])
@@ -539,14 +538,15 @@ mod tests {
         assert_eq!(0, result.len(), "Empty list should return empty result");
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_get_item_key_vault_share(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_get_item_key_vault_share(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const SHARE_ID: &str = "VAULT_SHARE_ID";
         const ITEM_ID: &str = "VAULT_ITEM_ID";
 
-        let client = server.pass_client().await;
-        setup_vault_share(&server, SHARE_ID);
-        setup_share_keys(&server, SHARE_ID);
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
+        setup_vault_share(&api, SHARE_ID);
+        setup_share_keys(&api, SHARE_ID);
 
         // Create a simple item revision for testing get_item_key
         let item_data = create_test_item_data("Test", "Note");
@@ -567,16 +567,17 @@ mod tests {
         assert_eq!(encrypted_data.item_key.as_ref(), result.key.as_ref())
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_open_items_vault_share_single_item(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_open_items_vault_share_single_item(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const SHARE_ID: &str = "VAULT_SHARE_ID";
         const ITEM_ID: &str = "VAULT_ITEM_ID";
         const ITEM_TITLE: &str = "Test Vault Item";
         const ITEM_NOTE: &str = "Test vault item note";
 
-        let client = server.pass_client().await;
-        setup_vault_share(&server, SHARE_ID);
-        setup_share_keys(&server, SHARE_ID);
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
+        setup_vault_share(&api, SHARE_ID);
+        setup_share_keys(&api, SHARE_ID);
 
         // Create test item data and encrypt it
         let item_data = create_test_item_data(ITEM_TITLE, ITEM_NOTE);
@@ -616,17 +617,18 @@ mod tests {
         assert_eq!(32, opened_item.item_key.key.as_ref().len());
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_open_items_item_share_single_item(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_open_items_item_share_single_item(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const SHARE_ID: &str = "ITEM_SHARE_ID";
         const ITEM_ID: &str = "SHARED_ITEM_ID";
         const VAULT_ID: &str = "ITEM_VAULT_ID";
         const ITEM_TITLE: &str = "Test Item Share";
         const ITEM_NOTE: &str = "Test item share note";
 
-        let client = server.pass_client().await;
-        setup_item_share(&server, SHARE_ID, ITEM_ID, VAULT_ID);
-        setup_share_keys(&server, SHARE_ID);
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
+        setup_item_share(&api, SHARE_ID, ITEM_ID, VAULT_ID);
+        setup_share_keys(&api, SHARE_ID);
 
         // Create test item data and encrypt it directly with share key (no item_key for item shares)
         let item_data = create_test_item_data(ITEM_TITLE, ITEM_NOTE);
@@ -668,8 +670,9 @@ mod tests {
         assert_eq!(TEST_SHARE_KEY.as_slice(), opened_item.item_key.key.as_ref());
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_open_items_vault_share_with_group(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_open_items_vault_share_with_group(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const SHARE_ID: &str = "VAULT_GROUP_SHARE_ID";
         const ITEM_ID: &str = "VAULT_GROUP_ITEM_ID";
         const GROUP_ID: &str = "VAULT_GROUP_ID";
@@ -679,7 +682,7 @@ mod tests {
         const ITEM_TITLE: &str = "Test Vault Group Item";
         const ITEM_NOTE: &str = "Test vault group item note";
 
-        let client = server.pass_client().await;
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
 
         // Generate group key pair
         let (group_private_key, group_armored_public_key) = {
@@ -700,9 +703,9 @@ mod tests {
             (private, public_armored)
         };
 
-        setup_vault_share_with_group(&server, SHARE_ID, GROUP_ID);
+        setup_vault_share_with_group(&api, SHARE_ID, GROUP_ID);
         setup_group_crypto(
-            &server,
+            &api,
             GROUP_ID.to_string(),
             GROUP_ADDRESS_ID.to_string(),
             GROUP_ADDRESS_EMAIL.to_string(),
@@ -729,7 +732,7 @@ mod tests {
             .expect("Failed to encrypt share key")
         };
 
-        setup_share_keys_for_group(&server, SHARE_ID, encrypted_share_key);
+        setup_share_keys_for_group(&api, SHARE_ID, encrypted_share_key);
 
         // Create test item data and encrypt it
         let item_data = create_test_item_data(ITEM_TITLE, ITEM_NOTE);
@@ -772,8 +775,9 @@ mod tests {
         assert_eq!(item_key.as_slice(), opened_item.item_key.key.as_ref());
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_open_items_item_share_with_group(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_open_items_item_share_with_group(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const SHARE_ID: &str = "ITEM_GROUP_SHARE_ID";
         const ITEM_ID: &str = "ITEM_GROUP_ITEM_ID";
         const VAULT_ID: &str = "ITEM_GROUP_VAULT_ID";
@@ -784,7 +788,7 @@ mod tests {
         const ITEM_TITLE: &str = "Test Item Group Share";
         const ITEM_NOTE: &str = "Test item group share note";
 
-        let client = server.pass_client().await;
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
 
         // Generate group key pair
         let (group_private_key, group_armored_public_key) = {
@@ -805,9 +809,9 @@ mod tests {
             (private, public_armored)
         };
 
-        setup_item_share_with_group(&server, SHARE_ID, ITEM_ID, VAULT_ID, GROUP_ID);
+        setup_item_share_with_group(&api, SHARE_ID, ITEM_ID, VAULT_ID, GROUP_ID);
         setup_group_crypto(
-            &server,
+            &api,
             GROUP_ID.to_string(),
             GROUP_ADDRESS_ID.to_string(),
             GROUP_ADDRESS_EMAIL.to_string(),
@@ -834,7 +838,7 @@ mod tests {
             .expect("Failed to encrypt share key")
         };
 
-        setup_share_keys_for_group(&server, SHARE_ID, encrypted_share_key);
+        setup_share_keys_for_group(&api, SHARE_ID, encrypted_share_key);
 
         // Create test item data and encrypt it directly with share key
         let item_data = create_test_item_data(ITEM_TITLE, ITEM_NOTE);
@@ -876,18 +880,19 @@ mod tests {
         assert_eq!(share_key_raw.as_slice(), opened_item.item_key.key.as_ref());
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_open_items_with_different_key_rotations(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_open_items_with_different_key_rotations(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const SHARE_ID: &str = "ROTATION_SHARE_ID";
         const ITEM_ID: &str = "ROTATION_ITEM_ID";
         const ITEM_TITLE: &str = "Test Rotation Item";
         const ITEM_NOTE: &str = "Test rotation item note";
 
-        let client = server.pass_client().await;
-        setup_vault_share(&server, SHARE_ID);
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
+        setup_vault_share(&api, SHARE_ID);
 
         // Setup multiple share keys with different rotations
-        server.handler_with_method(
+        api.handler_with_method(
             Method::GET,
             format!("/pass/v1/share/{}/key", SHARE_ID),
             move |_| {
@@ -941,16 +946,17 @@ mod tests {
         assert_eq!(ITEM_TITLE, opened_item.item.content.title);
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_open_items_with_item_flags_and_states(server: Arc<Server>) {
+    #[muon_test::test]
+    async fn test_open_items_with_item_flags_and_states(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
         const SHARE_ID: &str = "FLAGS_SHARE_ID";
         const ITEM_ID: &str = "FLAGS_ITEM_ID";
         const ITEM_TITLE: &str = "Test Flags Item";
         const ITEM_NOTE: &str = "Test flags item note";
 
-        let client = server.pass_client().await;
-        setup_vault_share(&server, SHARE_ID);
-        setup_share_keys(&server, SHARE_ID);
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
+        setup_vault_share(&api, SHARE_ID);
+        setup_share_keys(&api, SHARE_ID);
 
         // Create test item data and encrypt it
         let item_data = create_test_item_data(ITEM_TITLE, ITEM_NOTE);

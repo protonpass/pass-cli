@@ -1,4 +1,4 @@
-use crate::PassClient;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
 use async_lock::RwLock;
 use pass_domain::{
@@ -25,7 +25,7 @@ pub struct EventHandlingResult {
     pub force_refresh: bool,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn on_events(&self, events: UserEvents) -> Result<EventHandlingResult> {
         let result = Arc::new(RwLock::new(EventHandlingResult::default()));
 

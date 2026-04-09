@@ -1,6 +1,6 @@
-use crate::PassClient;
 use crate::crypto::encrypt_invite_keys::{EncryptInviteKeysFlow, InviteKeyToPrepare};
 use crate::item::item_keys::OpenedItemKeys;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
 use pass_domain::{
     Address, DecryptedShareKey, ItemId, PublicKey, ShareId, ShareRole, ShareType, TargetType,
@@ -96,7 +96,7 @@ impl InviteTarget {
     }
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub(crate) async fn create_invites_request(
         &self,
         share_id: &ShareId,

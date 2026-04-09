@@ -1,45 +1,22 @@
 use crate::config::ClientConfig;
+use crate::os::{ProdClient, ProdOs, TokioExecutor};
 use crate::storage::SessionStorage;
 use crate::store::{
-    AllowAllPinVerifier, CustomEnv, GetStoreError, PassSessionStore, SerializedEnv,
-    SharedPassSessionStore,
+    CustomEnv, GetStoreError, PassSessionStore, SerializedEnv, SharedPassSessionStore,
 };
 use anyhow::{Context, anyhow};
-use muon::app::{App, AppVersion};
-use muon::common::{BoxFut, EnvProxy, Sender, SenderLayer};
-use muon::env::{Env, EnvId};
-use muon::{ProtonRequest, ProtonResponse};
-use pass::Client;
+use muon::app::App;
+use muon::client::builder::Hyper;
+use muon::common::{EnvProxy, Proxy};
+use muon::env::{Env, Environment};
 use pass_domain::LocalKeyProvider;
-use std::sync::Arc;
-use tokio::sync::RwLock;
+use rand_chacha::ChaCha20Rng;
+use rand_chacha::rand_core::SeedableRng;
+use std::sync::{Arc, RwLock};
 
 pub const ENVIRONMENT_ENV_VAR: &str = "PROTON_PASS_ENVIRONMENT";
 const XDEBUG_SESSION_HEADER: &str = "XDEBUG_SESSION";
 const APP_NAME: &str = "cli-pass";
-
-struct XdebugSessionLayer {
-    session: String,
-}
-
-impl XdebugSessionLayer {
-    pub fn new(session: String) -> Self {
-        Self { session }
-    }
-}
-
-impl SenderLayer<ProtonRequest, ProtonResponse> for XdebugSessionLayer {
-    fn on_send<'a>(
-        &'a self,
-        inner: &'a dyn Sender<ProtonRequest, ProtonResponse>,
-        req: ProtonRequest,
-    ) -> BoxFut<'a, muon::Result<ProtonResponse>> {
-        Box::pin(async move {
-            let with_header = req.header((XDEBUG_SESSION_HEADER, self.session.clone()));
-            inner.send(with_header).await
-        })
-    }
-}
 
 fn get_env(config: &ClientConfig) -> SerializedEnv {
     let env_string = config
@@ -59,14 +36,21 @@ fn get_env(config: &ClientConfig) -> SerializedEnv {
     }
 }
 
-fn store_using_current_env(store_env: &EnvId, current_env: &EnvId) -> bool {
-    match current_env {
-        EnvId::Prod => matches!(store_env, EnvId::Prod),
-        EnvId::Custom(_) => matches!(store_env, EnvId::Custom(_)),
-        EnvId::Atlas(current_atlas) => match store_env {
-            EnvId::Atlas(store_atlas) => store_atlas == current_atlas,
-            _ => false,
-        },
+fn store_using_current_env(store_env: &Environment, current_env: &Environment) -> bool {
+    match (store_env, current_env) {
+        (Environment::Prod(_), Environment::Prod(_)) => true,
+        (Environment::Custom(_), Environment::Custom(_)) => true,
+        (Environment::Atlas(_), Environment::Atlas(_)) => true,
+        (Environment::Scientist(s1), Environment::Scientist(s2)) => {
+            // Compare by serializing through SerializedEnv
+            let s1_serialized = SerializedEnv::from(Environment::Scientist(s1.clone()));
+            let s2_serialized = SerializedEnv::from(Environment::Scientist(s2.clone()));
+            matches!(
+                (s1_serialized, s2_serialized),
+                (SerializedEnv::Atlas(Some(a)), SerializedEnv::Atlas(Some(b))) if a == b
+            )
+        }
+        _ => false,
     }
 }
 
@@ -74,7 +58,7 @@ pub async fn create_client(
     key_provider: Arc<dyn LocalKeyProvider>,
     storage: Arc<dyn SessionStorage>,
     config: &ClientConfig,
-) -> anyhow::Result<(Client, Arc<RwLock<PassSessionStore>>)> {
+) -> anyhow::Result<(ProdClient, Arc<RwLock<PassSessionStore>>)> {
     // Check key_provider can be used
     key_provider
         .get_key()
@@ -102,7 +86,13 @@ pub async fn create_client(
         }
     };
 
-    let current_env = EnvId::from(get_env(config));
+    let serialized_env = get_env(config);
+    debug!("Serialized env: {serialized_env:?}");
+    let current_env = Environment::from(serialized_env);
+    debug!("Current env: {current_env:?}");
+
+    let servers = current_env.servers(app.app_version());
+    debug!("Servers: {servers:?}");
 
     let store = store.unwrap_or_else(|| {
         debug!("Using env {current_env:?}");
@@ -116,44 +106,33 @@ pub async fn create_client(
         ));
     }
 
-    // Determine if we need AllowAllPinVerifier (for localhost)
-    let mut use_allow_all = false;
-    if let EnvId::Custom(ref env) = store.env
-        && let Some(server) = env.servers(&AppVersion::Other).first()
-    {
-        let host_name = format!("{}", server.endpoint.host.name());
-        if host_name == "localhost" {
-            use_allow_all = true;
-        }
-    }
-
     // Build the client
     let shared_store = SharedPassSessionStore::new(store);
     let store_ref = shared_store.inner.clone();
-    let mut builder = Client::builder(app, shared_store).await;
 
-    if use_allow_all {
-        warn!("Adding AllowAllPinVerifier for localhost");
-        builder = builder.verifier(AllowAllPinVerifier);
-    }
+    // Proxy must be configured before with_persistence due to typestate constraints
+    let mut transport_builder = muon::Client::builder_with_transport::<Hyper>(app, current_env)
+        .with_operating_system(ProdOs::default(), ChaCha20Rng::from_os_rng())
+        .with_multi_thread_executor(TokioExecutor);
 
-    // Add debug configuration
-    if let Some(ref debug_config) = config.debug_config
-        && let Some(ref session) = debug_config.xdebug_session
-    {
-        info!("Adding XDEBUG_SESSION header");
-        builder = builder.layer_front(XdebugSessionLayer::new(session.clone()));
-    }
-
-    // Add proxy configuration
     if config.proxy_config.http_proxy.is_some() {
         info!("Using HTTP_PROXY config");
-        builder = builder.proxy(EnvProxy::all("HTTP_PROXY"));
+        transport_builder = transport_builder.proxy(Proxy::Env(EnvProxy::all("HTTP_PROXY")));
     }
 
     if config.proxy_config.https_proxy.is_some() {
         info!("Using HTTPS_PROXY config");
-        builder = builder.proxy(EnvProxy::all("HTTPS_PROXY"));
+        transport_builder = transport_builder.proxy(Proxy::Env(EnvProxy::all("HTTPS_PROXY")));
+    }
+
+    let mut builder = transport_builder.with_persistence(shared_store);
+
+    // Add XDEBUG_SESSION header if configured
+    if let Some(ref debug_config) = config.debug_config
+        && let Some(ref session) = debug_config.xdebug_session
+    {
+        info!("Adding XDEBUG_SESSION header");
+        builder = builder.with_default_headers((XDEBUG_SESSION_HEADER, session.clone()));
     }
 
     let client = builder.build().context("failed to build client")?;

@@ -1,8 +1,8 @@
-use crate::PassClient;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use pass_domain::Vault;
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn find_vault(&self, vault_name: &str) -> Result<Vault> {
         let vaults = self.list_vaults().await.context("Error listing vaults")?;
         let vault = vaults

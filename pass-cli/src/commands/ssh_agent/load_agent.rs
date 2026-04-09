@@ -1,8 +1,8 @@
 use super::VaultQuery;
 use super::key_load;
+use crate::helpers::CliPassClient as PassClient;
 use crate::telemetry::event::CommandEvent;
 use anyhow::{Context, Result, bail};
-use pass::PassClient;
 use ssh_agent_client_rs::Client as SshAgentClient;
 use ssh_key::private::PrivateKey as SshPrivateKey;
 use std::path::PathBuf;

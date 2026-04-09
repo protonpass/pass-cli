@@ -1,5 +1,5 @@
-use crate::PassClient;
 use crate::common::CodeResponse;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use muon::PUT;
 use pass_domain::{FolderData, FolderId, ShareId, crypto};
@@ -20,7 +20,7 @@ struct UpdateFolderRequest {
     content: UpdateFolderContent,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn update_folder(
         &self,
         share_id: &ShareId,

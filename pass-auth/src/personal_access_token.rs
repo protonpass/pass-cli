@@ -1,12 +1,9 @@
-use crate::store::PassSessionStore;
+use crate::os::ProdContext;
 use anyhow::{Context, Result, anyhow, bail};
 use base64::Engine;
 use muon::POST;
-use muon::client::{Auth, Tokens};
-use muon::store::Store;
-use pass::PassSessionKeyType;
-use std::sync::Arc;
-use tokio::sync::RwLock;
+use muon::SessionCredentials;
+use muon::auth::{Auth, Tokens};
 
 const TOKEN_PREFIX: &str = "pst_";
 const TOKEN_LENGTH_WITHOUT_PREFIX: usize = 64;
@@ -44,6 +41,11 @@ struct PersonalAccessTokenLoginRequest {
 
 pub struct ParsedPersonalAccessTokenToken {
     pub token: String,
+    pub personal_access_token_key: Vec<u8>,
+}
+
+pub struct PersonalAccessTokenLoginResult {
+    pub credentials: SessionCredentials,
     pub personal_access_token_key: Vec<u8>,
 }
 
@@ -88,7 +90,7 @@ pub fn parse_personal_access_token_token(
 }
 
 async fn create_personal_access_token_session(
-    session: &muon::Session<PassSessionKeyType>,
+    session: &muon::Session<ProdContext>,
     token: &str,
 ) -> Result<PersonalAccessTokenSessionResponse> {
     info!("Creating personal access token session...");
@@ -122,10 +124,9 @@ async fn create_personal_access_token_session(
 }
 
 pub async fn perform_personal_access_token_login(
-    session: muon::Session<PassSessionKeyType>,
-    store: Arc<RwLock<PassSessionStore>>,
+    session: &muon::Session<ProdContext>,
     token_string: &str,
-) -> Result<Vec<u8>> {
+) -> Result<PersonalAccessTokenLoginResult> {
     // Parse the token
     let parsed = parse_personal_access_token_token(token_string)
         .context("Failed to parse personal access token token")?;
@@ -133,34 +134,29 @@ pub async fn perform_personal_access_token_login(
     info!("Personal access token token parsed successfully");
 
     // Request personal access token session
-    let response = create_personal_access_token_session(&session, &parsed.token)
+    let response = create_personal_access_token_session(session, &parsed.token)
         .await
         .context("Error creating personal access token session")?;
 
     info!("Personal access token session created successfully");
 
-    // Set authentication
-    {
-        let auth = Auth::Internal {
-            user_id: response.session.session_uid.clone(),
-            uid: response.session.session_uid.clone(),
-            tok: Tokens::access(
-                response.session.access_token,
-                response.session.refresh_token,
-                response.session.scopes,
-            ),
-        };
+    let auth = Auth::Internal {
+        user_id: response.session.session_uid.clone(),
+        uid: response.session.session_uid.clone(),
+        tok: Tokens::access(
+            response.session.access_token,
+            response.session.refresh_token,
+            response.session.scopes,
+        ),
+    };
 
-        let mut store_guard = store.write().await;
-        // Set account type for personal access token login
-        store_guard.set_account_type(pass_domain::AccountType::PersonalAccessToken);
-        store_guard
-            .set_auth(&(), auth)
-            .await
-            .context("Error setting auth")?;
-    }
+    let credentials = SessionCredentials::try_from(auth)
+        .map_err(|_| anyhow!("Failed to convert personal access token auth into credentials"))?;
 
-    Ok(parsed.personal_access_token_key)
+    Ok(PersonalAccessTokenLoginResult {
+        credentials,
+        personal_access_token_key: parsed.personal_access_token_key,
+    })
 }
 
 fn debug_response(res: &muon::http::HttpRes) {

@@ -1,6 +1,6 @@
 use super::common::{ItemQuery, ShareQuery};
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result};
-use pass::PassClient;
 
 pub struct MoveItemQuery {
     from_share_query: ShareQuery,

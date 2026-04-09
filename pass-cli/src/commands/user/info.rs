@@ -1,7 +1,7 @@
 use crate::commands::OutputFormat;
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result};
 use jiff::Timestamp;
-use pass::PassClient;
 
 #[derive(serde::Serialize)]
 struct UserInfoJsonOutput {

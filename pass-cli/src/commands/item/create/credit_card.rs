@@ -1,7 +1,7 @@
 use crate::commands::{item::common::ShareQuery, settings_helper};
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result, bail};
 use clap::Args;
-use pass::PassClient;
 use pass::credit_card::CreditCardItemCreatePayload;
 use std::io::{self, Read};
 

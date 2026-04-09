@@ -1,5 +1,5 @@
-use crate::PassClient;
 use crate::common::CodeResponse;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
 use muon::POST;
 use pass_domain::{TelemetryEvent, TelemetryEventData};
@@ -27,7 +27,7 @@ struct EventInfo {
     dimensions: HashMap<String, String>,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     // Convenience method to emit telemetry events.
     // Failures are logged but not propagated to avoid breaking operations.
     pub async fn emit_telemetry(&self, event: &dyn TelemetryEvent) {
@@ -127,12 +127,13 @@ mod tests {
     use super::*;
     use crate::test_tools::*;
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_send_telemetry_with_zero_events(server: Arc<Server>) {
-        let client = server.pass_client().await;
+    #[muon_test::test]
+    async fn test_send_telemetry_with_zero_events(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
 
         // Setup handler that should not be called for telemetry
-        let handled = server.handler("/data/v1/stats/multiple", |_| {
+        let handled = api.handler("/data/v1/stats/multiple", |_| {
             success(CodeResponse { code: 1000 })
         });
 
@@ -147,15 +148,16 @@ mod tests {
         assert_not_hit!(handled);
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_send_telemetry_with_single_event(server: Arc<Server>) {
-        let client = server.pass_client().await;
+    #[muon_test::test]
+    async fn test_send_telemetry_with_single_event(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
 
-        let handled = server.handler("/data/v1/stats/multiple", |_| {
+        let handled = api.handler("/data/v1/stats/multiple", |_| {
             success(CodeResponse { code: 1000 })
         });
 
-        let recorder = server.new_recorder();
+        let recorder = api.new_recorder();
 
         // Create a single telemetry event
         let mut dimensions = HashMap::new();
@@ -196,15 +198,16 @@ mod tests {
         );
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_send_telemetry_with_two_events(server: Arc<Server>) {
-        let client = server.pass_client().await;
+    #[muon_test::test]
+    async fn test_send_telemetry_with_two_events(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
 
-        let handled = server.handler("/data/v1/stats/multiple", |_| {
+        let handled = api.handler("/data/v1/stats/multiple", |_| {
             success(CodeResponse { code: 1000 })
         });
 
-        let recorder = server.new_recorder();
+        let recorder = api.new_recorder();
 
         // Create two telemetry events with different data
         let mut dimensions1 = HashMap::new();
@@ -262,15 +265,16 @@ mod tests {
         );
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_send_telemetry_with_plus_plan(server: Arc<Server>) {
-        let client = server.pass_client_with_plan(PlanType::Plus).await;
+    #[muon_test::test]
+    async fn test_send_telemetry_with_plus_plan(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Plus).await;
 
-        let handled = server.handler("/data/v1/stats/multiple", |_| {
+        let handled = api.handler("/data/v1/stats/multiple", |_| {
             success(CodeResponse { code: 1000 })
         });
 
-        let recorder = server.new_recorder();
+        let recorder = api.new_recorder();
 
         // Create a telemetry event
         let mut dimensions = HashMap::new();
@@ -300,15 +304,16 @@ mod tests {
         );
     }
 
-    #[muon::test(scheme(HTTP))]
-    async fn test_send_telemetry_with_empty_dimensions(server: Arc<Server>) {
-        let client = server.pass_client().await;
+    #[muon_test::test]
+    async fn test_send_telemetry_with_empty_dimensions(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
 
-        let handled = server.handler("/data/v1/stats/multiple", |_| {
+        let handled = api.handler("/data/v1/stats/multiple", |_| {
             success(CodeResponse { code: 1000 })
         });
 
-        let recorder = server.new_recorder();
+        let recorder = api.new_recorder();
 
         // Create event with no dimensions
         let events = vec![TelemetryEventData {
@@ -365,7 +370,8 @@ mod tests {
             },
         ];
 
-        let request = PassClient::build_request(&HashMap::new(), &events);
+        let request =
+            PassClient::<muon::common::StubContext>::build_request(&HashMap::new(), &events);
 
         assert_eq!(2, request.event_info.len());
         assert_eq!(MEASUREMENT_GROUP, request.event_info[0].measurement_group);
@@ -388,7 +394,8 @@ mod tests {
         let plan = "business";
         let mut extra_dimensions = HashMap::new();
         extra_dimensions.insert(PLAN_NAME_KEY.to_string(), plan.to_string());
-        let event_info = PassClient::build_event(&extra_dimensions, &event_data);
+        let event_info =
+            PassClient::<muon::common::StubContext>::build_event(&extra_dimensions, &event_data);
 
         // Verify structure
         assert_eq!(MEASUREMENT_GROUP, event_info.measurement_group);

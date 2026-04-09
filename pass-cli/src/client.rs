@@ -3,13 +3,12 @@ use crate::features::CliClientFeatures;
 use crate::storage::FileSystemSessionStorage;
 use crate::utils::ask_for_input;
 use anyhow::Context;
-use muon::env::EnvId;
-use pass::Client;
+use muon::env::Environment;
+use pass_auth::os::ProdClient;
 use pass_auth::store::{CustomEnv, PassSessionStore, SerializedEnv};
 use std::io::Read;
 use std::path::PathBuf;
-use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::{Arc, RwLock};
 
 const APP_NAME: &str = "cli-pass";
 
@@ -99,22 +98,29 @@ fn get_app_header() -> String {
     std::env::var(APP_HEADER_ENV_VAR).unwrap_or_else(|_| default_app_header())
 }
 
-fn store_using_current_env(env_id: &EnvId) -> bool {
-    let env = EnvId::from(get_env());
-    match env {
-        EnvId::Prod => matches!(env_id, EnvId::Prod),
-        EnvId::Custom(_) => matches!(env_id, EnvId::Custom(_)),
-        EnvId::Atlas(ref current_atlas_env) => match env_id {
-            EnvId::Atlas(store_atlas_env) => store_atlas_env == current_atlas_env,
-            _ => false,
-        },
+fn store_using_current_env(env: &Environment) -> bool {
+    let current_env = Environment::from(get_env());
+    match (&current_env, env) {
+        (Environment::Prod(_), Environment::Prod(_)) => true,
+        (Environment::Custom(_), Environment::Custom(_)) => true,
+        (Environment::Atlas(_), Environment::Atlas(_)) => true,
+        (Environment::Scientist(_), Environment::Scientist(_)) => {
+            // Compare serialized forms
+            let cur_ser = SerializedEnv::from(current_env.clone());
+            let env_ser = SerializedEnv::from(env.clone());
+            matches!(
+                (cur_ser, env_ser),
+                (SerializedEnv::Atlas(Some(a)), SerializedEnv::Atlas(Some(b))) if a == b
+            )
+        }
+        _ => false,
     }
 }
 
 pub async fn get_client(
     base_dir: PathBuf,
     client_features: Arc<CliClientFeatures>,
-) -> anyhow::Result<(Client, Arc<RwLock<PassSessionStore>>)> {
+) -> anyhow::Result<(ProdClient, Arc<RwLock<PassSessionStore>>)> {
     let session_file_path = base_dir.join(SESSION_FILE_NAME);
     let storage = Arc::new(FileSystemSessionStorage::new(session_file_path));
 
@@ -137,14 +143,17 @@ pub async fn get_client(
     match result {
         Ok((client, store)) => {
             // Check if environment has switched
-            let store_guard = store.read().await;
-            if !store_using_current_env(&store_guard.env) {
-                drop(store_guard);
-                eprintln!("ENVIRONMENT has switched! Logging you out. Please log back in again");
+            let env_switched = {
+                let store_guard = store.read().expect("store rwlock poisoned");
+                !store_using_current_env(&store_guard.env)
+            };
+            if env_switched {
+                eprintln!(
+                    "PROTON_PASS_ENVIRONMENT has switched! Logging you out. Please log back in again"
+                );
                 crate::commands::logout::force_logout().await?;
                 std::process::exit(1);
             }
-            drop(store_guard);
             Ok((client, store))
         }
         Err(e) => Err(e),

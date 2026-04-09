@@ -1,4 +1,4 @@
-use crate::PassClient;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use muon::GET;
 use pass_domain::{KeyPassphrase, KeyPassphrases, KeySalt, Passphrase};
@@ -37,7 +37,7 @@ struct SerializedKeyPassphrase {
     pub passphrase: String,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub(crate) async fn setup_key_passphrases(&self, password: &str) -> Result<KeyPassphrases> {
         let salts = self.fetch_salts().await.context("failed to fetch salts")?;
 

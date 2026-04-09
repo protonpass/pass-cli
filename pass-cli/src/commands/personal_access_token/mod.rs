@@ -5,11 +5,11 @@ mod list;
 mod renew;
 
 use crate::commands::OutputFormat;
+use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result, anyhow};
 use clap::Subcommand;
 use jiff::tz::TimeZone;
 use jiff::{Span, Timestamp};
-use pass::PassClient;
 use pass_domain::PersonalAccessTokenId;
 
 pub enum PersonalAccessTokenQuery {

@@ -1,7 +1,7 @@
-use crate::PassClient;
 use crate::item::create::ItemCreatedEvent;
 use crate::item::create::common::{CreateItemRequest, CreateItemResponse};
 use crate::permission::PermissionAction;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use muon::POST;
 use pass_domain::{AliasItem, ItemContent, ItemId, ItemType, ShareId};
@@ -26,7 +26,7 @@ struct CreateAliasRequest {
     pub item: CreateItemRequest,
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn create_alias(&self, share_id: &ShareId, prefix: &str) -> Result<CreatedAliasItem> {
         self.action_guard(PermissionAction::CreateAlias {
             share_id: share_id.clone(),

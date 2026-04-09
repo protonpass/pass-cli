@@ -2,11 +2,13 @@ use crate::PassClient;
 pub use crate::PlanType;
 use crate::common::{CodeResponse, SUCCESS_CODE};
 use crate::test_tools::client_features::TestClientFeatures;
-use crate::test_tools::{TEST_PASSPHRASE, init_session, setup_user_access};
-pub use muon::Method;
-use muon::test::server::{Request, Response, Server};
+use crate::test_tools::{init_session, setup_user_access};
+pub use muon::http::Method;
+use muon_test::server::{ProtonAPI, Request, Response};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+
+pub type TestPassClient = PassClient<muon_test::server::TestContext<()>>;
 
 pub trait MuonServerExt {
     fn handler<P, F>(&self, path: P, handler: F) -> Arc<AtomicBool>
@@ -17,14 +19,9 @@ pub trait MuonServerExt {
     where
         P: AsRef<str> + Send + Sync + 'static,
         F: Fn(&Request) -> Option<Response> + Send + Sync + 'static;
-
-    async fn pass_client(&self) -> PassClient;
-    async fn pass_client_with_plan(&self, plan: PlanType) -> PassClient;
-    async fn pass_client_no_setup(&self) -> PassClient;
-    async fn pass_pat_client_no_setup(&self) -> PassClient;
 }
 
-impl MuonServerExt for Arc<Server> {
+impl MuonServerExt for ProtonAPI {
     fn handler<P, F>(&self, path: P, handler: F) -> Arc<AtomicBool>
     where
         P: AsRef<str> + Send + Sync + 'static,
@@ -47,6 +44,7 @@ impl MuonServerExt for Arc<Server> {
 
         hit
     }
+
     fn handler_with_method<P, F>(&self, method: Method, path: P, handler: F) -> Arc<AtomicBool>
     where
         P: AsRef<str> + Send + Sync + 'static,
@@ -71,52 +69,58 @@ impl MuonServerExt for Arc<Server> {
 
         hit
     }
+}
 
-    async fn pass_client(&self) -> PassClient {
-        self.pass_client_with_plan(PlanType::Free).await
-    }
+// Create a TestPassClient from an already-created TestClient and ProtonAPI (without user data setup)
+pub async fn make_test_pass_client(
+    raw_client: muon_test::server::TestClient<()>,
+    api: &ProtonAPI,
+) -> TestPassClient {
+    let key = pass_domain::crypto::generate_encryption_key();
+    let session = raw_client
+        .new_session_without_credentials(())
+        .await
+        .expect("Error creating session");
+    init_session(api, session).await;
+    TestPassClient::new(
+        raw_client,
+        Arc::new(TestClientFeatures::new(key)),
+        pass_domain::AccountType::User,
+    )
+}
 
-    async fn pass_client_with_plan(&self, plan: PlanType) -> PassClient {
-        super::setup_user_data::setup(self);
-        let client = self.pass_client_no_setup().await;
+// Create a TestPassClient for a personal access token session (without user data setup)
+pub async fn make_test_pass_pat_client(
+    raw_client: muon_test::server::TestClient<()>,
+    api: &ProtonAPI,
+) -> TestPassClient {
+    let key = pass_domain::crypto::generate_encryption_key();
+    let session = raw_client
+        .new_session_without_credentials(())
+        .await
+        .expect("Error creating session");
+    init_session(api, session).await;
+    TestPassClient::new(
+        raw_client,
+        Arc::new(TestClientFeatures::new(key)),
+        pass_domain::AccountType::PersonalAccessToken,
+    )
+}
 
-        client
-            .setup_key_passphrases(TEST_PASSPHRASE)
-            .await
-            .expect("Error setting up passphrases");
-        setup_user_access(self, plan);
-        client
-    }
-
-    async fn pass_client_no_setup(&self) -> PassClient {
-        let key = pass_domain::crypto::generate_encryption_key();
-        let client = self.client().await;
-        let session = client
-            .new_session_without_credentials(())
-            .await
-            .expect("Error creating session");
-        init_session(self, session).await;
-        PassClient::new(
-            client,
-            Arc::new(TestClientFeatures::new(key)),
-            pass_domain::AccountType::User,
-        )
-    }
-
-    async fn pass_pat_client_no_setup(&self) -> PassClient {
-        let key = pass_domain::crypto::generate_encryption_key();
-        let client = self.client().await;
-        let session = client
-            .new_session_without_credentials(())
-            .await
-            .expect("Error creating session");
-        init_session(self, session).await;
-        PassClient::new(
-            client,
-            Arc::new(TestClientFeatures::new(key)),
-            pass_domain::AccountType::PersonalAccessToken,
-        )
-    }
+// Create a TestPassClient with full user data setup (addresses, keys, salts)
+pub async fn make_test_pass_client_with_setup(
+    raw_client: muon_test::server::TestClient<()>,
+    api: &ProtonAPI,
+    plan: PlanType,
+) -> TestPassClient {
+    super::setup_user_data::setup(api);
+    let client = make_test_pass_client(raw_client, api).await;
+    client
+        .setup_key_passphrases(super::setup_user_data::TEST_PASSPHRASE)
+        .await
+        .expect("Error setting up passphrases");
+    setup_user_access(api, plan);
+    client
 }
 
 #[derive(serde::Serialize)]
@@ -127,7 +131,7 @@ pub fn success<R: serde::Serialize>(res: R) -> Option<Response> {
     Some(
         Response::builder()
             .status(200)
-            .body(axum_core::body::Body::from(body))
+            .body(axum::body::Body::from(body))
             .unwrap(),
     )
 }
@@ -137,7 +141,7 @@ pub fn success_code() -> Option<Response> {
     Some(
         Response::builder()
             .status(200)
-            .body(axum_core::body::Body::from(body))
+            .body(axum::body::Body::from(body))
             .unwrap(),
     )
 }

@@ -1,5 +1,5 @@
-use crate::PassClient;
 use crate::pagination::SincePagination;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
 use muon::GET;
 use pass_domain::{ItemId, ShareId, ShareMember, ShareRole, TargetType};
@@ -51,7 +51,7 @@ impl TryFrom<ShareMemberResponse> for ShareMember {
     }
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn list_item_members(
         &self,
         share_id: &ShareId,

@@ -1,4 +1,4 @@
-use crate::PassClient;
+use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
@@ -11,7 +11,7 @@ pub enum FirstTimeSetupKey {
     PersonalAccessToken(Vec<u8>),
 }
 
-impl PassClient {
+impl<C: PassClientContext> PassClient<C> {
     pub async fn perform_first_time_setup(&self, pass: &str) -> Result<()> {
         self.setup_key_passphrases(pass)
             .await

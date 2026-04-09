@@ -1,11 +1,11 @@
 use crate::account::key_salts::{GetKeySaltsResponse, KeySaltResponse};
 use crate::test_tools::{Empty, MuonServerExt, success};
 use crate::user::access::{GetUserInfoResponse, MonitorStatus};
-use crate::{PassPlan, PassSessionKeyType, PlanType, UserDataSettings, UserInfo};
+use crate::{PassPlan, PlanType, UserDataSettings, UserInfo};
+use muon::common::Context;
 use muon::rest::core::v4;
-use muon::test::server::Server;
 use muon::{GET, Session};
-use std::sync::Arc;
+use muon_test::server::ProtonAPI;
 
 pub const TEST_ADDRESS_EMAIL: &str = "passclitestuser@proton.black";
 pub const TEST_ADDRESS_ID: &str =
@@ -124,12 +124,12 @@ pub const TEST_SALT_VALUE: &str = "cHQscoez6Cx3YeVBbnKcwg==";
 
 pub const TEST_PLAN_NAME: &str = "testplan123";
 
-pub fn setup_user_access(server: &Arc<Server>, plan_type: PlanType) {
-    setup_user_access_with_limits(server, None, None, None, plan_type)
+pub fn setup_user_access(api: &ProtonAPI, plan_type: PlanType) {
+    setup_user_access_with_limits(api, None, None, None, plan_type)
 }
 
-pub async fn init_session(server: &Arc<Server>, session: Session<PassSessionKeyType>) {
-    server.handler("/tests/ping", move |_| success(Empty));
+pub async fn init_session<C: Context>(api: &ProtonAPI, session: Session<C>) {
+    api.handler("/tests/ping", move |_| success(Empty));
     session
         .send(GET!("/tests/ping"))
         .await
@@ -137,13 +137,13 @@ pub async fn init_session(server: &Arc<Server>, session: Session<PassSessionKeyT
 }
 
 pub fn setup_user_access_with_limits(
-    server: &Arc<Server>,
+    api: &ProtonAPI,
     vault_limit: Option<u16>,
     alias_limit: Option<u16>,
     totp_limit: Option<u16>,
     plan_type: PlanType,
 ) {
-    server.handler("/pass/v1/user/access", move |_| {
+    api.handler("/pass/v1/user/access", move |_| {
         success(GetUserInfoResponse {
             access: UserInfo {
                 plan: PassPlan {
@@ -183,8 +183,8 @@ pub fn setup_user_access_with_limits(
     });
 }
 
-pub fn setup(server: &Arc<Server>) {
-    server.handler("/addresses", move |_| {
+pub fn setup(api: &ProtonAPI) {
+    api.handler("/addresses", move |_| {
         success(v4::addresses::GetRes {
             addresses: vec![v4::addresses::Address {
                 id: TEST_ADDRESS_ID.to_string(),
@@ -201,7 +201,7 @@ pub fn setup(server: &Arc<Server>) {
         })
     });
 
-    server.handler("/core/v4/users", move |_| {
+    api.handler("/core/v4/users", move |_| {
         success(v4::users::GetRes {
             user: v4::users::User {
                 id: TEST_USER_ID.to_string(),
@@ -219,7 +219,7 @@ pub fn setup(server: &Arc<Server>) {
         })
     });
 
-    server.handler("/core/v4/keys/salts", move |_| {
+    api.handler("/core/v4/keys/salts", move |_| {
         success(GetKeySaltsResponse {
             key_salts: vec![KeySaltResponse {
                 id: TEST_SALT_ID.to_string(),
@@ -230,8 +230,8 @@ pub fn setup(server: &Arc<Server>) {
 }
 
 // Helper function to setup a paid user (Plus plan)
-pub fn setup_paid_user(server: &Arc<Server>) {
-    server.handler("/pass/v1/user/access", move |_| {
+pub fn setup_paid_user(api: &ProtonAPI) {
+    api.handler("/pass/v1/user/access", move |_| {
         success(GetUserInfoResponse {
             access: UserInfo {
                 plan: PassPlan {
