@@ -199,4 +199,4 @@ After installing completion scripts, restart your shell session.
 
 ## Next steps
 
-Once installed, proceed to the [Getting started](../getting-started/login.md) guide to learn how to authenticate and configure the CLI.
+Once installed, proceed to the [Login](../commands/login.md) guide to learn how to authenticate and configure the CLI.
