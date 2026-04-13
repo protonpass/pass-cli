@@ -8,7 +8,7 @@ This source code is published for **transparency purposes only**. We believe use
 
 ## External contributions
 
-We do not accept external contributions at this time. This includes pull requests, patches, issues and feature requests submitted through this repository.
+This project is not open to external contributions at this time. We appreciate the interest from the community, but we are unable to review or merge pull requests, apply patches, or act on feature requests submitted through this repository.
 
 If you have found a **security vulnerability**, please report it responsibly through our [bug bounty program](https://proton.me/security/bug-bounty) rather than opening a public issue.
 
