@@ -131,6 +131,14 @@ pub async fn replace_binary_from_dir(source_dir: &Path) -> Result<()> {
         .await
         .context("Failed to create update script")?;
 
+    // Restrict the batch script to the current user so other users cannot
+    // read install paths or tamper with the script before it executes.
+    if let Err(e) =
+        crate::platform::windows_permissions::restrict_file_to_current_user(&script_path)
+    {
+        warn!("Failed to restrict update script permissions: {e:#}");
+    }
+
     // Spawn detached process to run the script without creating a visible window
     // We use 'start /B' to run in background, and CREATE_NO_WINDOW to prevent console creation
     const CREATE_NO_WINDOW: u32 = 0x08000000;

@@ -73,6 +73,14 @@ async fn download_and_verify(url: &str, expected_hash: &str, extension: &str) ->
             ));
         }
 
+        // On Windows, restrict the temp file to the current user only.
+        #[cfg(windows)]
+        if let Err(e) =
+            crate::platform::windows_permissions::restrict_file_to_current_user(&temp_file)
+        {
+            warn!("Failed to restrict download temp file permissions: {e:#}");
+        }
+
         Ok::<(), anyhow::Error>(())
     }
     .await;

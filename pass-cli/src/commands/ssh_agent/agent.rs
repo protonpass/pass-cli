@@ -115,6 +115,13 @@ pub async fn start_agent(
 
         let listener = NamedPipeListener::bind(&pipe_name).context("Failed to bind named pipe")?;
 
+        // Restrict the pipe so only the current user can connect to it.
+        if let Err(e) =
+            crate::platform::windows_permissions::restrict_pipe_to_current_user(pipe_name)
+        {
+            warn!("Failed to restrict named pipe permissions: {e:#}");
+        }
+
         // Run the agent
         run_agent_with_listener(
             listener,

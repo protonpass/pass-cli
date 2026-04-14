@@ -66,6 +66,12 @@ zbus-secret-service-keyring-store = { version = "0.3.0", features = ["crypto-rus
 [target.'cfg(target_os = "windows")'.dependencies]
 zip = "8"
 windows-native-keyring-store = "0.5.1"
+windows-sys = { version = "0.52", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_Security_Authorization",
+    "Win32_System_Threading",
+] }
 
 [dev-dependencies]
 tempfile.workspace = true

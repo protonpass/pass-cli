@@ -78,6 +78,12 @@ impl SessionStorage for FileSystemSessionStorage {
             tokio::fs::write(&self.file_path, data)
                 .await
                 .context("Error writing session file")?;
+            // Restrict to current user only, mirroring the Unix 0600 permissions above.
+            if let Err(e) =
+                crate::platform::windows_permissions::restrict_file_to_current_user(&self.file_path)
+            {
+                warn!("Failed to restrict session file permissions: {e:#}");
+            }
         }
 
         Ok(())
