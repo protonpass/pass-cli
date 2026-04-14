@@ -42,6 +42,17 @@ struct DotenvFile {
     vars: Vec<EnvVar>,
 }
 
+fn is_valid_env_var_name(name: &str) -> bool {
+    if name.is_empty() {
+        return false;
+    }
+    let first = name.chars().next().unwrap();
+    if !first.is_ascii_alphabetic() && first != '_' {
+        return false;
+    }
+    name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+}
+
 fn load_dotenv_file(path: &str) -> Result<DotenvFile> {
     let content = std::fs::read_to_string(path)
         .with_context(|| format!("Failed to read env file: {path}"))?;
@@ -59,6 +70,17 @@ fn load_dotenv_file(path: &str) -> Result<DotenvFile> {
         // Parse KEY=VALUE format
         if let Some(eq_pos) = line.find('=') {
             let name = line[..eq_pos].trim().to_string();
+
+            if !is_valid_env_var_name(&name) {
+                eprintln!(
+                    "Warning: Invalid variable name '{}' on line {} in {}. Skipping.",
+                    name,
+                    line_num + 1,
+                    path
+                );
+                continue;
+            }
+
             let value = line[eq_pos + 1..].trim().to_string();
 
             // Remove quotes if present
@@ -496,6 +518,52 @@ QUOTED_VAR='some value'
             masked3,
             "Multiple <concealed by Proton Pass> occurrences of <concealed by Proton Pass>"
         );
+    }
+
+    #[test]
+    fn test_is_valid_env_var_name() {
+        // Valid names
+        assert!(is_valid_env_var_name("VALID_NAME"));
+        assert!(is_valid_env_var_name("_PRIVATE"));
+        assert!(is_valid_env_var_name("A"));
+        assert!(is_valid_env_var_name("A1"));
+        assert!(is_valid_env_var_name("lowercase_ok"));
+
+        // Invalid names
+        assert!(!is_valid_env_var_name(""));
+        assert!(!is_valid_env_var_name("123STARTS_WITH_NUMBER"));
+        assert!(!is_valid_env_var_name("invalid-name"));
+        assert!(!is_valid_env_var_name("MY VAR"));
+        assert!(!is_valid_env_var_name("MY.VAR"));
+        assert!(!is_valid_env_var_name("$(whoami)"));
+    }
+
+    #[test]
+    fn test_load_dotenv_file_skips_invalid_var_names() {
+        use std::io::Write;
+        use tempfile::NamedTempFile;
+
+        let content = r#"
+VALID_NAME=value
+invalid-name=value
+MY VAR=value
+=value
+123STARTS=value
+_PRIVATE=secret
+"#;
+
+        let mut temp_file = NamedTempFile::new().unwrap();
+        temp_file.write_all(content.as_bytes()).unwrap();
+        temp_file.flush().unwrap();
+
+        let result = load_dotenv_file(temp_file.path().to_str().unwrap()).unwrap();
+
+        // Only VALID_NAME and _PRIVATE should be accepted
+        assert_eq!(result.vars.len(), 2);
+        assert_eq!(result.vars[0].name, "VALID_NAME");
+        assert_eq!(result.vars[0].value, "value");
+        assert_eq!(result.vars[1].name, "_PRIVATE");
+        assert_eq!(result.vars[1].value, "secret");
     }
 
     #[test]
