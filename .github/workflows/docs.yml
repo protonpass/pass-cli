@@ -23,7 +23,7 @@ jobs:
       - uses: astral-sh/setup-uv@v7
       - run: uv sync --locked --all-extras
       - run: uv run zensical build --clean 
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: docs/public/site
       - uses: actions/deploy-pages@v5
