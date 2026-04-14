@@ -183,7 +183,7 @@ fn create_masking_regex(resolved_env: &HashMap<String, String>) -> Result<Option
         if find_pass_uri(&original_env_value).is_some() {
             // Escape special regex characters and add to list
             let escaped = regex::escape(value);
-            if !escaped.is_empty() && escaped.len() > 3 {
+            if !escaped.is_empty() && escaped.len() >= 5 {
                 // Only mask meaningful secrets
                 secret_values.push(escaped);
             }
