@@ -34,6 +34,7 @@ pub struct LoginTemplate {
     pub username: Option<String>,
     pub email: Option<String>,
     pub password: Option<String>,
+    pub totp_uri: Option<String>,
     #[serde(default)]
     pub urls: Vec<String>,
 }
@@ -45,6 +46,7 @@ impl From<LoginTemplate> for LoginItemCreatePayload {
             email: value.email,
             username: value.username,
             password: value.password,
+            totp_uri: value.totp_uri,
             urls: value.urls,
         }
     }
@@ -189,6 +191,7 @@ pub async fn run(mut args: LoginArgs, client: PassClient) -> Result<()> {
         username: args.username,
         email: args.email,
         password,
+        totp_uri: None,
         urls: args.url,
     };
 

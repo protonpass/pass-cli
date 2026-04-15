@@ -29,6 +29,7 @@ pub struct LoginItemCreatePayload {
     pub username: Option<String>,
     pub password: Option<String>,
     pub urls: Vec<String>,
+    pub totp_uri: Option<String>,
 }
 
 impl<C: PassClientContext> PassClient<C> {
@@ -48,7 +49,7 @@ impl<C: PassClientContext> PassClient<C> {
                     username: payload.username.unwrap_or_default(),
                     password: payload.password.unwrap_or_default(),
                     urls: payload.urls,
-                    totp_uri: String::new(),
+                    totp_uri: payload.totp_uri.unwrap_or_default(),
                     passkeys: vec![],
                 }),
                 folder_id,
@@ -125,6 +126,7 @@ mod tests {
                     username: Some(ITEM_USERNAME.to_string()),
                     password: Some(ITEM_PASSWORD.to_string()),
                     urls: vec![ITEM_WEBSITE.to_string()],
+                    totp_uri: None,
                 },
                 None,
             )
