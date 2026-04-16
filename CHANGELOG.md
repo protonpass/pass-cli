@@ -1,3 +1,9 @@
+## 2.0.0 (2026-04-13)
+
+## Features :tada:
+
+- Migration to `muon v2` for better and more stable networking and session management.
+
 ## 1.10.0 (2026-04-08)
 
 ## Features :tada:
