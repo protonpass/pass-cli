@@ -11,12 +11,12 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
-muon = { version = "2.2.0", registry = "proton", features = ["transport-hyper", "full-base", "unsealed", "other-platform"] }
+muon = { version = "2.3.0", registry = "proton", features = ["transport-hyper", "full-base", "unsealed", "other-platform"] }
 muon-test = { version = "1.0.0", registry = "proton" }
-proton-crypto = { version = "0.12.0", registry = "proton", default-features = false, features = ["rustpgp"] }
-proton-crypto-account = { version = "0.18.0", registry = "proton", default-features = false, features = ["rustpgp"] }
+proton-crypto = { version = "0.12.2", registry = "proton", default-features = false, features = ["rustpgp"] }
+proton-crypto-account = { version = "0.18.2", registry = "proton", default-features = false, features = ["rustpgp"] }
 
-proton-pass-common = {  git = "https://github.com/protonpass/proton-pass-common.git", tag = "1.0.0" }
+proton-pass-common = {  git = "https://github.com/protonpass/proton-pass-common.git", tag = "1.5.0" }
 
 anyhow = "1.0"
 async-trait = "0.1"

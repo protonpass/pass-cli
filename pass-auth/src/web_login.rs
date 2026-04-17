@@ -24,6 +24,7 @@ use aes::Aes256;
 use anyhow::{Context, Result, anyhow, bail};
 use base64::Engine;
 use muon::SessionCredentials;
+use muon::app::{AppName, AppVersion, SemVer};
 use muon::auth::{Auth, Tokens};
 use muon::env::{Env, Environment};
 use muon::{GET, Session};
@@ -31,6 +32,7 @@ use pass_domain::aes_gcm::aead::consts::U16;
 use pass_domain::aes_gcm::aead::generic_array::GenericArray;
 use pass_domain::aes_gcm::aead::{Aead, Payload};
 use pass_domain::aes_gcm::{AesGcm, KeyInit};
+use std::str::FromStr;
 use std::sync::{Arc, RwLock};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
@@ -87,28 +89,22 @@ fn get_account_url_for_env(env: &Environment) -> Result<String> {
         Environment::Atlas(_) => Ok("https://account.proton.black".to_string()),
         Environment::Scientist(s) => {
             // get the scientist name from servers
-            let servers = s.servers(&muon::app::AppVersion::Other);
+            let servers = s.servers(&AppVersion::Named {
+                name: AppName::from_str("cli-pass").expect("Invalid AppName"),
+                version: SemVer::from_str(env!("CARGO_PKG_VERSION")).expect("Invalid SemVer"),
+            });
             let host = servers
                 .first()
                 .map(|srv: &muon::common::Server| format!("{}", srv.host().name()))
                 .unwrap_or_default();
             // host is "{product}-api.{name}.proton.black" - extract name
             // For web login URL, we need "account.{name}.proton.black"
-            let name = extract_scientist_name(&host);
+            let name = crate::utils::extract_scientist_name(&host);
             Ok(format!("https://account.{}.proton.black", name))
         }
         Environment::Custom(_) => {
             bail!("Web login is not supported for custom environments")
         }
-    }
-}
-
-fn extract_scientist_name(host: &str) -> String {
-    let without_tld = host.trim_end_matches(".proton.black");
-    if let Some(pos) = without_tld.rfind('.') {
-        without_tld[pos + 1..].to_string()
-    } else {
-        without_tld.to_string()
     }
 }
 

@@ -109,7 +109,10 @@ impl From<Environment> for SerializedEnv {
             Environment::Scientist(s) => {
                 // AtlasScientist wraps a Scientist(String). Access via pattern.
                 // We need the inner name - use the servers() call to extract host info
-                let servers = s.servers(&AppVersion::Other);
+                let servers = s.servers(&AppVersion::Named {
+                    name: AppName::from_str("cli-pass").expect("Invalid AppName"),
+                    version: SemVer::from_str(env!("CARGO_PKG_VERSION")).expect("Invalid SemVer"),
+                });
                 debug!("SerializedEnv Servers: {servers:?}");
                 let host_str = servers
                     .first()
@@ -118,7 +121,7 @@ impl From<Environment> for SerializedEnv {
                 debug!("SerializedEnv host_str: {host_str:?}");
                 // host format is "{product}-api.{name}.proton.black" or "{name}.proton.black"
                 // extract the scientist name
-                let name = extract_scientist_name(&host_str);
+                let name = crate::utils::extract_scientist_name(&host_str);
                 debug!("SerializedEnv name: {host_str:?}");
                 SerializedEnv::Atlas(Some(name))
             }
@@ -140,17 +143,6 @@ impl From<Environment> for SerializedEnv {
                 }
             }
         }
-    }
-}
-
-fn extract_scientist_name(host: &str) -> String {
-    // Expected formats: "{name}.proton.black" or "{product}-api.{name}.proton.black"
-    // Strip .proton.black suffix, then take the last component before it
-    let without_tld = host.trim_end_matches(".proton.black");
-    if let Some(pos) = without_tld.rfind('.') {
-        without_tld[pos + 1..].to_string()
-    } else {
-        without_tld.to_string()
     }
 }
 

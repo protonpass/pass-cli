@@ -17,28 +17,11 @@
  *
  */
 
-#[macro_use]
-extern crate tracing;
-
-pub mod authenticator;
-pub mod callbacks;
-pub mod client_builder;
-pub mod config;
-pub mod error;
-pub mod extra_password;
-pub mod interactive_login;
-pub mod os;
-pub mod personal_access_token;
-pub mod post_login;
-pub mod storage;
-pub mod store;
-mod utils;
-pub mod web_login;
-
-pub use authenticator::Authenticator;
-pub use callbacks::{AuthEventHandler, CredentialProvider};
-pub use client_builder::ENVIRONMENT_ENV_VAR;
-pub use config::{ClientConfig, DebugConfig, PostLoginConfig, ProxyConfig};
-pub use error::AuthError;
-pub use storage::SessionStorage;
-pub use store::{PassSessionStore, SharedPassSessionStore};
+pub(crate) fn extract_scientist_name(host: &str) -> String {
+    let without_tld = host.trim_end_matches(".proton.black");
+    if let Some(pos) = without_tld.rfind('.') {
+        without_tld[pos + 1..].to_string()
+    } else {
+        without_tld.to_string()
+    }
+}
