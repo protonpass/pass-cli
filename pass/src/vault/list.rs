@@ -21,7 +21,7 @@ use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use futures::stream::{self, StreamExt};
 use pass_domain::crypto::EncryptionTag;
-use pass_domain::{ShareContent, ShareId, ShareType, Vault, VaultData, VaultId};
+use pass_domain::{Share, ShareContent, ShareId, ShareType, Vault, VaultData, VaultId};
 
 const MAX_CONCURRENCY: usize = 20;
 
@@ -118,6 +118,15 @@ impl<C: PassClientContext> PassClient<C> {
             .map_err(|e| anyhow::anyhow!("Error parsing vault content {:?}", e))?;
 
         Ok(parsed_content)
+    }
+
+    pub async fn open_vault_share_content_from_vault_share(
+        &self,
+        share: &Share,
+    ) -> Result<VaultData> {
+        share.vault_share_guard()?;
+        self.open_vault_share_content(&share.id, share.content.clone())
+            .await
     }
 }
 

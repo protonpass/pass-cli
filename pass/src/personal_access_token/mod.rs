@@ -33,7 +33,7 @@ const PERSONAL_ACCESS_TOKEN_OPERATION_ERROR: &str =
 
 impl<C: PassClientContext> PassClient<C> {
     pub(crate) fn personal_access_token_operation_guard(&self) -> Result<()> {
-        if self.is_pat_account() {
+        if self.is_pat_account() || self.is_agent_session() {
             return Err(anyhow!(PERSONAL_ACCESS_TOKEN_OPERATION_ERROR));
         }
 

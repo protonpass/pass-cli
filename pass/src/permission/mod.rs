@@ -49,7 +49,9 @@ display_for_enum!(PermissionAction);
 
 impl<C: PassClientContext> PassClient<C> {
     pub(crate) fn not_personal_access_token_guard(&self) -> Result<()> {
-        if self.account_type() == AccountType::PersonalAccessToken {
+        if self.account_type() == AccountType::PersonalAccessToken
+            || self.account_type() == AccountType::AgentSession
+        {
             return Err(anyhow!(
                 "Personal access tokens cannot perform this operation"
             ));

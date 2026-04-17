@@ -19,8 +19,16 @@
 
 use crate::commands::{OutputFormat, settings_helper};
 use crate::helpers::CliPassClient as PassClient;
+use crate::utils::format_date;
 use anyhow::{Context, Result};
-use jiff::{Timestamp, tz::TimeZone};
+use pass_domain::has_pass_agent_flag;
+
+#[derive(serde::Serialize)]
+struct PersonalAccessTokenView<'a> {
+    #[serde(flatten)]
+    pat: &'a pass::PersonalAccessToken,
+    is_agent: bool,
+}
 
 pub async fn run(client: PassClient, output: Option<OutputFormat>) -> Result<()> {
     let output = match output {
@@ -37,7 +45,14 @@ pub async fn run(client: PassClient, output: Option<OutputFormat>) -> Result<()>
 
     match output {
         OutputFormat::Json => {
-            let json = serde_json::to_string_pretty(&personal_access_tokens)
+            let views: Vec<PersonalAccessTokenView> = personal_access_tokens
+                .iter()
+                .map(|pat| PersonalAccessTokenView {
+                    is_agent: has_pass_agent_flag(pat.flags),
+                    pat,
+                })
+                .collect();
+            let json = serde_json::to_string_pretty(&views)
                 .context("Error serializing personal access tokens")?;
             println!("{json}");
         }
@@ -45,25 +60,24 @@ pub async fn run(client: PassClient, output: Option<OutputFormat>) -> Result<()>
             if personal_access_tokens.is_empty() {
                 println!("No personal access tokens found");
             } else {
-                for pat in personal_access_tokens {
+                for pat in &personal_access_tokens {
+                    let agent_prefix = if has_pass_agent_flag(pat.flags) {
+                        "[Agent] "
+                    } else {
+                        ""
+                    };
                     let expiration = match pat.expire_time {
                         Some(ts) => format!(" (expires: {})", format_date(ts)),
                         None => String::new(),
                     };
-                    println!("- [{}]: {}{}", pat.pat_id, pat.name, expiration);
+                    println!(
+                        "- [{}]: {}{}{}",
+                        pat.pat_id, agent_prefix, pat.name, expiration
+                    );
                 }
             }
         }
     }
 
     Ok(())
-}
-
-fn format_date(timestamp: i64) -> String {
-    let ts = match Timestamp::from_second(timestamp) {
-        Ok(ts) => ts,
-        Err(_) => return format!("invalid ({})", timestamp),
-    };
-    let zoned = ts.to_zoned(TimeZone::UTC);
-    format!("{}-{:02}-{:02}", zoned.year(), zoned.month(), zoned.day())
 }

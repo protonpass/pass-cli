@@ -38,6 +38,7 @@ pub enum EncryptionTag {
     FolderContent,
     ShareKey,
     PersonalAccessTokenKey,
+    ActionPayload,
     Unknown,
 }
 
@@ -62,6 +63,7 @@ impl EncryptionTag {
             EncryptionTag::PersonalAccessTokenKey => {
                 b"proton.pass.personal_access_token.key".to_vec()
             }
+            EncryptionTag::ActionPayload => b"proton.pass.payload".to_vec(),
         }
     }
 }

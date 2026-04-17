@@ -21,4 +21,5 @@
 pub enum AccountType {
     User,
     PersonalAccessToken,
+    AgentSession,
 }

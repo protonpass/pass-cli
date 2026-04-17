@@ -38,6 +38,8 @@ pub(crate) struct PersonalAccessTokenData {
     pub create_time: i64,
     #[serde(rename = "ModifyTime")]
     pub modify_time: i64,
+    #[serde(rename = "Flags")]
+    pub flags: Option<u64>,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
@@ -64,6 +66,8 @@ pub struct PersonalAccessToken {
     pub pat_id: PersonalAccessTokenId,
     pub name: String,
     pub expire_time: Option<i64>,
+    #[serde(skip)]
+    pub flags: Option<u64>,
     #[serde(skip)]
     pub(crate) pat_key: Option<Vec<u8>>,
 }
@@ -150,6 +154,7 @@ impl<C: PassClientContext> PassClient<C> {
             pat_id: PersonalAccessTokenId::new(pat_data.personal_access_token_id.clone()),
             name: pat_data.name.to_string(),
             expire_time: pat_data.expire_time,
+            flags: pat_data.flags,
             pat_key: Some(decrypted_personal_access_token_key),
         })
     }
@@ -223,6 +228,7 @@ mod tests {
                         expire_time: None,
                         create_time: CREATE_TIME,
                         modify_time: MODIFY_TIME,
+                        flags: None,
                     }],
                     total: 1,
                     last_token: None,
@@ -280,6 +286,7 @@ mod tests {
                         expire_time: Some(EXPIRATION_TIME),
                         create_time: 1704067200,
                         modify_time: 1704067200,
+                        flags: None,
                     }],
                     total: 1,
                     last_token: None,

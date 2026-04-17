@@ -43,6 +43,7 @@ mod invite;
 mod item;
 mod local_crypto;
 mod logout;
+pub mod monitor;
 pub(crate) mod muon_ext;
 mod pagination;
 pub mod password;

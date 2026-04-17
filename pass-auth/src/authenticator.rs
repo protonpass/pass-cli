@@ -247,6 +247,12 @@ impl Authenticator {
                 .await
                 .context("Error in personal access token login flow")?;
 
+        // Update store so it can update from PAT to Agent if needed
+        {
+            let mut store_guard = store.write().expect("store rwlock poisoned");
+            store_guard.set_account_type(login_result.account_type);
+        }
+
         self.event_handler
             .on_auth_success("Personal access token session created successfully")
             .await?;
@@ -259,8 +265,7 @@ impl Authenticator {
 
         Self::persist_store(&store).await?;
 
-        let pass_client =
-            PassClient::new(client, client_features, AccountType::PersonalAccessToken);
+        let pass_client = PassClient::new(client, client_features, login_result.account_type);
 
         Ok((pass_client, login_result.personal_access_token_key))
     }

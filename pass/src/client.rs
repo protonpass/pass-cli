@@ -79,6 +79,10 @@ impl<C: PassClientContext> PassClient<C> {
         self.account_type == AccountType::PersonalAccessToken
     }
 
+    pub fn is_agent_session(&self) -> bool {
+        self.account_type == AccountType::AgentSession
+    }
+
     pub async fn get_key_provider(&self) -> Result<Arc<dyn pass_domain::LocalKeyProvider>> {
         self.client_features.get_local_key_provider().await
     }

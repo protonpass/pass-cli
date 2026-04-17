@@ -56,7 +56,9 @@ struct UserKeysResponse {
 
 impl<C: PassClientContext> PassClient<C> {
     pub async fn get_user_keys(&self) -> Result<Vec<UserKey>> {
-        if self.account_type() == AccountType::PersonalAccessToken {
+        if self.account_type() == AccountType::PersonalAccessToken
+            || self.account_type() == AccountType::AgentSession
+        {
             return Err(anyhow!(PERSONAL_ACCESS_TOKEN_ERROR));
         }
 
@@ -83,7 +85,9 @@ impl<C: PassClientContext> PassClient<C> {
     }
 
     pub(crate) async fn get_primary_user_key(&self) -> Result<UserKey> {
-        if self.account_type() == AccountType::PersonalAccessToken {
+        if self.account_type() == AccountType::PersonalAccessToken
+            || self.account_type() == AccountType::AgentSession
+        {
             return Err(anyhow!(PERSONAL_ACCESS_TOKEN_ERROR));
         }
 
@@ -99,7 +103,9 @@ impl<C: PassClientContext> PassClient<C> {
     }
 
     pub(crate) async fn load_user_keys(&self) -> Result<Vec<LockedUserKey>> {
-        if self.account_type() == AccountType::PersonalAccessToken {
+        if self.account_type() == AccountType::PersonalAccessToken
+            || self.account_type() == AccountType::AgentSession
+        {
             return Err(anyhow!(PERSONAL_ACCESS_TOKEN_ERROR));
         }
 

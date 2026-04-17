@@ -21,6 +21,7 @@ use crate::{PassClient, PassClientContext};
 use anyhow::Result;
 use muon::GET;
 use muon::env::Environment;
+use pass_domain::PersonalAccessTokenId;
 
 #[derive(Debug)]
 pub struct UserInfo {
@@ -76,6 +77,11 @@ impl<C: PassClientContext> PassClient<C> {
         Ok(personal_access_token_data.name)
     }
 
+    pub async fn get_personal_access_token_id(&self) -> Result<PersonalAccessTokenId> {
+        let data = self.get_personal_access_token_self().await?;
+        Ok(PersonalAccessTokenId::new(data.personal_access_token_id))
+    }
+
     async fn get_personal_access_token_self(&self) -> Result<PersonalAccessTokenSelfData> {
         let res = self
             .send(GET!("/account/v4/personal-access-token/self"))
@@ -94,7 +100,6 @@ struct PersonalAccessTokenSelfResponse {
 #[derive(Debug, serde::Deserialize)]
 struct PersonalAccessTokenSelfData {
     #[serde(rename = "PersonalAccessTokenID")]
-    #[allow(dead_code)]
     pub personal_access_token_id: String,
     #[serde(rename = "Name")]
     pub name: String,

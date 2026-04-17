@@ -18,6 +18,7 @@
  */
 
 pub(crate) mod account_type;
+pub(crate) mod action_payload;
 pub(crate) mod address;
 pub(crate) mod events;
 pub(crate) mod folder;

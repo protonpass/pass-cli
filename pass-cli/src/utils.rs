@@ -18,6 +18,8 @@
  */
 
 use anyhow::Context;
+use jiff::Timestamp;
+use jiff::tz::TimeZone;
 use std::io::Write;
 use std::path::PathBuf;
 
@@ -87,4 +89,13 @@ pub fn is_experimental_features_disabled() -> bool {
     std::env::var(PROTON_PASS_EXPERIMENTAL_FEATURES_ENV)
         .map(|v| v != "on")
         .unwrap_or(true)
+}
+
+pub fn format_date(timestamp: i64) -> String {
+    let ts = match Timestamp::from_second(timestamp) {
+        Ok(ts) => ts,
+        Err(_) => return format!("invalid ({})", timestamp),
+    };
+    let zoned = ts.to_zoned(TimeZone::UTC);
+    format!("{}-{:02}-{:02}", zoned.year(), zoned.month(), zoned.day())
 }

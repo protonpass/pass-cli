@@ -27,6 +27,7 @@ use pass_domain::{PersonalAccessTokenId, PlainText, crypto};
 pub struct CreatePersonalAccessTokenArgs {
     name: String,
     expiration_time: i64,
+    flags: Option<u64>,
 }
 
 impl CreatePersonalAccessTokenArgs {
@@ -38,7 +39,13 @@ impl CreatePersonalAccessTokenArgs {
         Ok(Self {
             name,
             expiration_time,
+            flags: None,
         })
+    }
+
+    pub fn with_flags(mut self, flags: u64) -> Self {
+        self.flags = Some(flags);
+        self
     }
 }
 
@@ -52,6 +59,9 @@ struct CreatePersonalAccessTokenRequest {
     pub expire_time: i64,
     #[serde(rename = "Products")]
     pub products: Vec<String>,
+    #[serde(rename = "Flags")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub flags: Option<u64>,
 }
 
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
@@ -169,6 +179,7 @@ impl<C: PassClientContext> PassClient<C> {
                 ),
                 expire_time: args.expiration_time,
                 products: vec!["pass".to_string()],
+                flags: args.flags,
             },
             personal_access_token_key,
         ))
