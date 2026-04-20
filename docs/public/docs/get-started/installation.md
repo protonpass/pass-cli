@@ -26,25 +26,25 @@ The installation script will:
 - Install the binary to a directory in your PATH (or prompt you to add it)
 - Check for required system dependencies
 
-## Homebrew (macOS only)
+## Homebrew (macOS and Linux)
 
-If you're on macOS and use Homebrew, you can install Proton Pass CLI via our official tap:
+If you use Homebrew, you can install Proton Pass CLI via our official tap:
 
 ```bash
-brew install protonpass/tap/pass-cli
+brew install --cask protonpass/tap/proton-pass-cli
 ```
 
 To update to the latest version:
 
 ```bash
 brew update
-brew upgrade pass-cli
+brew upgrade --cask proton-pass-cli
 ```
 
 !!! warning "Installing via Homebrew"
     When installed via Homebrew (or any package manager):
     
-    - **The `pass-cli update` command will not work**: you must use `brew upgrade pass-cli` instead
+    - **The `pass-cli update` command will not work**: you must use `brew upgrade --cask proton-pass-cli` instead
     - **Track switching is not available**: you cannot switch between stable and beta tracks
     - Updates are managed entirely by Homebrew
 
