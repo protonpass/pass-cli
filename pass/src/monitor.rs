@@ -162,8 +162,17 @@ impl<C: PassClientContext> PassClient<C> {
             let fetched = actions.records.len();
 
             for rec in actions.records {
-                let payload = decrypt_monitor_payload(&rec.payload, &pat_key)
-                    .context("Error decrypting monitor payload")?;
+                let payload = match decrypt_monitor_payload(&rec.payload, &pat_key) {
+                    Ok(payload) => payload,
+                    Err(e) => {
+                        error!("Unable to decrypt payload: {e:#}");
+                        DecryptedMonitorPayload {
+                            reason: "Unable to decrypt".to_string(),
+                            vault_name: None,
+                            item_name: None,
+                        }
+                    }
+                };
                 all_records.push(PatMonitorEntry {
                     record_id: rec.pat_monitor_record_id,
                     vault_id: rec.vault_id,
