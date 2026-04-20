@@ -195,7 +195,7 @@ impl<C: PassClientContext> PassClient<C> {
             ));
         }
 
-        if reason.len() > MAX_REASON_LENGTH {
+        if reason.chars().count() > MAX_REASON_LENGTH {
             return Err(anyhow!(
                 "reason is too long, please keep it under {MAX_REASON_LENGTH} characters"
             ));
