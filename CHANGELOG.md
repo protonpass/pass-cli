@@ -1,3 +1,10 @@
+## 2.0.1 (2026-04-22)
+
+## Fixes :bug:
+
+- Improved session persistance to avoid bugs that prevented logged-in sessions from performing requests.
+- Now `pass-cli` is available as a homebrew `cask` rather than a `formula` and offers Linux variants.
+
 ## 2.0.0 (2026-04-13)
 
 ## Features :tada:
