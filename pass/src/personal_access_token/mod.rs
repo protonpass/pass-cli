@@ -28,6 +28,18 @@ mod list_access;
 mod renew;
 mod revoke;
 
+#[derive(Clone, Debug, Default, serde::Deserialize, serde::Serialize)]
+pub(crate) struct PersonalAccessTokenFlags {
+    #[serde(rename = "PassAgent", default)]
+    pub pass_agent: bool,
+}
+
+impl PersonalAccessTokenFlags {
+    pub fn for_agent() -> Self {
+        Self { pass_agent: true }
+    }
+}
+
 const PERSONAL_ACCESS_TOKEN_OPERATION_ERROR: &str =
     "Cannot manage or act on personal access tokens while logged in with a personal access token";
 

@@ -23,37 +23,13 @@ use crate::utils::{b64_decode, b64_encode};
 use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use muon::{GET, POST};
-use pass_domain::crypto::EncryptionTag;
-use pass_domain::{AccountType, ActionPayload, ActionPayloadContent, PersonalAccessTokenId};
+use pass_domain::crypto::{self, EncryptionTag};
+use pass_domain::{
+    AccountType, ActionPayload, ActionPayloadContent, EventAction, PersonalAccessTokenId,
+};
 
 pub const MAX_REASON_LENGTH: usize = 300;
 const PAGE_SIZE: usize = 100;
-
-#[derive(Clone, Copy, Debug, serde::Serialize, Default)]
-pub enum PatMonitorAction {
-    ItemRead,
-    #[default]
-    Unknown,
-}
-
-impl PatMonitorAction {
-    const ITEM_READ: u64 = 31;
-    const UNKNOWN: u64 = 9999;
-
-    pub fn value(&self) -> u64 {
-        match self {
-            PatMonitorAction::ItemRead => Self::ITEM_READ,
-            PatMonitorAction::Unknown => Self::UNKNOWN,
-        }
-    }
-
-    pub fn from(value: u64) -> Option<Self> {
-        match value {
-            Self::ITEM_READ => Some(Self::ItemRead),
-            _ => None,
-        }
-    }
-}
 
 #[derive(Clone, Debug, serde::Serialize)]
 pub struct PatMonitorRequest {
@@ -65,10 +41,8 @@ pub struct PatMonitorRequest {
 pub struct PatMonitorRecord {
     #[serde(rename = "VaultID")]
     pub vault_id: String,
-    #[serde(rename = "ObjectID")]
-    pub object_id: Option<String>,
-    #[serde(rename = "Action")]
-    pub action: u64,
+    #[serde(rename = "ItemID")]
+    pub item_id: Option<String>,
     #[serde(rename = "Payload")]
     pub payload: String,
 }
@@ -91,23 +65,26 @@ struct PatMonitorListApiActions {
 struct PatMonitorApiRecord {
     #[serde(rename = "PatMonitorRecordID")]
     pat_monitor_record_id: String,
+    #[serde(rename = "Action")]
+    action: u64,
     #[serde(rename = "VaultID")]
     vault_id: String,
     #[serde(rename = "ObjectID")]
-    object_id: Option<String>,
-    #[serde(rename = "Action")]
-    action: u64,
+    object_id: String,
     #[serde(rename = "Payload")]
     payload: String,
+    #[serde(rename = "ActionTime")]
+    action_time: i64,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct PatMonitorEntry {
     pub record_id: String,
     pub vault_id: String,
-    pub object_id: Option<String>,
-    pub action: PatMonitorAction,
+    pub object_id: String,
+    pub action: EventAction,
     pub payload: DecryptedMonitorPayload,
+    pub action_time: jiff::Timestamp,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -162,6 +139,7 @@ impl<C: PassClientContext> PassClient<C> {
             let fetched = actions.records.len();
 
             for rec in actions.records {
+                let action = EventAction::from(rec.action).unwrap_or_default();
                 let payload = match decrypt_monitor_payload(&rec.payload, &pat_key) {
                     Ok(payload) => payload,
                     Err(e) => {
@@ -173,11 +151,21 @@ impl<C: PassClientContext> PassClient<C> {
                         }
                     }
                 };
+
+                let action_time = match jiff::Timestamp::from_second(rec.action_time) {
+                    Ok(time) => time,
+                    Err(e) => {
+                        warn!("Could not parse timestamp {}: {:#}", rec.action_time, e);
+                        jiff::Timestamp::constant(0, 0)
+                    }
+                };
+
                 all_records.push(PatMonitorEntry {
                     record_id: rec.pat_monitor_record_id,
                     vault_id: rec.vault_id,
                     object_id: rec.object_id,
-                    action: PatMonitorAction::from(rec.action).unwrap_or_default(),
+                    action_time,
+                    action,
                     payload,
                 });
             }
@@ -235,20 +223,18 @@ impl<C: PassClientContext> PassClient<C> {
             .await
             .context("Error getting local key")?;
 
-        let encrypted =
-            pass_domain::crypto::encrypt(&serialized, &pat_key, EncryptionTag::ActionPayload)
-                .map_err(|e| {
-                    error!("Error encrypting action payload: {e:#}");
-                    anyhow!("Error encrypting action payload")
-                })?;
+        let encrypted = crypto::encrypt(&serialized, &pat_key, EncryptionTag::ActionPayload)
+            .map_err(|e| {
+                error!("Error encrypting action payload: {e:#}");
+                anyhow!("Error encrypting action payload")
+            })?;
 
         let encoded = b64_encode(encrypted);
 
         let request = PatMonitorRequest {
             records: vec![PatMonitorRecord {
                 vault_id: share.vault_id.to_string(),
-                object_id: Some(item_details.item.id.to_string()),
-                action: PatMonitorAction::ItemRead.value(),
+                item_id: Some(item_details.item.id.to_string()),
                 payload: encoded,
             }],
         };
@@ -260,7 +246,7 @@ impl<C: PassClientContext> PassClient<C> {
     }
 
     async fn send_pat_monitor_request(&self, request: PatMonitorRequest) -> Result<()> {
-        let req = POST!("/pass/v1/pat/monitor")
+        let req = POST!("/pass/v1/pat/monitor/read")
             .body_json(request)
             .context("Error creating request to send action payload")?;
 
@@ -278,7 +264,7 @@ impl<C: PassClientContext> PassClient<C> {
 fn decrypt_monitor_payload(encoded: &str, pat_key: &[u8]) -> Result<DecryptedMonitorPayload> {
     let encrypted = b64_decode(encoded).context("Error base64-decoding monitor payload")?;
 
-    let decrypted = pass_domain::crypto::decrypt(&encrypted, pat_key, EncryptionTag::ActionPayload)
+    let decrypted = crypto::decrypt(&encrypted, pat_key, EncryptionTag::ActionPayload)
         .map_err(|e| anyhow!("Error decrypting monitor payload: {e:?}"))?;
 
     let action_payload =

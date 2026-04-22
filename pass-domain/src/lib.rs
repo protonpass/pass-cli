@@ -59,6 +59,7 @@ pub use aes_gcm;
 pub use feature_flag::*;
 pub use features::*;
 pub use models::account_type::*;
+pub use models::action::*;
 pub use models::action_payload::*;
 pub use models::address::*;
 pub use models::events::*;

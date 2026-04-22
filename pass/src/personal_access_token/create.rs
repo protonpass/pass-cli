@@ -17,6 +17,7 @@
  *
  */
 
+use super::PersonalAccessTokenFlags;
 use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use base64::Engine;
@@ -27,7 +28,7 @@ use pass_domain::{PersonalAccessTokenId, PlainText, crypto};
 pub struct CreatePersonalAccessTokenArgs {
     name: String,
     expiration_time: i64,
-    flags: Option<u64>,
+    pass_agent: bool,
 }
 
 impl CreatePersonalAccessTokenArgs {
@@ -39,12 +40,12 @@ impl CreatePersonalAccessTokenArgs {
         Ok(Self {
             name,
             expiration_time,
-            flags: None,
+            pass_agent: false,
         })
     }
 
-    pub fn with_flags(mut self, flags: u64) -> Self {
-        self.flags = Some(flags);
+    pub fn with_pass_agent_flag(mut self) -> Self {
+        self.pass_agent = true;
         self
     }
 }
@@ -61,7 +62,7 @@ struct CreatePersonalAccessTokenRequest {
     pub products: Vec<String>,
     #[serde(rename = "Flags")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub flags: Option<u64>,
+    pub flags: Option<PersonalAccessTokenFlags>,
 }
 
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
@@ -171,6 +172,12 @@ impl<C: PassClientContext> PassClient<C> {
             .await
             .context("Error encrypting and signing personal access token key")?;
 
+        let flags = if args.pass_agent {
+            Some(PersonalAccessTokenFlags::for_agent())
+        } else {
+            None
+        };
+
         Ok((
             CreatePersonalAccessTokenRequest {
                 name: args.name,
@@ -179,7 +186,7 @@ impl<C: PassClientContext> PassClient<C> {
                 ),
                 expire_time: args.expiration_time,
                 products: vec!["pass".to_string()],
-                flags: args.flags,
+                flags,
             },
             personal_access_token_key,
         ))

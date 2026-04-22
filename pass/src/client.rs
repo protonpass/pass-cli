@@ -71,6 +71,11 @@ impl<C: PassClientContext> PassClient<C> {
         self.account_type
     }
 
+    pub fn with_account_type(mut self, account_type: AccountType) -> Self {
+        self.account_type = account_type;
+        self
+    }
+
     pub fn is_user_account(&self) -> bool {
         self.account_type == AccountType::User
     }

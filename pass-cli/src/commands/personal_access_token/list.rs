@@ -21,7 +21,6 @@ use crate::commands::{OutputFormat, settings_helper};
 use crate::helpers::CliPassClient as PassClient;
 use crate::utils::format_date;
 use anyhow::{Context, Result};
-use pass_domain::has_pass_agent_flag;
 
 #[derive(serde::Serialize)]
 struct PersonalAccessTokenView<'a> {
@@ -48,7 +47,7 @@ pub async fn run(client: PassClient, output: Option<OutputFormat>) -> Result<()>
             let views: Vec<PersonalAccessTokenView> = personal_access_tokens
                 .iter()
                 .map(|pat| PersonalAccessTokenView {
-                    is_agent: has_pass_agent_flag(pat.flags),
+                    is_agent: pat.pass_agent,
                     pat,
                 })
                 .collect();
@@ -61,11 +60,7 @@ pub async fn run(client: PassClient, output: Option<OutputFormat>) -> Result<()>
                 println!("No personal access tokens found");
             } else {
                 for pat in &personal_access_tokens {
-                    let agent_prefix = if has_pass_agent_flag(pat.flags) {
-                        "[Agent] "
-                    } else {
-                        ""
-                    };
+                    let agent_prefix = if pat.pass_agent { "[Agent] " } else { "" };
                     let expiration = match pat.expire_time {
                         Some(ts) => format!(" (expires: {})", format_date(ts)),
                         None => String::new(),

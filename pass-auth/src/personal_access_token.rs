@@ -23,7 +23,6 @@ use base64::Engine;
 use muon::POST;
 use muon::SessionCredentials;
 use muon::auth::{Auth, Tokens};
-use pass_domain::AccountType;
 use zeroize::Zeroizing;
 
 const TOKEN_PREFIX: &str = "pst_";
@@ -52,8 +51,6 @@ struct PersonalAccessTokenSession {
     refresh_expiration_time: Option<i64>,
     #[serde(rename = "Scopes")]
     scopes: Vec<String>,
-    #[serde(rename = "Flags")]
-    flags: Option<u64>,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -70,7 +67,6 @@ pub struct ParsedPersonalAccessTokenToken {
 pub struct PersonalAccessTokenLoginResult {
     pub credentials: SessionCredentials,
     pub personal_access_token_key: Zeroizing<Vec<u8>>,
-    pub account_type: AccountType,
 }
 
 pub fn parse_personal_access_token_token(
@@ -177,16 +173,9 @@ pub async fn perform_personal_access_token_login(
     let credentials = SessionCredentials::try_from(auth)
         .map_err(|_| anyhow!("Failed to convert personal access token auth into credentials"))?;
 
-    let account_type = if pass_domain::has_pass_agent_flag(response.session.flags) {
-        AccountType::AgentSession
-    } else {
-        AccountType::PersonalAccessToken
-    };
-
     Ok(PersonalAccessTokenLoginResult {
         credentials,
         personal_access_token_key: parsed.personal_access_token_key,
-        account_type,
     })
 }
 

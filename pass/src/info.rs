@@ -17,6 +17,7 @@
  *
  */
 
+use crate::personal_access_token::PersonalAccessTokenFlags;
 use crate::{PassClient, PassClientContext};
 use anyhow::Result;
 use muon::GET;
@@ -82,6 +83,11 @@ impl<C: PassClientContext> PassClient<C> {
         Ok(PersonalAccessTokenId::new(data.personal_access_token_id))
     }
 
+    pub async fn get_personal_access_token_pass_agent(&self) -> Result<bool> {
+        let data = self.get_personal_access_token_self().await?;
+        Ok(data.flags.map(|f| f.pass_agent).unwrap_or(false))
+    }
+
     async fn get_personal_access_token_self(&self) -> Result<PersonalAccessTokenSelfData> {
         let res = self
             .send(GET!("/account/v4/personal-access-token/self"))
@@ -106,4 +112,6 @@ struct PersonalAccessTokenSelfData {
     #[serde(rename = "ExpireTime")]
     #[allow(dead_code)]
     pub expire_time: Option<i64>,
+    #[serde(rename = "Flags")]
+    pub flags: Option<PersonalAccessTokenFlags>,
 }

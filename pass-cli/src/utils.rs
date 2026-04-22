@@ -99,3 +99,17 @@ pub fn format_date(timestamp: i64) -> String {
     let zoned = ts.to_zoned(TimeZone::UTC);
     format!("{}-{:02}-{:02}", zoned.year(), zoned.month(), zoned.day())
 }
+
+/// Format a timestamp (UTC) to current system timezine with time portion
+pub fn format_timestamp_with_time(timestamp: Timestamp) -> String {
+    let zoned = timestamp.to_zoned(TimeZone::system());
+    format!(
+        "{}-{:02}-{:02} {:02}:{:02}:{:02}",
+        zoned.year(),
+        zoned.month(),
+        zoned.day(),
+        zoned.hour(),
+        zoned.minute(),
+        zoned.second()
+    )
+}

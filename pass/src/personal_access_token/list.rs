@@ -17,6 +17,7 @@
  *
  */
 
+use super::PersonalAccessTokenFlags;
 use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
 use muon::GET;
@@ -39,7 +40,7 @@ pub(crate) struct PersonalAccessTokenData {
     #[serde(rename = "ModifyTime")]
     pub modify_time: i64,
     #[serde(rename = "Flags")]
-    pub flags: Option<u64>,
+    pub flags: Option<PersonalAccessTokenFlags>,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
@@ -67,7 +68,7 @@ pub struct PersonalAccessToken {
     pub name: String,
     pub expire_time: Option<i64>,
     #[serde(skip)]
-    pub flags: Option<u64>,
+    pub pass_agent: bool,
     #[serde(skip)]
     pub(crate) pat_key: Option<Vec<u8>>,
 }
@@ -154,7 +155,11 @@ impl<C: PassClientContext> PassClient<C> {
             pat_id: PersonalAccessTokenId::new(pat_data.personal_access_token_id.clone()),
             name: pat_data.name.to_string(),
             expire_time: pat_data.expire_time,
-            flags: pat_data.flags,
+            pass_agent: pat_data
+                .flags
+                .as_ref()
+                .map(|f| f.pass_agent)
+                .unwrap_or(false),
             pat_key: Some(decrypted_personal_access_token_key),
         })
     }
