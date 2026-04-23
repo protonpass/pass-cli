@@ -342,6 +342,7 @@ Did you have any issue during the installation? Take a look at our [Troubleshoot
 - **[Installation](get-started/installation.md)** - Installation instructions for all platforms
 - **[Pass objects](objects/share.md)** - The different objects you can manage in Proton Pass
 - **[Reference](commands/login.md)** - Reference guide to the commands the Pass CLI has to offer
+- **[Contributing](help/contributing.md)** - Guidelines for contributing to the project
 
 ## What is Proton Pass CLI?
 
