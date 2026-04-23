@@ -1,3 +1,10 @@
+## 2.0.2 (2026-04-23)
+
+## Other
+
+- Dependency upgrades.
+- `pass-cli` is back to homebrew as a `formula` instead of a `cask` due to notarization issues upon install.
+
 ## 2.0.1 (2026-04-22)
 
 ## Fixes :bug:
