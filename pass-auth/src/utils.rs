@@ -17,15 +17,11 @@
  *
  */
 
-pub(crate) mod account_type;
-pub(crate) mod action;
-pub(crate) mod action_payload;
-pub(crate) mod address;
-pub(crate) mod events;
-pub(crate) mod folder;
-pub(crate) mod group;
-pub(crate) mod invite;
-pub(crate) mod item;
-pub(crate) mod personal_access_token;
-pub(crate) mod share;
-pub(crate) mod vault;
+pub(crate) fn extract_scientist_name(host: &str) -> String {
+    let without_tld = host.trim_end_matches(".proton.black");
+    if let Some(pos) = without_tld.rfind('.') {
+        without_tld[pos + 1..].to_string()
+    } else {
+        without_tld.to_string()
+    }
+}

@@ -59,6 +59,8 @@ pub use aes_gcm;
 pub use feature_flag::*;
 pub use features::*;
 pub use models::account_type::*;
+pub use models::action::*;
+pub use models::action_payload::*;
 pub use models::address::*;
 pub use models::events::*;
 pub use models::folder::*;
@@ -72,7 +74,8 @@ pub use protobuf;
 pub use telemetry::*;
 pub use types::*;
 
-implement_custom_methods!(protos::vault::vault_v1::Vault);
+implement_custom_methods!(protos::action_payload::action_payload::ActionPayload);
 implement_custom_methods!(protos::item::item_v1::Item);
 implement_custom_methods!(protos::file::file_v1::FileMetadata);
 implement_custom_methods!(protos::folder::folder_v1::Folder);
+implement_custom_methods!(protos::vault::vault_v1::Vault);

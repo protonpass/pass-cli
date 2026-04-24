@@ -26,7 +26,7 @@ use std::path::Path;
 
 const USER_KEYS_FILE_NAME: &str = "user_keys.enc";
 const PERSONAL_ACCESS_TOKEN_ERROR: &str =
-    "Personal access tokens cannot perform user key operations";
+    "Personal access tokens and agent sessions cannot perform user key operations";
 
 fn api_user_key_to_locked_user_key(value: Key) -> LockedUserKey {
     LockedUserKey {
@@ -56,7 +56,9 @@ struct UserKeysResponse {
 
 impl<C: PassClientContext> PassClient<C> {
     pub async fn get_user_keys(&self) -> Result<Vec<UserKey>> {
-        if self.account_type() == AccountType::PersonalAccessToken {
+        if self.account_type() == AccountType::PersonalAccessToken
+            || self.account_type() == AccountType::AgentSession
+        {
             return Err(anyhow!(PERSONAL_ACCESS_TOKEN_ERROR));
         }
 
@@ -83,7 +85,9 @@ impl<C: PassClientContext> PassClient<C> {
     }
 
     pub(crate) async fn get_primary_user_key(&self) -> Result<UserKey> {
-        if self.account_type() == AccountType::PersonalAccessToken {
+        if self.account_type() == AccountType::PersonalAccessToken
+            || self.account_type() == AccountType::AgentSession
+        {
             return Err(anyhow!(PERSONAL_ACCESS_TOKEN_ERROR));
         }
 
@@ -99,7 +103,9 @@ impl<C: PassClientContext> PassClient<C> {
     }
 
     pub(crate) async fn load_user_keys(&self) -> Result<Vec<LockedUserKey>> {
-        if self.account_type() == AccountType::PersonalAccessToken {
+        if self.account_type() == AccountType::PersonalAccessToken
+            || self.account_type() == AccountType::AgentSession
+        {
             return Err(anyhow!(PERSONAL_ACCESS_TOKEN_ERROR));
         }
 

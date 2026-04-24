@@ -272,6 +272,7 @@ mod tests {
                         expire_time: None,
                         create_time: 1704067200,
                         modify_time: 1704067200,
+                        flags: None,
                     }],
                     total: 1,
                     last_token: None,

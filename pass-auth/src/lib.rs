@@ -32,6 +32,7 @@ pub mod personal_access_token;
 pub mod post_login;
 pub mod storage;
 pub mod store;
+mod utils;
 pub mod web_login;
 
 pub use authenticator::Authenticator;

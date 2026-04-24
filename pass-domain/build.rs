@@ -33,6 +33,7 @@ fn generate_pass_protos() {
         .join("protos");
 
     let files = vec![
+        ("action_payload.proto", "action_payload"),
         ("file_v1.proto", "file"),
         ("folder_v1.proto", "folder"),
         ("item_v1.proto", "item"),

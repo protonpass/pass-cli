@@ -17,15 +17,28 @@
  *
  */
 
-pub(crate) mod account_type;
-pub(crate) mod action;
-pub(crate) mod action_payload;
-pub(crate) mod address;
-pub(crate) mod events;
-pub(crate) mod folder;
-pub(crate) mod group;
-pub(crate) mod invite;
-pub(crate) mod item;
-pub(crate) mod personal_access_token;
-pub(crate) mod share;
-pub(crate) mod vault;
+#[derive(Clone, Copy, Debug, serde::Serialize, Default)]
+pub enum EventAction {
+    ItemRead,
+    #[default]
+    Unknown,
+}
+
+impl EventAction {
+    const ITEM_READ: u64 = 31;
+    const UNKNOWN: u64 = 9999;
+
+    pub fn value(&self) -> u64 {
+        match self {
+            Self::ItemRead => Self::ITEM_READ,
+            Self::Unknown => Self::UNKNOWN,
+        }
+    }
+
+    pub fn from(value: u64) -> Option<Self> {
+        match value {
+            Self::ITEM_READ => Some(Self::ItemRead),
+            _ => None,
+        }
+    }
+}

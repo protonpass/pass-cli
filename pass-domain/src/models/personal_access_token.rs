@@ -17,6 +17,15 @@
  *
  */
 
+pub mod flags {
+    /// First bit: marks a PAT as an Agent session.
+    pub const PASS_AGENT: u64 = 1 << 0;
+}
+
+pub fn has_pass_agent_flag(flags: Option<u64>) -> bool {
+    flags.map(|f| f & flags::PASS_AGENT != 0).unwrap_or(false)
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct PersonalAccessTokenId(pub(crate) String);
 display_for_basic!(PersonalAccessTokenId);

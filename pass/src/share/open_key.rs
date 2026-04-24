@@ -179,7 +179,7 @@ impl<C: PassClientContext> PassClient<C> {
                     .await
                     .context("failed to open ShareKey")?
             }
-            AccountType::PersonalAccessToken => {
+            AccountType::PersonalAccessToken | AccountType::AgentSession => {
                 let personal_access_token_key = self
                     .get_local_personal_access_token_key()
                     .await

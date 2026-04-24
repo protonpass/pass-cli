@@ -19,6 +19,7 @@
 
 use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
+use std::path::Path;
 use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 
 const PERSONAL_ACCESS_TOKEN_KEY_FILE_NAME: &str = "pat_key";
@@ -63,8 +64,6 @@ impl<C: PassClientContext> PassClient<C> {
         &self,
         personal_access_toekn_key: &[u8],
     ) -> Result<()> {
-        use std::path::Path;
-
         let local_key_provider = self.get_key_provider().await?;
         let local_key = local_key_provider.get_key().await?;
 
@@ -94,8 +93,6 @@ impl<C: PassClientContext> PassClient<C> {
     }
 
     pub async fn get_local_personal_access_token_key(&self) -> Result<Vec<u8>> {
-        use std::path::Path;
-
         let fs = self.client_features.get_fs().await;
         let encrypted_key = fs
             .get_file(Path::new(PERSONAL_ACCESS_TOKEN_KEY_FILE_NAME))

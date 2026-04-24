@@ -56,7 +56,8 @@ pub async fn run(
             .unwrap_or(OutputFormat::Human),
     };
 
-    let info_output = match client.account_type() {
+    let account_type = client.account_type();
+    let info_output = match account_type {
         AccountType::User => {
             let info = client.get_info().await.context("Error getting user info")?;
 
@@ -90,7 +91,7 @@ pub async fn run(
                 install_source: install_source_str,
             }
         }
-        AccountType::PersonalAccessToken => {
+        AccountType::PersonalAccessToken | AccountType::AgentSession => {
             let personal_access_token_name = client
                 .get_personal_access_token_name()
                 .await
@@ -110,13 +111,20 @@ pub async fn run(
                 None
             };
 
+            let name_prefix = match account_type {
+                AccountType::AgentSession => "[Agent] ".to_string(),
+                _ => "".to_string(),
+            };
+
             InfoOutput {
                 env,
                 release_track,
                 id: "N/A".to_string(), // Personal access tokens don't have user IDs
                 username: None,
                 email: None,
-                personal_access_token_name: Some(personal_access_token_name),
+                personal_access_token_name: Some(format!(
+                    "{name_prefix}{personal_access_token_name}"
+                )),
                 install_source: install_source_str,
             }
         }

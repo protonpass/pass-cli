@@ -257,10 +257,33 @@ impl Authenticator {
             .await
             .context("Error storing personal access token session")?;
 
-        Self::persist_store(&store).await?;
-
-        let pass_client =
+        // Create an authenticated client so we can fetch PAT flags from the self endpoint
+        let mut pass_client =
             PassClient::new(client, client_features, AccountType::PersonalAccessToken);
+
+        // Determine if this PAT was issued for an agent by checking the flags from the self endpoint
+        let account_type = match pass_client.get_personal_access_token_pass_agent().await {
+            Ok(true) => AccountType::AgentSession,
+            Ok(false) => AccountType::PersonalAccessToken,
+            Err(e) => {
+                warn!(
+                    "Failed to fetch PAT flags from self endpoint, defaulting to PersonalAccessToken: {e:#}"
+                );
+                AccountType::PersonalAccessToken
+            }
+        };
+
+        // Update store with the resolved account type
+        {
+            let mut store_guard = store.write().expect("store rwlock poisoned");
+            store_guard.set_account_type(account_type);
+        }
+
+        if account_type == AccountType::AgentSession {
+            pass_client.set_account_type(AccountType::AgentSession);
+        }
+
+        Self::persist_store(&store).await?;
 
         Ok((pass_client, login_result.personal_access_token_key))
     }

@@ -20,6 +20,7 @@
 #[macro_use]
 extern crate tracing;
 
+use crate::auth::cli_credential_provider::PERSONAL_ACCESS_TOKEN_ENV_VAR;
 use crate::features::CliClientFeatures;
 use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result, anyhow};
@@ -276,8 +277,6 @@ async fn run() -> Result<()> {
             } = &cli.command
             {
                 // Route to personal access token login if --service-account is provided
-                use crate::auth::cli_credential_provider::PERSONAL_ACCESS_TOKEN_ENV_VAR;
-
                 if personal_access_token.is_some()
                     || std::env::var(PERSONAL_ACCESS_TOKEN_ENV_VAR).is_ok()
                 {

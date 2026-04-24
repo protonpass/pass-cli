@@ -71,12 +71,20 @@ impl<C: PassClientContext> PassClient<C> {
         self.account_type
     }
 
+    pub fn set_account_type(&mut self, account_type: AccountType) {
+        self.account_type = account_type;
+    }
+
     pub fn is_user_account(&self) -> bool {
         self.account_type == AccountType::User
     }
 
     pub fn is_pat_account(&self) -> bool {
         self.account_type == AccountType::PersonalAccessToken
+    }
+
+    pub fn is_agent_session(&self) -> bool {
+        self.account_type == AccountType::AgentSession
     }
 
     pub async fn get_key_provider(&self) -> Result<Arc<dyn pass_domain::LocalKeyProvider>> {

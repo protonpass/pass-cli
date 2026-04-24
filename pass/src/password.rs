@@ -112,7 +112,6 @@ pub enum PasswordPenalty {
     Consecutive,
     Progressive,
     ContainsCommonPassword,
-    ShortWordList,
 }
 
 impl std::fmt::Display for PasswordPenalty {
@@ -134,7 +133,6 @@ impl From<proton_pass_common::password::PasswordPenalty> for PasswordPenalty {
             proton_pass_common::password::PasswordPenalty::ContainsCommonPassword => {
                 Self::ContainsCommonPassword
             }
-            proton_pass_common::password::PasswordPenalty::ShortWordList => Self::ShortWordList,
         }
     }
 }

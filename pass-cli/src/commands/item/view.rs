@@ -73,6 +73,12 @@ pub async fn run(
     query: ViewItemQuery,
     output: Option<OutputFormat>,
 ) -> Result<()> {
+    if client.is_agent_session() {
+        return Err(anyhow!(
+            "Agent sessions cannot use `item view`. Use `agent item view --reason REASON` instead."
+        ));
+    }
+
     // Resolve output format from settings if not provided
     let output = match output {
         Some(fmt) => fmt,
