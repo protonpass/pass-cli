@@ -79,3 +79,22 @@ pub async fn send_reason_if_agent(
         .send_monitor_action(action, share_id, item_id, &reason)
         .await
 }
+
+// Like send_reason_if_agent but accepts a pre-fetched item name, avoiding a redundant view_item
+// call when the caller already has the item content.
+pub async fn send_reason_if_agent_with_name(
+    client: &PassClient,
+    action: EventAction,
+    share_id: &ShareId,
+    item_id: Option<&ItemId>,
+    item_name: Option<&str>,
+) -> Result<()> {
+    if !client.is_agent_session() {
+        return Ok(());
+    }
+
+    let reason = validate_reason()?;
+    client
+        .send_monitor_action_with_name(action, share_id, item_id, item_name, &reason)
+        .await
+}

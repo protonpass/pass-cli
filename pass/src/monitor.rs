@@ -190,17 +190,11 @@ impl<C: PassClientContext> PassClient<C> {
         item_id: Option<&ItemId>,
         reason: &str,
     ) -> Result<()> {
-        let share = self.get_share(share_id).await?;
-        let vault_name = if share.is_vault_share() {
-            let vault_content = self
-                .open_vault_share_content_from_vault_share(&share)
-                .await
-                .context("Error opening share content")?;
-            Some(vault_content.name.to_string())
-        } else {
-            None
-        };
-
+        if reason.chars().count() > MAX_REASON_LENGTH {
+            return Err(anyhow!(
+                "reason is too long, please keep it under {MAX_REASON_LENGTH} characters"
+            ));
+        }
         let item_name = if let Some(id) = item_id {
             match self.view_item(share_id, id).await {
                 Ok(details) => Some(details.item.content.title.to_string()),
@@ -209,6 +203,51 @@ impl<C: PassClientContext> PassClient<C> {
                     None
                 }
             }
+        } else {
+            None
+        };
+        self.dispatch_monitor_action(action, share_id, item_id, item_name, reason)
+            .await
+    }
+
+    pub async fn send_monitor_action_with_name(
+        &self,
+        action: EventAction,
+        share_id: &ShareId,
+        item_id: Option<&ItemId>,
+        item_name: Option<&str>,
+        reason: &str,
+    ) -> Result<()> {
+        if reason.chars().count() > MAX_REASON_LENGTH {
+            return Err(anyhow!(
+                "reason is too long, please keep it under {MAX_REASON_LENGTH} characters"
+            ));
+        }
+        self.dispatch_monitor_action(
+            action,
+            share_id,
+            item_id,
+            item_name.map(|s| s.to_string()),
+            reason,
+        )
+        .await
+    }
+
+    async fn dispatch_monitor_action(
+        &self,
+        action: EventAction,
+        share_id: &ShareId,
+        item_id: Option<&ItemId>,
+        item_name: Option<String>,
+        reason: &str,
+    ) -> Result<()> {
+        let share = self.get_share(share_id).await?;
+        let vault_name = if share.is_vault_share() {
+            let vault_content = self
+                .open_vault_share_content_from_vault_share(&share)
+                .await
+                .context("Error opening share content")?;
+            Some(vault_content.name.to_string())
         } else {
             None
         };

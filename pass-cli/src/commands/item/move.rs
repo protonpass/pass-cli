@@ -18,7 +18,7 @@
  */
 
 use super::common::{ItemQuery, ShareQuery};
-use crate::commands::item::agent_monitor::send_reason_if_agent;
+use crate::commands::item::agent_monitor::{ensure_reason_if_agent, send_reason_if_agent};
 use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result};
 use pass_domain::EventAction;
@@ -62,6 +62,7 @@ impl MoveItemQuery {
 }
 
 pub async fn run(client: PassClient, query: MoveItemQuery) -> Result<()> {
+    ensure_reason_if_agent(&client)?;
     let from_share_id = query.from_share_query.share_id(&client).await?;
     let item_id = query.item_query.item_id(&from_share_id, &client).await?;
     let to_share_id = query.to_share_query.share_id(&client).await?;
