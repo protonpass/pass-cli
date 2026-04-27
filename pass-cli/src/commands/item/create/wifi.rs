@@ -17,14 +17,14 @@
  *
  */
 
+use crate::commands::item::agent_monitor::{ensure_reason_if_agent, send_reason_if_agent};
+use crate::commands::{item::common::ShareQuery, settings_helper};
 use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result, bail};
 use clap::Args;
 use pass::wifi::WifiItemCreatePayload;
-use pass_domain::WifiSecurity;
+use pass_domain::{EventAction, WifiSecurity};
 use std::io::{self, Read};
-
-use crate::commands::{item::common::ShareQuery, settings_helper};
 
 #[derive(serde::Deserialize, serde::Serialize)]
 struct WifiTemplate {
@@ -224,11 +224,13 @@ async fn create_wifi_from_payload(
     folder_id: Option<pass_domain::FolderId>,
     client: PassClient,
 ) -> Result<()> {
+    ensure_reason_if_agent(&client)?;
     let share_id = share_query.share_id(&client).await?;
     let item_id = client
         .create_wifi(&share_id, payload, folder_id.as_ref())
         .await
         .context("Error creating WiFi item")?;
+    send_reason_if_agent(&client, EventAction::ItemCreate, &share_id, Some(&item_id)).await?;
 
     println!("{}", item_id.value());
     Ok(())

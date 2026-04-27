@@ -18,9 +18,10 @@
  */
 
 use super::common::{ItemQuery, ShareQuery};
+use crate::commands::item::agent_monitor::send_reason_if_agent;
 use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result, anyhow};
-use pass_domain::UpdateFieldResult;
+use pass_domain::{EventAction, UpdateFieldResult};
 
 fn parse_fields(fields: Vec<String>) -> Result<Vec<(String, String)>> {
     fields
@@ -55,6 +56,8 @@ pub async fn run(
 
     let share_id = share_query.share_id(&client).await?;
     let item_id = item_query.item_id(&share_id, &client).await?;
+
+    send_reason_if_agent(&client, EventAction::ItemUpdate, &share_id, Some(&item_id)).await?;
 
     let item_details = client
         .view_item(&share_id, &item_id)

@@ -17,13 +17,14 @@
  *
  */
 
+use crate::commands::item::agent_monitor::{ensure_reason_if_agent, send_reason_if_agent};
+use crate::commands::{item::common::ShareQuery, settings_helper};
 use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result, bail};
 use clap::Args;
 use pass::note::NoteItemCreatePayload;
+use pass_domain::EventAction;
 use std::io::{self, Read};
-
-use crate::commands::{item::common::ShareQuery, settings_helper};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Default)]
 pub struct NoteTemplate {
@@ -156,11 +157,13 @@ async fn create_note_from_template(
     folder_id: Option<pass_domain::FolderId>,
     client: PassClient,
 ) -> Result<()> {
+    ensure_reason_if_agent(&client)?;
     let share_id = share_query.share_id(&client).await?;
     let res = client
         .create_note(&share_id, template.into(), folder_id.as_ref())
         .await
         .context("Error creating note item")?;
+    send_reason_if_agent(&client, EventAction::ItemCreate, &share_id, Some(&res)).await?;
     println!("{res}");
 
     Ok(())

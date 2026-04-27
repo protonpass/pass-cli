@@ -17,16 +17,17 @@
  *
  */
 
+use crate::commands::item::agent_monitor::{ensure_reason_if_agent, send_reason_if_agent};
+use crate::commands::{
+    item::common::ShareQuery, settings_helper, ssh_agent::parse_private_key_with_rsa_pem_fallback,
+};
 use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result, anyhow};
 use clap::{Args, Subcommand};
 use pass::ssh_key::SshKeyItemCreatePayload;
+use pass_domain::EventAction;
 use std::io::Read;
 use std::path::PathBuf;
-
-use crate::commands::{
-    item::common::ShareQuery, settings_helper, ssh_agent::parse_private_key_with_rsa_pem_fallback,
-};
 
 const SSH_KEY_PASSWORD_ENV_VAR: &str = "PROTON_PASS_SSH_KEY_PASSWORD";
 const SSH_KEY_PASSWORD_FILE_ENV_VAR: &str = "PROTON_PASS_SSH_KEY_PASSWORD_FILE";
@@ -191,6 +192,7 @@ async fn run_import(
     folder_id: Option<pass_domain::FolderId>,
     client: PassClient,
 ) -> Result<()> {
+    ensure_reason_if_agent(&client)?;
     let share_query = ShareQuery::new(share_id, vault_name)?;
 
     let private_key_content = std::fs::read_to_string(&private_key_file)
@@ -223,6 +225,7 @@ async fn run_import(
         .create_ssh_key(&share_id, payload, folder_id.as_ref())
         .await
         .context("Error creating SSH key item")?;
+    send_reason_if_agent(&client, EventAction::ItemCreate, &share_id, Some(&item_id)).await?;
 
     println!("{item_id}");
     Ok(())
@@ -239,6 +242,7 @@ async fn run_generate(
     folder_id: Option<pass_domain::FolderId>,
     client: PassClient,
 ) -> Result<()> {
+    ensure_reason_if_agent(&client)?;
     let share_query = ShareQuery::new(share_id, vault_name)?;
 
     let passphrase = get_ssh_key_password(password_flag, true)?;
@@ -262,6 +266,7 @@ async fn run_generate(
         .create_ssh_key(&share_id, payload, folder_id.as_ref())
         .await
         .context("Error creating SSH key item")?;
+    send_reason_if_agent(&client, EventAction::ItemCreate, &share_id, Some(&item_id)).await?;
 
     println!("{item_id}");
     Ok(())

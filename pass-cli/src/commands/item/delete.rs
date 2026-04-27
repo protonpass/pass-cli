@@ -17,11 +17,20 @@
  *
  */
 
+use crate::commands::item::agent_monitor::send_reason_if_agent;
 use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result};
-use pass_domain::{ItemId, ShareId};
+use pass_domain::{EventAction, ItemId, ShareId};
 
 pub async fn run(client: PassClient, share_id: ShareId, item_id: ItemId) -> Result<()> {
+    send_reason_if_agent(
+        &client,
+        EventAction::ItemSoftDelete,
+        &share_id,
+        Some(&item_id),
+    )
+    .await?;
+
     client
         .delete_item(&share_id, &item_id)
         .await

@@ -24,6 +24,7 @@ use anyhow::{Result, anyhow};
 use clap::Subcommand;
 use pass_domain::{ItemId, ShareId};
 
+pub mod agent_monitor;
 pub mod alias;
 pub mod attachment;
 mod common;

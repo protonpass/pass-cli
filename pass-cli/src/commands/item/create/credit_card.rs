@@ -17,11 +17,13 @@
  *
  */
 
+use crate::commands::item::agent_monitor::{ensure_reason_if_agent, send_reason_if_agent};
 use crate::commands::{item::common::ShareQuery, settings_helper};
 use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result, bail};
 use clap::Args;
 use pass::credit_card::CreditCardItemCreatePayload;
+use pass_domain::EventAction;
 use std::io::{self, Read};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, Default)]
@@ -201,11 +203,13 @@ async fn create_credit_card_from_payload(
     folder_id: Option<pass_domain::FolderId>,
     client: PassClient,
 ) -> Result<()> {
+    ensure_reason_if_agent(&client)?;
     let share_id = share_query.share_id(&client).await?;
     let res = client
         .create_credit_card(&share_id, payload, folder_id.as_ref())
         .await
         .context("Error creating credit card item")?;
+    send_reason_if_agent(&client, EventAction::ItemCreate, &share_id, Some(&res)).await?;
     println!("{res}");
 
     Ok(())

@@ -18,8 +18,10 @@
  */
 
 use super::common::{ItemQuery, ShareQuery};
+use crate::commands::item::agent_monitor::send_reason_if_agent;
 use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result};
+use pass_domain::EventAction;
 
 pub struct TrashItemQuery {
     share_query: ShareQuery,
@@ -46,6 +48,8 @@ impl TrashItemQuery {
 pub async fn run(client: PassClient, query: TrashItemQuery) -> Result<()> {
     let share_id = query.share_query.share_id(&client).await?;
     let item_id = query.item_query.item_id(&share_id, &client).await?;
+
+    send_reason_if_agent(&client, EventAction::ItemTrash, &share_id, Some(&item_id)).await?;
 
     client
         .trash_item(&share_id, &item_id)

@@ -17,6 +17,7 @@
  *
  */
 
+use crate::commands::item::agent_monitor::send_reason_if_agent;
 use crate::commands::item::common::{ItemQuery, ShareQuery};
 use crate::commands::secret_resolver::ItemReference;
 use crate::commands::{OutputFormat, settings_helper};
@@ -24,6 +25,7 @@ use crate::helpers::CliPassClient as PassClient;
 use crate::telemetry::event::CommandEvent;
 use anyhow::{Context, Result, anyhow, bail};
 use pass::FindItemQuery;
+use pass_domain::EventAction;
 
 pub enum ViewItemQuery {
     Ids {
@@ -73,12 +75,6 @@ pub async fn run(
     query: ViewItemQuery,
     output: Option<OutputFormat>,
 ) -> Result<()> {
-    if client.is_agent_session() {
-        return Err(anyhow!(
-            "Agent sessions cannot use `item view`. Use `agent item view --reason REASON` instead."
-        ));
-    }
-
     // Resolve output format from settings if not provided
     let output = match output {
         Some(fmt) => fmt,
@@ -98,6 +94,7 @@ pub async fn run(
                 .await;
             let share_id = share_query.share_id(&client).await?;
             let item_id = item_query.item_id(&share_id, &client).await?;
+            send_reason_if_agent(&client, EventAction::ItemRead, &share_id, Some(&item_id)).await?;
             let item = client
                 .view_item(&share_id, &item_id)
                 .await
@@ -114,6 +111,14 @@ pub async fn run(
                 .find_item(item_query)
                 .await
                 .context("Error retrieving item")?;
+
+            send_reason_if_agent(
+                &client,
+                EventAction::ItemRead,
+                &item.share_id,
+                Some(&item.id),
+            )
+            .await?;
 
             let full_item = client
                 .view_item(&item.share_id, &item.id)

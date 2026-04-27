@@ -17,13 +17,14 @@
  *
  */
 
+use crate::commands::item::agent_monitor::{ensure_reason_if_agent, send_reason_if_agent};
+use crate::commands::{item::common::ShareQuery, settings_helper};
 use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result};
 use clap::Args;
 use pass::identity::IdentityItemCreatePayload;
+use pass_domain::EventAction;
 use std::io::{self, Read};
-
-use crate::commands::{item::common::ShareQuery, settings_helper};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 pub struct IdentityTemplate {
@@ -268,11 +269,13 @@ async fn create_identity_from_payload(
     folder_id: Option<pass_domain::FolderId>,
     client: PassClient,
 ) -> Result<()> {
+    ensure_reason_if_agent(&client)?;
     let share_id = share_query.share_id(&client).await?;
     let item_id = client
         .create_identity(&share_id, payload, folder_id.as_ref())
         .await
         .context("Error creating identity item")?;
+    send_reason_if_agent(&client, EventAction::ItemCreate, &share_id, Some(&item_id)).await?;
 
     println!("{}", item_id.value());
     Ok(())

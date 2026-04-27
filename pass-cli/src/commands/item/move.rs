@@ -18,8 +18,10 @@
  */
 
 use super::common::{ItemQuery, ShareQuery};
+use crate::commands::item::agent_monitor::send_reason_if_agent;
 use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result};
+use pass_domain::EventAction;
 
 pub struct MoveItemQuery {
     from_share_query: ShareQuery,
@@ -64,10 +66,26 @@ pub async fn run(client: PassClient, query: MoveItemQuery) -> Result<()> {
     let item_id = query.item_query.item_id(&from_share_id, &client).await?;
     let to_share_id = query.to_share_query.share_id(&client).await?;
 
+    send_reason_if_agent(
+        &client,
+        EventAction::ItemSoftDelete,
+        &from_share_id,
+        Some(&item_id),
+    )
+    .await?;
+
     let new_item_id = client
         .move_item(&from_share_id, &item_id, &to_share_id)
         .await
         .context("Error moving item")?;
+
+    send_reason_if_agent(
+        &client,
+        EventAction::ItemCreate,
+        &to_share_id,
+        Some(&new_item_id),
+    )
+    .await?;
 
     println!("{new_item_id}");
     Ok(())
