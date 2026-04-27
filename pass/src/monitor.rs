@@ -18,14 +18,14 @@
  */
 
 use crate::common::CodeResponse;
-use crate::item::get_one::ItemDetails;
 use crate::utils::{b64_decode, b64_encode};
 use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use muon::{GET, POST};
 use pass_domain::crypto::{self, EncryptionTag};
 use pass_domain::{
-    AccountType, ActionPayload, ActionPayloadContent, EventAction, PersonalAccessTokenId,
+    AccountType, ActionPayload, ActionPayloadContent, EventAction, ItemId, PersonalAccessTokenId,
+    ShareId,
 };
 
 pub const MAX_REASON_LENGTH: usize = 300;
@@ -41,8 +41,10 @@ pub struct PatMonitorRequest {
 pub struct PatMonitorRecord {
     #[serde(rename = "VaultID")]
     pub vault_id: String,
-    #[serde(rename = "ItemID")]
-    pub item_id: Option<String>,
+    #[serde(rename = "ObjectID")]
+    pub object_id: Option<String>,
+    #[serde(rename = "Action")]
+    pub action: u64,
     #[serde(rename = "Payload")]
     pub payload: String,
 }
@@ -70,7 +72,7 @@ struct PatMonitorApiRecord {
     #[serde(rename = "VaultID")]
     vault_id: String,
     #[serde(rename = "ObjectID")]
-    object_id: String,
+    object_id: Option<String>,
     #[serde(rename = "Payload")]
     payload: String,
     #[serde(rename = "ActionTime")]
@@ -81,7 +83,7 @@ struct PatMonitorApiRecord {
 pub struct PatMonitorEntry {
     pub record_id: String,
     pub vault_id: String,
-    pub object_id: String,
+    pub object_id: Option<String>,
     pub action: EventAction,
     pub payload: DecryptedMonitorPayload,
     pub action_time: jiff::Timestamp,
@@ -181,24 +183,14 @@ impl<C: PassClientContext> PassClient<C> {
         Ok(all_records)
     }
 
-    pub async fn send_item_accessed_event(
+    pub async fn send_monitor_action(
         &self,
-        item_details: &ItemDetails,
+        action: EventAction,
+        share_id: &ShareId,
+        item_id: Option<&ItemId>,
         reason: &str,
     ) -> Result<()> {
-        if !self.is_agent_session() {
-            return Err(anyhow!(
-                "`send_item_accessed_event` can only be called from an agent session"
-            ));
-        }
-
-        if reason.chars().count() > MAX_REASON_LENGTH {
-            return Err(anyhow!(
-                "reason is too long, please keep it under {MAX_REASON_LENGTH} characters"
-            ));
-        }
-
-        let share = self.get_share(&item_details.item.share_id).await?;
+        let share = self.get_share(share_id).await?;
         let vault_name = if share.is_vault_share() {
             let vault_content = self
                 .open_vault_share_content_from_vault_share(&share)
@@ -209,11 +201,24 @@ impl<C: PassClientContext> PassClient<C> {
             None
         };
 
+        let item_name = if let Some(id) = item_id {
+            match self.view_item(share_id, id).await {
+                Ok(details) => Some(details.item.content.title.to_string()),
+                Err(e) => {
+                    warn!("Could not fetch item name for monitor action: {e:#}");
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
         let payload = ActionPayload {
-            content: ActionPayloadContent::AgentAccessItem {
+            content: ActionPayloadContent::AgentAction {
                 reason: reason.to_string(),
                 vault_name,
-                item_name: Some(item_details.item.content.title.to_string()),
+                item_name,
+                folder_name: None,
             },
         };
 
@@ -229,24 +234,23 @@ impl<C: PassClientContext> PassClient<C> {
                 anyhow!("Error encrypting action payload")
             })?;
 
-        let encoded = b64_encode(encrypted);
-
         let request = PatMonitorRequest {
             records: vec![PatMonitorRecord {
                 vault_id: share.vault_id.to_string(),
-                item_id: Some(item_details.item.id.to_string()),
-                payload: encoded,
+                object_id: item_id.map(|id| id.to_string()),
+                action: action.value(),
+                payload: b64_encode(encrypted),
             }],
         };
 
         self.send_pat_monitor_request(request)
             .await
-            .context("Error sending agent monitor request")?;
+            .context("Error sending monitor action")?;
         Ok(())
     }
 
     async fn send_pat_monitor_request(&self, request: PatMonitorRequest) -> Result<()> {
-        let req = POST!("/pass/v1/pat/monitor/read")
+        let req = POST!("/pass/v1/pat/monitor")
             .body_json(request)
             .context("Error creating request to send action payload")?;
 
@@ -271,10 +275,11 @@ fn decrypt_monitor_payload(encoded: &str, pat_key: &[u8]) -> Result<DecryptedMon
         ActionPayload::deserialize(&decrypted).context("Error deserializing monitor payload")?;
 
     match action_payload.content {
-        ActionPayloadContent::AgentAccessItem {
+        ActionPayloadContent::AgentAction {
             reason,
             vault_name,
             item_name,
+            ..
         } => Ok(DecryptedMonitorPayload {
             reason,
             vault_name,
