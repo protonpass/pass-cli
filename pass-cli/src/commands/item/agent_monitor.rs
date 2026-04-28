@@ -29,7 +29,7 @@ fn validate_reason() -> Result<String> {
         anyhow!(
             "Agent sessions must set the {REASON_ENV_VAR} environment variable before running \
              item commands.\n\
-             Example: export {REASON_ENV_VAR}=\"Retrieving database credentials for deployment\""
+             Example: {REASON_ENV_VAR}=\"Retrieving database credentials for deployment\" pass-cli item view --share-id {{YourShareId}} --item-id {{YourItemId}}"
         )
     })?;
 
