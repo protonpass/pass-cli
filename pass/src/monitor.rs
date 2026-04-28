@@ -74,7 +74,7 @@ struct PatMonitorApiRecord {
     #[serde(rename = "ObjectID")]
     object_id: Option<String>,
     #[serde(rename = "Payload")]
-    payload: String,
+    payload: Option<String>,
     #[serde(rename = "ActionTime")]
     action_time: i64,
 }
@@ -85,7 +85,7 @@ pub struct PatMonitorEntry {
     pub vault_id: String,
     pub object_id: Option<String>,
     pub action: EventAction,
-    pub payload: DecryptedMonitorPayload,
+    pub payload: Option<DecryptedMonitorPayload>,
     pub action_time: jiff::Timestamp,
 }
 
@@ -142,16 +142,19 @@ impl<C: PassClientContext> PassClient<C> {
 
             for rec in actions.records {
                 let action = EventAction::from(rec.action).unwrap_or_default();
-                let payload = match decrypt_monitor_payload(&rec.payload, &pat_key) {
-                    Ok(payload) => payload,
-                    Err(e) => {
-                        error!("Unable to decrypt payload: {e:#}");
-                        DecryptedMonitorPayload {
-                            reason: "Unable to decrypt".to_string(),
-                            vault_name: None,
-                            item_name: None,
+                let payload = match &rec.payload {
+                    Some(payload) => match decrypt_monitor_payload(payload, &pat_key) {
+                        Ok(payload) => Some(payload),
+                        Err(e) => {
+                            error!("Unable to decrypt payload: {e:#}");
+                            Some(DecryptedMonitorPayload {
+                                reason: "Unable to decrypt".to_string(),
+                                vault_name: None,
+                                item_name: None,
+                            })
                         }
-                    }
+                    },
+                    None => None,
                 };
 
                 let action_time = match jiff::Timestamp::from_second(rec.action_time) {
