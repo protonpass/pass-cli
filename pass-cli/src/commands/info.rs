@@ -22,6 +22,7 @@ use crate::commands::{OutputFormat, settings_helper, update};
 use crate::helpers::CliPassClient as PassClient;
 use crate::telemetry::event::CommandEvent;
 use anyhow::{Context, Result};
+use pass_auth::store::SerializedEnv;
 use pass_domain::AccountType;
 use std::path::PathBuf;
 
@@ -62,13 +63,12 @@ pub async fn run(
             let info = client.get_info().await.context("Error getting user info")?;
 
             // Only show ENV if it's not "prod"
-            let env_str = format!("{:?}", info.env);
-            let env = if env_str != "Prod" {
-                Some(env_str)
-            } else {
-                None
+            let serialized_env = SerializedEnv::from(info.env);
+            let env = match serialized_env {
+                SerializedEnv::Prod => None,
+                SerializedEnv::Atlas(atlas) => Some(format!("Atlas: {atlas:?}")),
+                SerializedEnv::Custom(custom) => Some(format!("Custom: {custom:?}")),
             };
-
             // Show release track
             let release_track = update::get_release_track(&base_dir)
                 .await

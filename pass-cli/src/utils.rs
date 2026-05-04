@@ -101,6 +101,7 @@ pub fn format_date(timestamp: i64) -> String {
 }
 
 /// Format a timestamp (UTC) to current system timezine with time portion
+#[allow(dead_code)]
 pub fn format_timestamp_with_time(timestamp: Timestamp) -> String {
     let zoned = timestamp.to_zoned(TimeZone::system());
     format!(
