@@ -18,8 +18,8 @@
  */
 
 use anyhow::Context;
-use jiff::tz::TimeZone;
 use jiff::Timestamp;
+use jiff::tz::TimeZone;
 use std::io::Write;
 use std::path::PathBuf;
 
