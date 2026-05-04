@@ -17,13 +17,12 @@
  *
  */
 
-use super::secret_resolver::{PassClientResolver, SecretCache, SecretReference, find_pass_uri};
+use super::secret_resolver::{find_pass_uri, PassClientResolver, SecretCache, SecretReference};
 use crate::helpers::CliPassClient as PassClient;
 use crate::telemetry::event::CommandEvent;
 
 use crate::commands::item::agent_monitor::ensure_reason_if_agent;
-
-use anyhow::{Context, Result, anyhow, bail};
+use anyhow::{anyhow, bail, Context, Result};
 use regex::Regex;
 use std::collections::HashMap;
 use std::env;
@@ -238,7 +237,7 @@ fn mask_line(line: &str, masking_regex: &Option<Regex>) -> String {
 
 #[cfg(not(target_os = "windows"))]
 async fn kill_process_by_pid(pid: i32) {
-    use nix::sys::signal::{Signal, kill};
+    use nix::sys::signal::{kill, Signal};
     use nix::unistd::Pid;
 
     const SIGKILL_GRACE_TIME_MS: u64 = 2_000;

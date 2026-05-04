@@ -164,6 +164,16 @@ impl SecretResolver for PassClientResolver {
     async fn resolve_secret(&self, secret_ref: &SecretReference) -> Result<String> {
         let query = FindItemQuery::new(&secret_ref.share_id, &secret_ref.item_id);
 
+        let share_id = ShareId::new(secret_ref.share_id.clone());
+        let item_id = ItemId::new(secret_ref.item_id.clone());
+        send_reason_if_agent(
+            &self.client,
+            EventAction::ItemRead,
+            &share_id,
+            Some(&item_id),
+        )
+        .await?;
+
         let item = self.client.find_item(query).await.with_context(|| {
             format!(
                 "Failed to retrieve item {} from share {}",
@@ -178,17 +188,6 @@ impl SecretResolver for PassClientResolver {
                 secret_ref.item_id
             )
         })?;
-
-        let share_id = ShareId::new(secret_ref.share_id.clone());
-        let item_id = ItemId::new(secret_ref.item_id.clone());
-        send_reason_if_agent(
-            &self.client,
-            EventAction::ItemRead,
-            &share_id,
-            Some(&item_id),
-        )
-        .await?;
-
         Ok(field.value())
     }
 }
