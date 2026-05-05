@@ -69,6 +69,14 @@ pub struct PersonalAccessTokenLoginResult {
     pub personal_access_token_key: Zeroizing<Vec<u8>>,
 }
 
+#[derive(Debug, serde::Deserialize)]
+struct ApiErrorResponse {
+    #[serde(rename = "Code")]
+    code: i32,
+    #[serde(rename = "Error")]
+    error: String,
+}
+
 pub fn parse_personal_access_token_token(
     token_string: &str,
 ) -> Result<ParsedPersonalAccessTokenToken> {
@@ -130,6 +138,18 @@ async fn create_personal_access_token_session(
 
     if !res.status().is_success() {
         debug_response(&res);
+
+        if let Ok(api_error) = res.body_json::<ApiErrorResponse>() {
+            if api_error
+                .error
+                .contains("Invalid or expired personal access token")
+            {
+                return Err(anyhow!(
+                    "This personal access token is invalid, expired or has been deleted."
+                ));
+            }
+            return Err(anyhow!("{}", api_error.error));
+        }
         return Err(anyhow!(
             "Bad response when creating Personal Access Token session: {:?}",
             res.status()
