@@ -18,6 +18,7 @@
  */
 
 use super::secret_resolver::{PassClientResolver, SecretReference, SecretResolver};
+use crate::commands::item::agent_monitor::ensure_reason_if_agent;
 use crate::helpers::CliPassClient as PassClient;
 use crate::telemetry::event::CommandEvent;
 use anyhow::{Context, Result, anyhow};
@@ -90,6 +91,7 @@ pub async fn run(
     out_file: Option<String>,
     client: PassClient,
 ) -> Result<()> {
+    ensure_reason_if_agent(&client)?;
     // Read input template
     let template = match in_file {
         Some(file_path) => fs::read_to_string(&file_path)
@@ -190,7 +192,7 @@ impl<R: SecretResolver> TemplateProcessor<R> {
                 // Fetch the secret
                 let value = self
                     .resolver
-                    .resolve_secret(&secret_ref)
+                    .resolve_secret_and_send_reason(&secret_ref)
                     .await
                     .with_context(|| format!("Failed to fetch secret for {uri}"))?;
 

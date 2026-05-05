@@ -17,10 +17,12 @@
  *
  */
 
+use crate::commands::item::agent_monitor::send_reason_if_agent;
 use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result, anyhow};
 use async_trait::async_trait;
 use pass::FindItemQuery;
+use pass_domain::{EventAction, ItemId, ShareId};
 use regex::Regex;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -145,6 +147,7 @@ impl SecretReference {
 #[async_trait(?Send)]
 pub trait SecretResolver {
     async fn resolve_secret(&self, secret_ref: &SecretReference) -> Result<String>;
+    async fn resolve_secret_and_send_reason(&self, secret_ref: &SecretReference) -> Result<String>;
 }
 
 pub struct PassClientResolver {
@@ -162,6 +165,16 @@ impl SecretResolver for PassClientResolver {
     async fn resolve_secret(&self, secret_ref: &SecretReference) -> Result<String> {
         let query = FindItemQuery::new(&secret_ref.share_id, &secret_ref.item_id);
 
+        let share_id = ShareId::new(secret_ref.share_id.clone());
+        let item_id = ItemId::new(secret_ref.item_id.clone());
+        send_reason_if_agent(
+            &self.client,
+            EventAction::ItemRead,
+            &share_id,
+            Some(&item_id),
+        )
+        .await?;
+
         let item = self.client.find_item(query).await.with_context(|| {
             format!(
                 "Failed to retrieve item {} from share {}",
@@ -176,8 +189,19 @@ impl SecretResolver for PassClientResolver {
                 secret_ref.item_id
             )
         })?;
-
         Ok(field.value())
+    }
+    async fn resolve_secret_and_send_reason(&self, secret_ref: &SecretReference) -> Result<String> {
+        let share_id = ShareId::new(secret_ref.share_id.clone());
+        let item_id = ItemId::new(secret_ref.item_id.clone());
+        send_reason_if_agent(
+            &self.client,
+            EventAction::ItemRead,
+            &share_id,
+            Some(&item_id),
+        )
+        .await?;
+        self.resolve_secret(secret_ref).await
     }
 }
 
@@ -289,6 +313,13 @@ pub(crate) mod tests {
                     secret_ref.field_name
                 )
             })
+        }
+
+        async fn resolve_secret_and_send_reason(
+            &self,
+            secret_ref: &SecretReference,
+        ) -> Result<String> {
+            self.resolve_secret(secret_ref).await
         }
     }
 

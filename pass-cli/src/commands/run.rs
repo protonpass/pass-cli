@@ -20,6 +20,8 @@
 use super::secret_resolver::{PassClientResolver, SecretCache, SecretReference, find_pass_uri};
 use crate::helpers::CliPassClient as PassClient;
 use crate::telemetry::event::CommandEvent;
+
+use crate::commands::item::agent_monitor::ensure_reason_if_agent;
 use anyhow::{Context, Result, anyhow, bail};
 use regex::Regex;
 use std::collections::HashMap;
@@ -401,6 +403,7 @@ pub async fn run(
     command_args: Vec<String>,
     client: PassClient,
 ) -> Result<()> {
+    ensure_reason_if_agent(&client)?;
     client.emit_telemetry(&CommandEvent::new("run")).await;
     // Get all environment variables (process + .env files)
     let env_vars =
