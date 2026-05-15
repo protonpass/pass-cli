@@ -49,12 +49,11 @@ pub async fn run(client: PassClient, query: UntrashItemQuery) -> Result<()> {
     let share_id = query.share_query.share_id(&client).await?;
     let item_id = query.item_query.item_id(&share_id, &client).await?;
 
-    send_reason_if_agent(&client, EventAction::ItemUntrash, &share_id, Some(&item_id)).await?;
-
     client
         .untrash_item(&share_id, &item_id)
         .await
         .context("Error untrashing item")?;
+    send_reason_if_agent(&client, EventAction::ItemUntrash, &share_id, Some(&item_id)).await?;
 
     println!("Item successfully restored from trash");
     Ok(())
