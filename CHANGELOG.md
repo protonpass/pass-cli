@@ -1,3 +1,16 @@
+## 2.0.3 (2026-05-19)
+
+## Fixes :bug:
+
+- Add `--show-secrets` flag to list items with secrets.
+- Catch error message for 400 response when doing updates.
+- Skip production information in the `info` command.
+
+## Other
+
+- Upgrade keyring dependencies to 1.0.0.
+- Updated dependencies.
+
 ## 2.0.2 (2026-04-23)
 
 ## Other
