@@ -57,6 +57,11 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    #[command(about = "Manage AI agents")]
+    Agent {
+        #[command(subcommand)]
+        command: commands::agent::AgentCommands,
+    },
     #[command(about = "Log in (defaults to web login)")]
     Login {
         #[arg(help = "The username to log in with (for interactive mode)")]
@@ -385,6 +390,7 @@ async fn run() -> Result<()> {
         Commands::PersonalAccessToken { command } => {
             commands::personal_access_token::run(command, client).await
         }
+        Commands::Agent { command } => commands::agent::run(command, client).await,
         #[cfg(feature = "internal")]
         Commands::Internal { command } => {
             commands::internal::run(command, client, client_features).await
