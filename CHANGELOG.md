@@ -1,3 +1,9 @@
+## 2.1.0 (2026-05-20)
+
+## Features :tada:
+
+- Agent mode. Agents need to provide reasons on what actions they perform. Users can monitor those actions
+
 ## 2.0.3 (2026-05-19)
 
 ## Fixes :bug:
