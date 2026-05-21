@@ -26,6 +26,7 @@ nav = [
     "commands/ssh-agent.md",
     "commands/update.md",
     "commands/personal-access-token.md",
+    "commands/agent.md",
     {"View item contents" = [
       "commands/contents/secret-references.md",
       "commands/contents/view.md",
@@ -37,6 +38,7 @@ nav = [
 ]
 
 [project.theme]
+custom_dir = "overrides"
 logo = "assets/logo.png"
 favicon = "assets/logo.png"
 language = "en"

@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+
+{% block extrahead %}
+  <meta http-equiv="Content-Security-Policy" content="connect-src 'self' wss://*.proton.me https://*.proton.me https://proton.me; object-src 'none'; script-src 'none';">
+{% endblock %}
