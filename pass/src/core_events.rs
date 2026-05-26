@@ -22,6 +22,8 @@ use anyhow::Result;
 use muon::GET;
 use pass_domain::AccountType;
 
+const CORE_EVENTS_SYNC_INTERVAL_SECS: i64 = 30 * 60; // 30 mins
+
 #[derive(serde::Deserialize)]
 struct LatestEventResponse {
     #[serde(rename = "EventID")]
@@ -44,32 +46,6 @@ struct CoreUserEvent {
     keys: Vec<serde_json::Value>,
 }
 
-pub(crate) async fn read_cursor<C: PassClientContext>(
-    client: &PassClient<C>,
-) -> Result<Option<String>> {
-    let storage = client
-        .client_features
-        .get_data_storage()
-        .await?
-        .get_core_event_storage()
-        .await;
-    storage.get_cursor().await
-}
-
-pub(crate) async fn write_cursor<C: PassClientContext>(
-    client: &PassClient<C>,
-    event_id: &str,
-) -> Result<()> {
-    let storage = client
-        .client_features
-        .get_data_storage()
-        .await?
-        .get_core_event_storage()
-        .await;
-    debug!("Writing core event cursor {event_id}");
-    storage.set_cursor(event_id).await
-}
-
 /// Called once at CLI bootstrap (after session load, before commands dispatch).
 /// Checks for key changes since last run and, if found, clears the key cache so
 /// the next `get_user_keys()` call re-fetches from the API.
@@ -87,7 +63,14 @@ pub async fn bootstrap_event_sync<C: PassClientContext>(client: &PassClient<C>) 
 }
 
 async fn sync_core_events<C: PassClientContext>(client: &PassClient<C>) -> Result<()> {
-    let mut current_id = match read_cursor(client).await? {
+    let storage = client
+        .client_features
+        .get_data_storage()
+        .await?
+        .get_core_event_storage()
+        .await;
+
+    let mut current_id = match storage.get_cursor().await? {
         None => {
             debug!("No core event cursor stored, fetching latest event ID");
             let res = client.send(GET!("/core/v4/events/latest")).await?;
@@ -96,10 +79,17 @@ async fn sync_core_events<C: PassClientContext>(client: &PassClient<C>) -> Resul
                 "Seeding core event cursor with event_id={}",
                 response.event_id
             );
-            write_cursor(client, &response.event_id).await?;
+            storage.set_cursor(&response.event_id).await?;
             return Ok(());
         }
-        Some(id) => id,
+        Some(entry) => {
+            let age_secs = jiff::Timestamp::now().as_second() - entry.updated_at;
+            if age_secs < CORE_EVENTS_SYNC_INTERVAL_SECS {
+                debug!("Core event cursor is {age_secs}s old, skipping sync");
+                return Ok(());
+            }
+            entry.event_id
+        }
     };
 
     let mut keys_changed = false;
@@ -127,7 +117,8 @@ async fn sync_core_events<C: PassClientContext>(client: &PassClient<C>) -> Resul
         debug!("User keys changed during bootstrap, invalidating key cache");
         client.clear_user_keys_cache().await;
     }
-    write_cursor(client, &current_id).await?;
+    debug!("Writing core event cursor {current_id}");
+    storage.set_cursor(&current_id).await?;
 
     Ok(())
 }
@@ -136,6 +127,29 @@ async fn sync_core_events<C: PassClientContext>(client: &PassClient<C>) -> Resul
 mod tests {
     use super::*;
     use crate::test_tools::*;
+
+    async fn read_cursor<C: PassClientContext>(client: &PassClient<C>) -> Result<Option<String>> {
+        let storage = client
+            .client_features
+            .get_data_storage()
+            .await?
+            .get_core_event_storage()
+            .await;
+        Ok(storage.get_cursor().await?.map(|e| e.event_id))
+    }
+
+    async fn write_cursor<C: PassClientContext>(
+        client: &PassClient<C>,
+        event_id: &str,
+    ) -> Result<()> {
+        let storage = client
+            .client_features
+            .get_data_storage()
+            .await?
+            .get_core_event_storage()
+            .await;
+        storage.set_cursor(event_id).await
+    }
 
     #[muon_test::test]
     async fn first_run_seeds_cursor_without_key_refresh(server: muon_test::Server) {

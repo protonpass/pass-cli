@@ -23,14 +23,20 @@ use rusqlite::params;
 pub struct CoreEventCursorModel;
 
 impl CoreEventCursorModel {
-    pub async fn get(db: &crate::DatabaseManager, user_id: &str) -> Result<Option<String>> {
+    pub async fn get(
+        db: &crate::DatabaseManager,
+        user_id: &str,
+    ) -> Result<Option<(String, i64)>> {
         let user_id = user_id.to_string();
         let conn = db.get_connection().await?;
         conn.interact(move |conn| {
-            let mut stmt =
-                conn.prepare("SELECT cursor FROM core_event_cursors WHERE user_id = ?1")?;
-            match stmt.query_row([&user_id], |row| row.get::<_, String>(0)) {
-                Ok(cursor) => Ok(Some(cursor)),
+            let mut stmt = conn.prepare(
+                "SELECT cursor, updated_at FROM core_event_cursors WHERE user_id = ?1",
+            )?;
+            match stmt.query_row([&user_id], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
+            }) {
+                Ok(entry) => Ok(Some(entry)),
                 Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
                 Err(e) => Err(anyhow::Error::from(e)),
             }
@@ -73,11 +79,16 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn test_upsert_and_get() {
         let db = test_db!();
+        let before = jiff::Timestamp::now().as_second();
         CoreEventCursorModel::upsert(&db, "user1", "event-abc")
             .await
             .unwrap();
-        let cursor = CoreEventCursorModel::get(&db, "user1").await.unwrap();
-        assert_eq!(cursor, Some("event-abc".to_string()));
+        let (cursor, updated_at) = CoreEventCursorModel::get(&db, "user1")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(cursor, "event-abc");
+        assert!(updated_at >= before);
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -89,8 +100,11 @@ mod tests {
         CoreEventCursorModel::upsert(&db, "user1", "event-xyz")
             .await
             .unwrap();
-        let cursor = CoreEventCursorModel::get(&db, "user1").await.unwrap();
-        assert_eq!(cursor, Some("event-xyz".to_string()));
+        let (cursor, _) = CoreEventCursorModel::get(&db, "user1")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(cursor, "event-xyz");
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -102,13 +116,15 @@ mod tests {
         CoreEventCursorModel::upsert(&db, "user2", "event-xyz")
             .await
             .unwrap();
-        assert_eq!(
-            CoreEventCursorModel::get(&db, "user1").await.unwrap(),
-            Some("event-abc".to_string())
-        );
-        assert_eq!(
-            CoreEventCursorModel::get(&db, "user2").await.unwrap(),
-            Some("event-xyz".to_string())
-        );
+        let (cursor1, _) = CoreEventCursorModel::get(&db, "user1")
+            .await
+            .unwrap()
+            .unwrap();
+        let (cursor2, _) = CoreEventCursorModel::get(&db, "user2")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(cursor1, "event-abc");
+        assert_eq!(cursor2, "event-xyz");
     }
 }

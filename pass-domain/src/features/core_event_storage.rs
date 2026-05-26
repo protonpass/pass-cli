@@ -19,8 +19,13 @@
 
 use anyhow::Result;
 
+pub struct CursorEntry {
+    pub event_id: String,
+    pub updated_at: i64,
+}
+
 #[async_trait::async_trait]
 pub trait CoreEventStorage: Send + Sync {
-    async fn get_cursor(&self) -> Result<Option<String>>;
+    async fn get_cursor(&self) -> Result<Option<CursorEntry>>;
     async fn set_cursor(&self, event_id: &str) -> Result<()>;
 }

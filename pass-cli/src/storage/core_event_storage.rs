@@ -19,7 +19,7 @@
 
 use anyhow::Result;
 use pass_db::{CoreEventCursorModel, DatabaseManager};
-use pass_domain::CoreEventStorage;
+use pass_domain::{CoreEventStorage, CursorEntry};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -43,12 +43,15 @@ impl DatabaseCoreEventStorage {
 
 #[async_trait::async_trait]
 impl CoreEventStorage for DatabaseCoreEventStorage {
-    async fn get_cursor(&self) -> Result<Option<String>> {
+    async fn get_cursor(&self) -> Result<Option<CursorEntry>> {
         let user_id = self.user_id.read().await.clone();
         let Some(user_id) = user_id else {
             return Ok(None);
         };
-        CoreEventCursorModel::get(&self.db, &user_id).await
+        let entry = CoreEventCursorModel::get(&self.db, &user_id)
+            .await?
+            .map(|(event_id, updated_at)| CursorEntry { event_id, updated_at });
+        Ok(entry)
     }
 
     async fn set_cursor(&self, event_id: &str) -> Result<()> {
