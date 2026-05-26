@@ -24,7 +24,7 @@ use muon::rest::core::v4::keys::Key;
 use pass_domain::{AccountType, LockedUserKey, UserKey};
 use std::path::Path;
 
-const USER_KEYS_FILE_NAME: &str = "user_keys.enc";
+pub(crate) const USER_KEYS_FILE_NAME: &str = "user_keys.enc";
 const PERSONAL_ACCESS_TOKEN_ERROR: &str =
     "Personal access tokens and agent sessions cannot perform user key operations";
 
@@ -63,7 +63,8 @@ impl<C: PassClientContext> PassClient<C> {
         }
 
         let client = self.clone();
-        self.cache
+        let keys = self
+            .cache
             .update_if_no_value(UserKeysCacheType, || async move {
                 let passphrases = client
                     .get_key_passphrases()
@@ -73,15 +74,21 @@ impl<C: PassClientContext> PassClient<C> {
                     .load_user_keys()
                     .await
                     .context("Error fetching user keys")?;
-
                 let account_crypto = client.client_features.get_account_crypto().await;
-
                 account_crypto
                     .open_user_keys(user_keys, passphrases.into_map())
                     .await
                     .context("Error opening user keys")
             })
-            .await
+            .await?;
+
+        Ok(keys)
+    }
+
+    pub(crate) async fn clear_user_keys_cache(&self) {
+        let fs = self.client_features.get_fs().await;
+        fs.remove_file(Path::new(USER_KEYS_FILE_NAME)).await.ok();
+        self.cache.delete(UserKeysCacheType).await;
     }
 
     pub(crate) async fn get_primary_user_key(&self) -> Result<UserKey> {

@@ -360,6 +360,7 @@ async fn run() -> Result<()> {
     client_features.set_user_id(user_id.clone()).await;
     info!("Creating client with AccountType: {account_type:?}");
     let client = PassClient::new(client, client_features.clone(), account_type);
+    pass::bootstrap_event_sync(&client).await;
     client_features
         .telemetry_handler
         .send_telemetry_if_needed(user_id, &client)

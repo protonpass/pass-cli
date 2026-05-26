@@ -32,6 +32,8 @@ mod cache;
 mod client;
 mod common;
 mod constants;
+mod core_events;
+pub use core_events::bootstrap_event_sync;
 mod crypto;
 mod error;
 mod events;

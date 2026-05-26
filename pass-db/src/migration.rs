@@ -99,5 +99,16 @@ pub fn get_migrations() -> Vec<Migration> {
                     CREATE INDEX idx_user_settings_user_id ON user_settings(user_id);
                 ",
         },
+        Migration {
+            id: 6,
+            description: "Create core_event_cursors table",
+            sql: "
+                    CREATE TABLE core_event_cursors (
+                        user_id TEXT NOT NULL PRIMARY KEY,
+                        event_id TEXT NOT NULL,
+                        updated_at INTEGER NOT NULL
+                    );
+                ",
+        },
     ]
 }

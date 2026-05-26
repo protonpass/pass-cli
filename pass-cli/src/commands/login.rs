@@ -61,6 +61,7 @@ pub(crate) async fn after_login(
     let user_id = store.get_user_id().await?;
     let client_features = client.get_cli_client_features()?;
     client_features.set_user_id(Some(user_id)).await;
+    pass::bootstrap_event_sync(client).await;
 
     // Use pass-auth's post_login with CLI-specific post-processing
     let config = pass_auth::PostLoginConfig::default();

@@ -17,12 +17,15 @@
  *
  */
 
-use crate::{CoreEventStorage, FolderKeyStorage, ShareKeyStorage};
-use std::sync::Arc;
+use anyhow::Result;
+
+pub struct CursorEntry {
+    pub event_id: String,
+    pub updated_at: i64,
+}
 
 #[async_trait::async_trait]
-pub trait DataStorage: Send + Sync {
-    async fn get_share_key_storage(&self) -> Arc<dyn ShareKeyStorage>;
-    async fn get_folder_key_storage(&self) -> Arc<dyn FolderKeyStorage>;
-    async fn get_core_event_storage(&self) -> Arc<dyn CoreEventStorage>;
+pub trait CoreEventStorage: Send + Sync {
+    async fn get_cursor(&self) -> Result<Option<CursorEntry>>;
+    async fn set_cursor(&self, event_id: &str) -> Result<()>;
 }

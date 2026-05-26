@@ -20,8 +20,9 @@
 use anyhow::Result;
 use async_lock::RwLock;
 use pass_domain::{
-    AccountCrypto, ClientFeatures, DataStorage, DecryptedFolderKey, DecryptedShareKey, FolderId,
-    FolderKeyStorage, FsStorage, LocalKey, LocalKeyProvider, PgpCrypto, ShareId, ShareKeyStorage,
+    AccountCrypto, ClientFeatures, CoreEventStorage, CursorEntry, DataStorage, DecryptedFolderKey,
+    DecryptedShareKey, FolderId, FolderKeyStorage, FsStorage, LocalKey, LocalKeyProvider,
+    PgpCrypto, ShareId, ShareKeyStorage,
 };
 use pass_fs::InMemoryFsStorage;
 use pass_pgp::{NativePgpCrypto, ProtonAccountCrypto};
@@ -114,9 +115,43 @@ impl FolderKeyStorage for InMemoryFolderKeyStorage {
 }
 
 #[derive(Clone)]
+pub struct InMemoryCoreEventStorage {
+    cursor: Arc<RwLock<Option<String>>>,
+}
+
+impl InMemoryCoreEventStorage {
+    pub fn new() -> Self {
+        Self {
+            cursor: Arc::new(RwLock::new(None)),
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl CoreEventStorage for InMemoryCoreEventStorage {
+    async fn get_cursor(&self) -> Result<Option<CursorEntry>> {
+        Ok(self
+            .cursor
+            .read()
+            .await
+            .clone()
+            .map(|event_id| CursorEntry {
+                event_id,
+                updated_at: 0, // always stale so tests exercise the full sync path
+            }))
+    }
+
+    async fn set_cursor(&self, event_id: &str) -> Result<()> {
+        *self.cursor.write().await = Some(event_id.to_string());
+        Ok(())
+    }
+}
+
+#[derive(Clone)]
 pub struct InMemoryDataStorage {
     share_key_storage: Arc<dyn ShareKeyStorage>,
     folder_key_storage: Arc<dyn FolderKeyStorage>,
+    core_event_storage: Arc<dyn CoreEventStorage>,
 }
 
 impl InMemoryDataStorage {
@@ -124,6 +159,7 @@ impl InMemoryDataStorage {
         Self {
             share_key_storage: Arc::new(InMemoryShareKeyStorage::new()),
             folder_key_storage: Arc::new(InMemoryFolderKeyStorage::new()),
+            core_event_storage: Arc::new(InMemoryCoreEventStorage::new()),
         }
     }
 }
@@ -136,6 +172,10 @@ impl DataStorage for InMemoryDataStorage {
 
     async fn get_folder_key_storage(&self) -> Arc<dyn FolderKeyStorage> {
         self.folder_key_storage.clone()
+    }
+
+    async fn get_core_event_storage(&self) -> Arc<dyn CoreEventStorage> {
+        self.core_event_storage.clone()
     }
 }
 
