@@ -48,9 +48,13 @@ impl CoreEventStorage for DatabaseCoreEventStorage {
         let Some(user_id) = user_id else {
             return Ok(None);
         };
-        let entry = CoreEventCursorModel::get(&self.db, &user_id)
-            .await?
-            .map(|(event_id, updated_at)| CursorEntry { event_id, updated_at });
+        let entry =
+            CoreEventCursorModel::get(&self.db, &user_id)
+                .await?
+                .map(|(event_id, updated_at)| CursorEntry {
+                    event_id,
+                    updated_at,
+                });
         Ok(entry)
     }
 

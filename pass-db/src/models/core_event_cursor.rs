@@ -23,16 +23,12 @@ use rusqlite::params;
 pub struct CoreEventCursorModel;
 
 impl CoreEventCursorModel {
-    pub async fn get(
-        db: &crate::DatabaseManager,
-        user_id: &str,
-    ) -> Result<Option<(String, i64)>> {
+    pub async fn get(db: &crate::DatabaseManager, user_id: &str) -> Result<Option<(String, i64)>> {
         let user_id = user_id.to_string();
         let conn = db.get_connection().await?;
         conn.interact(move |conn| {
-            let mut stmt = conn.prepare(
-                "SELECT cursor, updated_at FROM core_event_cursors WHERE user_id = ?1",
-            )?;
+            let mut stmt = conn
+                .prepare("SELECT cursor, updated_at FROM core_event_cursors WHERE user_id = ?1")?;
             match stmt.query_row([&user_id], |row| {
                 Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
             }) {

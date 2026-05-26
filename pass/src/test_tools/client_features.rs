@@ -130,10 +130,15 @@ impl InMemoryCoreEventStorage {
 #[async_trait::async_trait]
 impl CoreEventStorage for InMemoryCoreEventStorage {
     async fn get_cursor(&self) -> Result<Option<CursorEntry>> {
-        Ok(self.cursor.read().await.clone().map(|event_id| CursorEntry {
-            event_id,
-            updated_at: 0, // always stale so tests exercise the full sync path
-        }))
+        Ok(self
+            .cursor
+            .read()
+            .await
+            .clone()
+            .map(|event_id| CursorEntry {
+                event_id,
+                updated_at: 0, // always stale so tests exercise the full sync path
+            }))
     }
 
     async fn set_cursor(&self, event_id: &str) -> Result<()> {
