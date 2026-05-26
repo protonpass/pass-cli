@@ -19,6 +19,7 @@
 
 mod account_crypto;
 mod client_features;
+mod core_event_storage;
 mod data_storage;
 mod folder_key_storage;
 mod fs;
@@ -29,6 +30,7 @@ mod user_events_handler;
 
 pub use account_crypto::*;
 pub use client_features::*;
+pub use core_event_storage::*;
 pub use data_storage::*;
 pub use folder_key_storage::*;
 pub use fs::*;

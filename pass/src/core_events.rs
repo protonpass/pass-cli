@@ -18,12 +18,9 @@
  */
 
 use crate::{PassClient, PassClientContext};
-use anyhow::{Context, Result};
+use anyhow::Result;
 use muon::GET;
 use pass_domain::AccountType;
-use std::path::Path;
-
-const CURSOR_FILE_NAME: &str = "core_event_cursor";
 
 #[derive(serde::Deserialize)]
 struct LatestEventResponse {
@@ -50,32 +47,27 @@ struct CoreUserEvent {
 pub(crate) async fn read_cursor<C: PassClientContext>(
     client: &PassClient<C>,
 ) -> Result<Option<String>> {
-    let fs = client.client_features.get_fs().await;
-    let path = Path::new(CURSOR_FILE_NAME);
-    if !fs
-        .file_exists(path)
-        .await
-        .context("Error checking event cursor file")?
-    {
-        return Ok(None);
-    }
-    let bytes = fs
-        .get_file(path)
-        .await
-        .context("Error reading event cursor file")?;
-    Ok(Some(
-        String::from_utf8(bytes).context("Invalid event cursor encoding")?,
-    ))
+    let storage = client
+        .client_features
+        .get_data_storage()
+        .await?
+        .get_core_event_storage()
+        .await;
+    storage.get_cursor().await
 }
 
 pub(crate) async fn write_cursor<C: PassClientContext>(
     client: &PassClient<C>,
     event_id: &str,
 ) -> Result<()> {
-    let fs = client.client_features.get_fs().await;
-    fs.store_file(event_id.as_bytes().to_vec(), Path::new(CURSOR_FILE_NAME))
-        .await
-        .context("Error writing event cursor file")
+    let storage = client
+        .client_features
+        .get_data_storage()
+        .await?
+        .get_core_event_storage()
+        .await;
+    debug!("Writing core event cursor {event_id}");
+    storage.set_cursor(event_id).await
 }
 
 /// Called once at CLI bootstrap (after session load, before commands dispatch).
