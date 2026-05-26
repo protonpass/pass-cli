@@ -17,7 +17,6 @@
  *
  */
 
-use crate::core_events::{self, PendingCursorUpdateCacheType};
 use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use muon::GET;
@@ -83,21 +82,13 @@ impl<C: PassClientContext> PassClient<C> {
             })
             .await?;
 
-        // Commit pending cursor left by bootstrap_event_sync (golden rule: only advance
-        // cursor after confirming keys were successfully refreshed).
-        if let Some(event_id) = self
-            .cache
-            .get::<PendingCursorUpdateCacheType, String>(PendingCursorUpdateCacheType)
-            .await
-        {
-            if let Err(e) = core_events::write_cursor(self, &event_id).await {
-                warn!("Failed to persist event cursor after key refresh: {e:#}");
-            } else {
-                self.cache.delete(PendingCursorUpdateCacheType).await;
-            }
-        }
-
         Ok(keys)
+    }
+
+    pub(crate) async fn clear_user_keys_cache(&self) {
+        let fs = self.client_features.get_fs().await;
+        fs.remove_file(Path::new(USER_KEYS_FILE_NAME)).await.ok();
+        self.cache.delete(UserKeysCacheType).await;
     }
 
     pub(crate) async fn get_primary_user_key(&self) -> Result<UserKey> {

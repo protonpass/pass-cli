@@ -17,7 +17,6 @@
  *
  */
 
-use crate::user_keys::USER_KEYS_FILE_NAME;
 use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
 use muon::GET;
@@ -25,10 +24,6 @@ use pass_domain::AccountType;
 use std::path::Path;
 
 const CURSOR_FILE_NAME: &str = "core_event_cursor";
-
-/// Cache key for a cursor update that must be persisted after a successful key refresh.
-#[derive(Clone)]
-pub(crate) struct PendingCursorUpdateCacheType;
 
 #[derive(serde::Deserialize)]
 struct LatestEventResponse {
@@ -84,8 +79,8 @@ pub(crate) async fn write_cursor<C: PassClientContext>(
 }
 
 /// Called once at CLI bootstrap (after session load, before commands dispatch).
-/// Checks for key changes since last run and, if found, invalidates the key cache
-/// so the next `get_user_keys()` call re-fetches from the API.
+/// Checks for key changes since last run and, if found, clears the key cache so
+/// the next `get_user_keys()` call re-fetches from the API.
 /// No-ops for PAT and agent sessions.
 pub async fn bootstrap_event_sync<C: PassClientContext>(client: &PassClient<C>) {
     if client.account_type() == AccountType::PersonalAccessToken
@@ -94,32 +89,12 @@ pub async fn bootstrap_event_sync<C: PassClientContext>(client: &PassClient<C>) 
         return;
     }
 
-    match sync_core_events(client).await {
-        Ok(SyncResult {
-            keys_changed: true,
-            new_event_id,
-        }) => {
-            debug!("User keys changed during bootstrap, invalidating key cache");
-            let fs = client.client_features.get_fs().await;
-            fs.remove_file(Path::new(USER_KEYS_FILE_NAME)).await.ok();
-            // Store the new event_id as a pending update; get_user_keys() will commit it
-            // after confirming keys were successfully refreshed (golden rule).
-            client
-                .cache
-                .store(PendingCursorUpdateCacheType, new_event_id)
-                .await;
-        }
-        Ok(_) => {} // cursor already written inside sync_core_events for no-change path
-        Err(e) => warn!("Failed to sync core events during bootstrap: {e:#}"),
+    if let Err(e) = sync_core_events(client).await {
+        warn!("Failed to sync core events during bootstrap: {e:#}");
     }
 }
 
-struct SyncResult {
-    keys_changed: bool,
-    new_event_id: String,
-}
-
-async fn sync_core_events<C: PassClientContext>(client: &PassClient<C>) -> Result<SyncResult> {
+async fn sync_core_events<C: PassClientContext>(client: &PassClient<C>) -> Result<()> {
     let mut current_id = match read_cursor(client).await? {
         None => {
             debug!("No core event cursor stored, fetching latest event ID");
@@ -130,10 +105,7 @@ async fn sync_core_events<C: PassClientContext>(client: &PassClient<C>) -> Resul
                 response.event_id
             );
             write_cursor(client, &response.event_id).await?;
-            return Ok(SyncResult {
-                keys_changed: false,
-                new_event_id: response.event_id,
-            });
+            return Ok(());
         }
         Some(id) => id,
     };
@@ -159,14 +131,13 @@ async fn sync_core_events<C: PassClientContext>(client: &PassClient<C>) -> Resul
         debug!("More core events pending, fetching next page from event_id={current_id}");
     }
 
-    if !keys_changed {
-        write_cursor(client, &current_id).await?;
+    if keys_changed {
+        debug!("User keys changed during bootstrap, invalidating key cache");
+        client.clear_user_keys_cache().await;
     }
+    write_cursor(client, &current_id).await?;
 
-    Ok(SyncResult {
-        keys_changed,
-        new_event_id: current_id,
-    })
+    Ok(())
 }
 
 #[cfg(test)]
@@ -186,11 +157,6 @@ mod tests {
         bootstrap_event_sync(&client).await;
 
         assert_hit!(handled);
-        let pending = client
-            .cache
-            .get::<PendingCursorUpdateCacheType, String>(PendingCursorUpdateCacheType)
-            .await;
-        assert!(pending.is_none());
         assert_eq!(
             Some("event-initial".to_string()),
             read_cursor(&client).await.unwrap()
@@ -212,11 +178,6 @@ mod tests {
         bootstrap_event_sync(&client).await;
 
         assert_hit!(handled);
-        let pending = client
-            .cache
-            .get::<PendingCursorUpdateCacheType, String>(PendingCursorUpdateCacheType)
-            .await;
-        assert!(pending.is_none());
         assert_eq!(
             Some("event-xyz".to_string()),
             read_cursor(&client).await.unwrap()
@@ -241,14 +202,9 @@ mod tests {
         bootstrap_event_sync(&client).await;
 
         assert_hit!(handled);
-        let pending = client
-            .cache
-            .get::<PendingCursorUpdateCacheType, String>(PendingCursorUpdateCacheType)
-            .await;
-        assert_eq!(Some("event-xyz".to_string()), pending);
-        // Cursor file unchanged — waiting for key refresh
+        // Cursor is advanced immediately after clearing the key cache
         assert_eq!(
-            Some("event-abc".to_string()),
+            Some("event-xyz".to_string()),
             read_cursor(&client).await.unwrap()
         );
     }
