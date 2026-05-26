@@ -18,20 +18,31 @@
  */
 
 use anyhow::Result;
-use rusqlite::params;
+use rusqlite::{params, Row};
 
-pub struct CoreEventCursorModel;
+#[derive(Debug, Clone)]
+pub struct CoreEventCursorModel {
+    pub user_id: String,
+    pub event_id: String,
+    pub updated_at: i64,
+}
 
 impl CoreEventCursorModel {
-    pub async fn get(db: &crate::DatabaseManager, user_id: &str) -> Result<Option<(String, i64)>> {
+    pub fn from_row(row: &Row<'_>) -> Result<Self> {
+        Ok(CoreEventCursorModel {
+            user_id: row.get("user_id")?,
+            event_id: row.get("event_id")?,
+            updated_at: row.get("updated_at")?,
+        })
+    }
+    pub async fn get(db: &crate::DatabaseManager, user_id: &str) -> Result<Option<Self>> {
         let user_id = user_id.to_string();
         let conn = db.get_connection().await?;
         conn.interact(move |conn| {
-            let mut stmt = conn
-                .prepare("SELECT cursor, updated_at FROM core_event_cursors WHERE user_id = ?1")?;
-            match stmt.query_row([&user_id], |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
-            }) {
+            let mut stmt = conn.prepare(
+                "SELECT user_id, event_id, updated_at FROM core_event_cursors WHERE user_id = ?1",
+            )?;
+            match stmt.query_row([&user_id], |row| CoreEventCursorModel::from_row(row)) {
                 Ok(entry) => Ok(Some(entry)),
                 Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
                 Err(e) => Err(anyhow::Error::from(e)),
