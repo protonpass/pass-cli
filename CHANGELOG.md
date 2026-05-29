@@ -1,3 +1,9 @@
+## 2.1.2 (2026-05-29)
+
+## Other
+
+- Source code is open sourced.
+
 ## 2.1.1 (2026-05-27)
 
 ## Other
