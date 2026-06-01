@@ -10,7 +10,7 @@ doctest = false
 pass-domain = { path = "../pass-domain" }
 
 deadpool = "0.13"
-rusqlite = { version = "0.39.0", features = ["bundled-sqlcipher-vendored-openssl"] }
+rusqlite = { version = "0.40.0", features = ["bundled-sqlcipher-vendored-openssl"] }
 
 anyhow.workspace = true
 jiff.workspace = true
