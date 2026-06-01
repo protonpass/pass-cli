@@ -4246,8 +4246,8 @@ dependencies = [
 
 [[package]]
 name = "proton-pass-common"
-version = "1.5.0"
-source = "git+https://github.com/protonpass/proton-pass-common.git?tag=1.5.0#e09b1d37ea1a35bd352772128beb5b60ded65434"
+version = "1.5.2"
+source = "git+https://github.com/protonpass/proton-pass-common.git?tag=1.5.2#2cbfdb69c8c24c46d5e2d6d99e559c432b276846"
 dependencies = [
  "async-trait",
  "coset",
@@ -4274,8 +4274,8 @@ dependencies = [
 
 [[package]]
 name = "proton-pass-derive"
-version = "1.5.0"
-source = "git+https://github.com/protonpass/proton-pass-common.git?tag=1.5.0#e09b1d37ea1a35bd352772128beb5b60ded65434"
+version = "1.5.2"
+source = "git+https://github.com/protonpass/proton-pass-common.git?tag=1.5.2#2cbfdb69c8c24c46d5e2d6d99e559c432b276846"
 dependencies = [
  "quote",
  "syn",
@@ -4283,8 +4283,8 @@ dependencies = [
 
 [[package]]
 name = "proton-pass-totp"
-version = "1.5.0"
-source = "git+https://github.com/protonpass/proton-pass-common.git?tag=1.5.0#e09b1d37ea1a35bd352772128beb5b60ded65434"
+version = "1.5.2"
+source = "git+https://github.com/protonpass/proton-pass-common.git?tag=1.5.2#2cbfdb69c8c24c46d5e2d6d99e559c432b276846"
 dependencies = [
  "proton-pass-derive",
  "serde",

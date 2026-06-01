@@ -208,10 +208,10 @@ impl SortBy {
                 });
             }
             SortBy::CreatedAsc => {
-                items.sort_by(|a, b| a.create_time.cmp(&b.create_time));
+                items.sort_by_key(|a| a.create_time);
             }
             SortBy::CreatedDesc => {
-                items.sort_by(|a, b| b.create_time.cmp(&a.create_time));
+                items.sort_by_key(|a| std::cmp::Reverse(a.create_time));
             }
         }
     }
