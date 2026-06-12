@@ -219,16 +219,12 @@ impl pass_domain::PgpCrypto for NativePgpCrypto {
         let res = match data {
             DataToDecrypt::RawData(data) => decryptor
                 .decrypt(data, DataEncoding::Auto)
-                .context("Could not decrypt data")?
-                .as_ref()
-                .to_vec(),
+                .context("Could not decrypt data")?,
             DataToDecrypt::DataWithSignature { data, signature } => match signature {
                 Signature::Bytes(sig) => decryptor
                     .with_detached_signature(sig, DetachedSignatureVariant::Plaintext, false)
                     .decrypt(data, DataEncoding::Auto)
-                    .context("Could not decrypt data")?
-                    .as_ref()
-                    .to_vec(),
+                    .context("Could not decrypt data")?,
                 Signature::Armored(sig) => decryptor
                     .with_detached_signature(
                         sig.into_bytes(),
@@ -236,13 +232,19 @@ impl pass_domain::PgpCrypto for NativePgpCrypto {
                         true,
                     )
                     .decrypt(data, DataEncoding::Auto)
-                    .context("Could not decrypt data")?
-                    .as_ref()
-                    .to_vec(),
+                    .context("Could not decrypt data")?,
             },
         };
 
-        Ok(res)
+        match res.verification_result() {
+            Ok(info) => trace!("Verification successful: {info:?}"),
+            Err(err) => {
+                warn!("Error verifying signature: {err:?}");
+                return Err(anyhow!("Error verifying signature"));
+            }
+        }
+
+        Ok(res.as_ref().to_vec())
     }
 
     async fn armor(&self, data: DataToArmor) -> anyhow::Result<String> {
