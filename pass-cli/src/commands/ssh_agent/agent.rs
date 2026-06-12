@@ -176,8 +176,11 @@ where
     // Spawn event listener
     let client_clone = client.clone();
     let event_listener = tokio::spawn(async move {
-        if let Err(e) = client_clone.listen_for_events(handler).await {
-            error!("Event listener error: {e:#}");
+        loop {
+            if let Err(e) = client_clone.listen_for_events(handler.clone()).await {
+                error!("Event listener error: {e:#}");
+                tokio::time::sleep(std::time::Duration::from_secs(refresh_interval)).await;
+            }
         }
     });
 

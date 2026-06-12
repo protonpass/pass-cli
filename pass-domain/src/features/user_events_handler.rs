@@ -18,7 +18,12 @@
  */
 
 use crate::{EventId, UserEvents};
-use anyhow::Result;
+use anyhow::{Error, Result};
+
+pub enum ContinuationStrategy {
+    Continue,
+    Break { err: Error },
+}
 
 #[async_trait::async_trait]
 pub trait UserEventsHandler: Send + Sync {
@@ -26,4 +31,6 @@ pub trait UserEventsHandler: Send + Sync {
     async fn set_last_user_event_id(&self, event_id: EventId) -> Result<()>;
     async fn tick(&self);
     async fn on_event(&self, event: UserEvents) -> Result<()>;
+    async fn on_error(&self, err: Error) -> Result<ContinuationStrategy>;
+    async fn on_event_fetch_success(&self) {}
 }

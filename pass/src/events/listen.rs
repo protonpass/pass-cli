@@ -21,8 +21,8 @@ use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
 use muon::GET;
 use pass_domain::{
-    EventId, FolderId, ItemId, ShareId, SyncEventChangedWithToken, SyncEventShare,
-    SyncEventShareFolder, SyncEventShareItem, UserEvents, UserEventsHandler,
+    ContinuationStrategy, EventId, FolderId, ItemId, ShareId, SyncEventChangedWithToken,
+    SyncEventShare, SyncEventShareFolder, SyncEventShareItem, UserEvents, UserEventsHandler,
 };
 use std::sync::Arc;
 
@@ -143,9 +143,25 @@ impl<C: PassClientContext> PassClient<C> {
         handler: Arc<dyn UserEventsHandler>,
     ) -> Result<()> {
         let mut event_id = event_id;
+
         loop {
             // Fetch new events
-            let events = self.fetch_events(&event_id).await?;
+            let events = match self.fetch_events(&event_id).await {
+                Ok(events) => {
+                    handler.on_event_fetch_success().await;
+                    events
+                }
+                Err(e) => {
+                    let strategy = handler
+                        .on_error(e)
+                        .await
+                        .context("Error on UserEventsHandler.on_error")?;
+                    match strategy {
+                        ContinuationStrategy::Continue => continue,
+                        ContinuationStrategy::Break { err } => return Err(err),
+                    }
+                }
+            };
 
             // Check if there are new events
             if events.last_event_id != event_id.value() {

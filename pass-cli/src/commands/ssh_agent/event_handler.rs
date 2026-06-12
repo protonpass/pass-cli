@@ -18,14 +18,17 @@
  */
 
 use anyhow::Result;
-use pass_domain::{EventId, UserEvents, UserEventsHandler};
-use tokio::sync::RwLock;
+use pass_domain::{ContinuationStrategy, EventId, UserEvents, UserEventsHandler};
 use tokio::sync::mpsc::Sender;
+use tokio::sync::{Mutex, RwLock};
+
+const MAX_ERRORS: u8 = 3;
 
 pub struct SshAgentEventHandler {
     last_event_id: RwLock<Option<EventId>>,
     refresh_interval: u64,
     tx: Sender<UserEvents>,
+    num_errors: Mutex<u8>,
 }
 
 impl SshAgentEventHandler {
@@ -34,6 +37,7 @@ impl SshAgentEventHandler {
             last_event_id: RwLock::new(None),
             refresh_interval,
             tx,
+            num_errors: Mutex::new(0),
         }
     }
 }
@@ -59,5 +63,26 @@ impl UserEventsHandler for SshAgentEventHandler {
         }
 
         Ok(())
+    }
+
+    async fn on_error(&self, err: anyhow::Error) -> Result<ContinuationStrategy> {
+        warn!("Error on listening for events: {err:?}");
+        let error_count = {
+            let mut errors = self.num_errors.lock().await;
+            *errors += 1;
+            *errors
+        };
+
+        if error_count == MAX_ERRORS {
+            return Ok(ContinuationStrategy::Break { err });
+        }
+
+        self.tick().await;
+        Ok(ContinuationStrategy::Continue)
+    }
+
+    async fn on_event_fetch_success(&self) {
+        let mut errors = self.num_errors.lock().await;
+        *errors = 0;
     }
 }
