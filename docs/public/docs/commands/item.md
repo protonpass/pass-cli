@@ -424,6 +424,10 @@ The `update` command allows you to modify fields of an existing item. You can up
 
 Standard fields for login items include: `title`, `username`, `password`, `email`, `url`, `note`. You can also create or update custom fields with any name.
 
+For items with named sections (custom items, SSH key items, Wi-Fi items, and identity items with custom sections), use the qualified form `SectionName.fieldname` to target a field in a specific section. This is required when multiple sections share a field with the same name. An unqualified name still works and updates the first matching field found across all sections.
+
+Identity extra detail fields (extra personal, address, contact, and work details) are referenced by their plain field name without a section prefix.
+
 !!! info "Types of fields"
 
     Item update does not allow to change time or TOTP fields. Please use a different Proton Pass client to update those fields
@@ -483,6 +487,25 @@ pass-cli item update \
   --field "api_key=sk_live_abc123" \
   --field "environment=production" \
   --field "notes=Updated on 2024-01-15"
+```
+
+### Update a field in a specific section
+
+When a custom item, SSH key item, or Wi-Fi item has multiple sections with fields of the same name, use the qualified `SectionName.fieldname` syntax to target the exact section:
+
+```bash
+# Update the password in the "Production" section only
+pass-cli item update \
+  --share-id "abc123def" \
+  --item-id "item456" \
+  --field "Production.password=new_prod_password"
+
+# Update fields in two different sections at once
+pass-cli item update \
+  --share-id "abc123def" \
+  --item-id "item456" \
+  --field "Staging.password=new_staging_password" \
+  --field "Production.password=new_prod_password"
 ```
 
 ### Update URL

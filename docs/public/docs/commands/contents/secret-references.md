@@ -84,13 +84,41 @@ For login items, common fields include:
 
 ### Custom fields
 
-Items can have custom fields with any name. The field name must match exactly (case-sensitive).
+Items can have custom fields with any name. Field matching is case-insensitive.
 
 ```text
 pass://Work/API Keys/api_key
 pass://Production/Database/connection_string
 pass://Services/Stripe/secret_key
 ```
+
+### Section-qualified field names
+
+For items that organise fields into named sections (custom items, SSH key items, Wi-Fi items, and identity items with custom sections), fields are stored as `SectionName.fieldname`. Use this qualified form when you need to target a field in a specific section, for example when two sections contain a field with the same name:
+
+```text
+pass://Work/Deploy Targets/Staging.password
+pass://Work/Deploy Targets/Production.password
+pass://Work/SSH Key/Extra info.notes
+```
+
+An unqualified name (without the `Section.` prefix) also works and resolves to the first matching field found across all sections:
+
+```text
+# Resolves the first "password" field found
+pass://Work/Deploy Targets/password
+```
+
+!!! note "Identity extra fields"
+
+    Extra detail fields added to the personal, address, contact, or work sections of an identity item are accessible directly by their field name without a section prefix:
+
+    ```text
+    pass://Personal/My Identity/nickname
+    pass://Personal/My Identity/department
+    ```
+
+    Only fields inside custom sections of an identity item use the `SectionName.fieldname` qualified syntax.
 
 ## Rules and limitations
 
