@@ -18,6 +18,7 @@
  */
 
 use crate::helpers::CliPassClient as PassClient;
+use crate::utils::ask_for_input;
 use anyhow::{Context, Result, ensure};
 use pass_auth::store::PassSessionStore;
 use std::sync::{Arc, RwLock};
@@ -41,9 +42,10 @@ pub fn validate_lock_time(lock_time: u32) -> Result<u32> {
 pub async fn run(
     client: PassClient,
     store: Arc<RwLock<PassSessionStore>>,
-    pin: String,
     lock_time: Option<u32>,
 ) -> Result<()> {
+    let pin = ask_for_input("Enter PIN: ", true).context("Error reading PIN")?;
+
     let lock_time = lock_time.unwrap_or(DEFAULT_LOCK_TIME);
     let lock_time = validate_lock_time(lock_time)?;
 
