@@ -169,3 +169,55 @@ impl<C: PassClientContext> PassClient<C> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::error::ProtonApiErrorCode;
+    use crate::test_tools::*;
+
+    #[muon_test::test]
+    async fn test_get_user_access_returns_session_locked_error(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
+        let client = make_test_pass_client(raw_client, &api).await;
+
+        // Set up handler to return a 400 with SessionLocked error code
+        api.handler("/pass/v1/user/access", |_| {
+            error_response_from_json(
+                400,
+                &format!("{{\"Code\":{}}}", ProtonApiErrorCode::SessionLocked as i32),
+            )
+        });
+
+        let result = client.get_user_access().await;
+
+        assert!(result.is_err(), "Should return an error for session locked");
+        let err = result.unwrap_err();
+        assert!(
+            err.to_string().contains("SessionLocked"),
+            "Error should mention SessionLocked, got: {err}"
+        );
+    }
+
+    #[muon_test::test]
+    async fn test_get_user_access_returns_other_proton_error(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
+        let client = make_test_pass_client(raw_client, &api).await;
+
+        // Set up handler to return a 400 with a different error code
+        api.handler("/pass/v1/user/access", |_| {
+            error_response_from_json(
+                400,
+                &format!("{{\"Code\":{}}}", ProtonApiErrorCode::AlreadyExists as i32),
+            )
+        });
+
+        let result = client.get_user_access().await;
+
+        assert!(result.is_err(), "Should return an error");
+        let err = result.unwrap_err();
+        assert!(
+            err.to_string().contains("AlreadyExists"),
+            "Error should mention AlreadyExists, got: {err}"
+        );
+    }
+}

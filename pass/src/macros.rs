@@ -57,6 +57,9 @@ macro_rules! assert_response {
         if !$res.status().is_success() {
             $crate::utils::debug_response(&$res);
             return if let Some(c) = $crate::utils::extract_proton_code(&$res) {
+                if matches!(c, $crate::error::ProtonApiErrorCode::SessionLocked) {
+                    eprintln!("Session is locked. Please unlock your session and try again.");
+                }
                 Err(anyhow::anyhow!(
                     "Could not perform operation. Reason: {}",
                     c.name()
