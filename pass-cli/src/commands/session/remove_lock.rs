@@ -39,12 +39,12 @@ pub async fn run(client: PassClient, store: Arc<RwLock<PassSessionStore>>) -> Re
         .await
         .context("Error removing session lock")?;
 
-    // Update the local session state to mark it as unlocked
-    {
-        let mut store_guard = store.write().expect("store rwlock poisoned");
-        store_guard.set_has_session_lock(false);
-        (*store_guard).persist_now().await?;
-    }
+    let snapshot = {
+        let mut guard = store.write().expect("store rwlock poisoned");
+        guard.set_has_session_lock(false);
+        guard.clone()
+    };
+    snapshot.persist_now().await.context("Error persisting session")?;
 
     println!("Session lock removed successfully");
     Ok(())

@@ -61,12 +61,12 @@ pub async fn run(
         .await
         .context("Error locking session")?;
 
-    // Update the local session state to mark it as having a lock
-    {
-        let mut store_guard = store.write().expect("store rwlock poisoned");
-        store_guard.set_has_session_lock(true);
-        (*store_guard).persist_now().await?;
-    }
+    let snapshot = {
+        let mut guard = store.write().expect("store rwlock poisoned");
+        guard.set_has_session_lock(true);
+        guard.clone()
+    };
+    snapshot.persist_now().await.context("Error persisting session")?;
 
     println!("Session locked successfully");
     Ok(())
