@@ -1,3 +1,11 @@
+## 2.1.4 (2026-06-15)
+
+### Fixes :bug:
+
+- Make section name a part of the secret reference path to allow for disambiguation.
+- Add support for Identity items extra sections fields.
+- During `pass-cli run`, mask secret values coming from secret references specified in `.env` files.
+
 ## 2.1.3 (2026-06-12)
 
 ### Fixes :bug:
