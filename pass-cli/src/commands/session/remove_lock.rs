@@ -18,46 +18,28 @@
  */
 
 use crate::helpers::CliPassClient as PassClient;
-use anyhow::Result;
-use clap::Subcommand;
+use crate::utils::ask_for_input;
+use anyhow::{Context, Result};
 use pass_auth::store::PassSessionStore;
 use std::sync::{Arc, RwLock};
 
-pub mod lock;
-pub mod remove_lock;
-pub mod unlock;
-
-#[derive(Subcommand)]
-pub enum SessionCommands {
-    #[command(about = "Lock the current session with a PIN")]
-    Lock {
-        #[arg(
-            long,
-            help = "Time in seconds before the session auto-unlocks (min 30, max 900)",
-            default_value = "300"
-        )]
-        lock_time: u32,
-    },
-    #[command(about = "Unlock the current session with a PIN")]
-    Unlock,
-    #[command(about = "Remove the session lock entirely")]
-    RemoveLock,
-}
-
 pub async fn run(
-    subcommand: SessionCommands,
     client: PassClient,
     store: Arc<RwLock<PassSessionStore>>,
 ) -> Result<()> {
-    match subcommand {
-        SessionCommands::Lock { lock_time } => {
-            lock::run(client, store, Some(lock_time)).await
-        }
-        SessionCommands::Unlock => {
-            unlock::run(client, store).await
-        }
-        SessionCommands::RemoveLock => {
-            remove_lock::run(client, store).await
-        }
+    let pin = ask_for_input("Enter PIN: ", true).context("Error reading PIN")?;
+
+    client
+        .remove_session_lock(&pin)
+        .await
+        .context("Error removing session lock")?;
+
+    // Update the local session state to mark it as unlocked
+    {
+        let mut store_guard = store.write().expect("store rwlock poisoned");
+        store_guard.set_session_lock(false);
     }
+
+    println!("Session lock removed successfully");
+    Ok(())
 }

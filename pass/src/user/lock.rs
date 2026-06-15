@@ -20,7 +20,7 @@
 use crate::common::CodeResponse;
 use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
-use muon::POST;
+use muon::{DELETE, POST};
 
 #[derive(serde::Serialize)]
 struct LockSessionRequest {
@@ -71,6 +71,26 @@ impl<C: PassClientContext> PassClient<C> {
             .send(req)
             .await
             .context("Error sending unlock session request")?;
+
+        let response: CodeResponse = assert_response!(res);
+        response.success_guard()?;
+
+        Ok(())
+    }
+
+    pub async fn remove_session_lock(&self, lock_code: &str) -> Result<()> {
+        let request = UnlockSessionRequest {
+            lock_code: lock_code.to_string(),
+        };
+
+        let req = DELETE!("/pass/v1/user/session/lock")
+            .body_json(request)
+            .context("Error creating remove session lock request")?;
+
+        let res = self
+            .send(req)
+            .await
+            .context("Error sending remove session lock request")?;
 
         let response: CodeResponse = assert_response!(res);
         response.success_guard()?;
