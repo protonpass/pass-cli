@@ -63,7 +63,7 @@ impl<C: PassClientContext> PassClient<C> {
             lock_code: lock_code.to_string(),
         };
 
-        let req = POST!("/pass/v1/user/session/unlock")
+        let req = POST!("/pass/v1/user/session/lock/unlock")
             .body_json(request)
             .context("Error creating unlock session request")?;
 

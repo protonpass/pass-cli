@@ -19,7 +19,7 @@
 
 use crate::helpers::CliPassClient as PassClient;
 use crate::utils::ask_for_input;
-use anyhow::{Context, Result, ensure};
+use anyhow::{bail, ensure, Context, Result};
 use pass_auth::store::PassSessionStore;
 use std::sync::{Arc, RwLock};
 
@@ -44,6 +44,13 @@ pub async fn run(
     store: Arc<RwLock<PassSessionStore>>,
     lock_time: Option<u32>,
 ) -> Result<()> {
+    let is_locked = store
+        .read()
+        .expect("store rwlock poisoned")
+        .has_session_lock();
+    if is_locked {
+        bail!("Session already has a lock");
+    }
     let pin = ask_for_input("Enter PIN: ", true).context("Error reading PIN")?;
 
     let lock_time = lock_time.unwrap_or(DEFAULT_LOCK_TIME);
@@ -54,10 +61,11 @@ pub async fn run(
         .await
         .context("Error locking session")?;
 
-    // Update the local session state to mark it as locked
+    // Update the local session state to mark it as having a lock
     {
         let mut store_guard = store.write().expect("store rwlock poisoned");
         store_guard.set_has_session_lock(true);
+        (*store_guard).persist_now().await?;
     }
 
     println!("Session locked successfully");
