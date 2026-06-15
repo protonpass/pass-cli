@@ -307,6 +307,33 @@ impl Item {
                 Field::Text(identity.job_title.clone()),
             ));
         }
+
+        // Add extra personal details
+        for extra_field in identity.extra_personal_details.iter() {
+            fields.push((extra_field.name.clone(), extra_field.as_field()));
+        }
+
+        // Add extra address details
+        for extra_field in identity.extra_address_details.iter() {
+            fields.push((extra_field.name.clone(), extra_field.as_field()));
+        }
+
+        // Add extra contact details
+        for extra_field in identity.extra_contact_details.iter() {
+            fields.push((extra_field.name.clone(), extra_field.as_field()));
+        }
+
+        // Add extra work details
+        for extra_field in identity.extra_work_details.iter() {
+            fields.push((extra_field.name.clone(), extra_field.as_field()));
+        }
+
+        // Add extra sections
+        for section in identity.extra_sections.iter() {
+            for section_field in section.section_fields.iter() {
+                fields.push((section_field.name.clone(), section_field.as_field()));
+            }
+        }
     }
 
     fn add_ssh_fields(&self, ssh: &SshKeyItem, fields: &mut Vec<(String, Field)>) {
@@ -388,7 +415,10 @@ mod tests {
             last_name: "Doe".to_string(),
             birthdate: "1990-01-01".to_string(),
             gender: "Male".to_string(),
-            extra_personal_details: vec![],
+            extra_personal_details: vec![ItemExtraField {
+                name: "nickname".to_string(),
+                content: ItemExtraFieldContent::Text("Johnny".to_string()),
+            }],
             organization: "Test Corp".to_string(),
             street_address: "123 Main St".to_string(),
             zip_or_postal_code: "12345".to_string(),
@@ -397,7 +427,10 @@ mod tests {
             country_or_region: "Test Country".to_string(),
             floor: String::new(),
             county: String::new(),
-            extra_address_details: vec![],
+            extra_address_details: vec![ItemExtraField {
+                name: "apartment".to_string(),
+                content: ItemExtraFieldContent::Text("4B".to_string()),
+            }],
             social_security_number: "123-45-6789".to_string(),
             passport_number: "A1234567".to_string(),
             license_number: "D123456789".to_string(),
@@ -409,14 +442,32 @@ mod tests {
             facebook: String::new(),
             yahoo: String::new(),
             instagram: String::new(),
-            extra_contact_details: vec![],
+            extra_contact_details: vec![ItemExtraField {
+                name: "fax".to_string(),
+                content: ItemExtraFieldContent::Text("555-1234".to_string()),
+            }],
             company: "Acme Inc".to_string(),
             job_title: "Software Engineer".to_string(),
             personal_website: String::new(),
             work_phone_number: String::new(),
             work_email: String::new(),
-            extra_work_details: vec![],
-            extra_sections: vec![],
+            extra_work_details: vec![ItemExtraField {
+                name: "department".to_string(),
+                content: ItemExtraFieldContent::Text("Engineering".to_string()),
+            }],
+            extra_sections: vec![CustomSection {
+                section_name: "Extra fields".to_string(),
+                section_fields: vec![
+                    ItemExtraField {
+                        name: "custom_id".to_string(),
+                        content: ItemExtraFieldContent::Text("ID-99".to_string()),
+                    },
+                    ItemExtraField {
+                        name: "secret_code".to_string(),
+                        content: ItemExtraFieldContent::Hidden("abc123".to_string()),
+                    },
+                ],
+            }],
         })
     }
 
@@ -857,6 +908,84 @@ mod tests {
         assert_eq!(
             item.get_field("security"),
             Some(Field::Text("WPA3".to_string()))
+        );
+    }
+
+    #[test]
+    fn test_identity_extra_detail_fields() {
+        let item = create_item_with_content(ItemContent::Identity(create_identity_item()));
+
+        // Extra personal details
+        assert_eq!(
+            item.get_field("nickname"),
+            Some(Field::Text("Johnny".to_string()))
+        );
+
+        // Extra address details
+        assert_eq!(
+            item.get_field("apartment"),
+            Some(Field::Text("4B".to_string()))
+        );
+
+        // Extra contact details
+        assert_eq!(
+            item.get_field("fax"),
+            Some(Field::Text("555-1234".to_string()))
+        );
+
+        // Extra work details
+        assert_eq!(
+            item.get_field("department"),
+            Some(Field::Text("Engineering".to_string()))
+        );
+    }
+
+    #[test]
+    fn test_identity_extra_sections_fields() {
+        let item = create_item_with_content(ItemContent::Identity(create_identity_item()));
+
+        // Fields from extra_sections ("Extra fields" section)
+        assert_eq!(
+            item.get_field("custom_id"),
+            Some(Field::Text("ID-99".to_string()))
+        );
+        assert_eq!(
+            item.get_field("secret_code"),
+            Some(Field::Hidden("abc123".to_string()))
+        );
+        assert_eq!(item.get_field("nonexistent_extra"), None);
+    }
+
+    #[test]
+    fn test_identity_extra_fields_in_fields_list() {
+        let item = create_item_with_content(ItemContent::Identity(create_identity_item()));
+        let fields = item.fields();
+
+        // Verify extra detail fields appear in the full fields list
+        let field_names: Vec<&str> = fields.iter().map(|(name, _)| name.as_str()).collect();
+
+        assert!(
+            field_names.contains(&"nickname"),
+            "nickname should be in fields"
+        );
+        assert!(
+            field_names.contains(&"apartment"),
+            "apartment should be in fields"
+        );
+        assert!(field_names.contains(&"fax"), "fax should be in fields");
+        assert!(
+            field_names.contains(&"department"),
+            "department should be in fields"
+        );
+
+        // Verify extra section fields appear in the full fields list
+        assert!(
+            field_names.contains(&"custom_id"),
+            "custom_id should be in fields"
+        );
+        assert!(
+            field_names.contains(&"secret_code"),
+            "secret_code should be in fields"
         );
     }
 }
