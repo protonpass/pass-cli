@@ -46,6 +46,7 @@ pub async fn start_agent(
     key_storage: KeyStorage,
     socket_path: Option<String>,
     refresh_interval: u64,
+    session_locked: bool,
 ) -> Result<()> {
     let socket_path = if let Some(path) = socket_path {
         PathBuf::from(path)
@@ -94,8 +95,15 @@ pub async fn start_agent(
         let socket_path_clone = socket_path.clone();
 
         // Run the agent
-        run_agent_with_listener(listener, key_storage, refresh_interval, client, vault_query)
-            .await?;
+        run_agent_with_listener(
+            listener,
+            key_storage,
+            refresh_interval,
+            client,
+            vault_query,
+            session_locked,
+        )
+        .await?;
 
         // Cleanup
         if socket_path_clone.exists() {
@@ -122,6 +130,7 @@ pub async fn start_agent(
             refresh_interval,
             &client,
             &vault_query,
+            session_locked,
         )
         .await?;
     }
@@ -164,6 +173,7 @@ async fn run_agent_with_listener<L>(
     refresh_interval: u64,
     client: &PassClient,
     vault_query: &VaultQuery,
+    session_locked: bool,
 ) -> Result<()>
 where
     L: ListeningSocket + Send + std::fmt::Debug,
@@ -173,16 +183,20 @@ where
     let (tx, mut rx) = tokio::sync::mpsc::channel(10);
     let handler = Arc::new(SshAgentEventHandler::new(tx, refresh_interval));
 
-    // Spawn event listener
+    // Spawn event listener (skipped when session is locked)
     let client_clone = client.clone();
-    let event_listener = tokio::spawn(async move {
-        loop {
-            if let Err(e) = client_clone.listen_for_events(handler.clone()).await {
-                error!("Event listener error: {e:#}");
-                tokio::time::sleep(std::time::Duration::from_secs(refresh_interval)).await;
+    let event_listener = if session_locked {
+        tokio::spawn(std::future::pending())
+    } else {
+        tokio::spawn(async move {
+            loop {
+                if let Err(e) = client_clone.listen_for_events(handler.clone()).await {
+                    error!("Event listener error: {e:#}");
+                    tokio::time::sleep(std::time::Duration::from_secs(refresh_interval)).await;
+                }
             }
-        }
-    });
+        })
+    };
 
     // Create event processor
     let processor =

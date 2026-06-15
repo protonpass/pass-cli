@@ -29,17 +29,19 @@ mod ssh_key_parsing;
 
 use crate::helpers::CliPassClient as PassClient;
 use crate::telemetry::event::CommandEvent;
-use anyhow::{Context, Result, anyhow};
+use anyhow::{anyhow, Context, Result};
 use clap::Subcommand;
 use key_storage::{KeyStorage, SshIdentity};
 use pass::is_id;
 use pass::ssh_key::SshKeyItemCreatePayload;
+use pass_auth::store::PassSessionStore;
 use pass_domain::{ItemId, PermissionFlag, ShareId};
 use ssh_agent_lib::ssh_encoding::LineEnding;
 use ssh_key::HashAlg;
 pub(crate) use ssh_key_parsing::parse_private_key_with_rsa_pem_fallback;
 use std::path::PathBuf;
-use tokio::sync::mpsc::{UnboundedReceiver, unbounded_channel};
+use std::sync::{Arc, RwLock};
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 
 #[derive(Subcommand)]
 pub enum SshAgentCommands {
@@ -181,7 +183,11 @@ fn get_default_socket_path() -> Result<PathBuf> {
     Ok(home_dir.join(".ssh").join("proton-pass-agent"))
 }
 
-pub async fn run(command: SshAgentCommands, client: PassClient) -> Result<()> {
+pub async fn run(
+    command: SshAgentCommands,
+    client: PassClient,
+    store: Arc<RwLock<PassSessionStore>>,
+) -> Result<()> {
     match command {
         SshAgentCommands::Start {
             socket_path,
@@ -197,6 +203,7 @@ pub async fn run(command: SshAgentCommands, client: PassClient) -> Result<()> {
                 refresh_interval,
                 create_new_identities,
                 client,
+                store,
             )
             .await
         }
@@ -242,14 +249,28 @@ async fn run_start(
     refresh_interval: u64,
     create_new_identities: Option<String>,
     client: PassClient,
+    store: Arc<RwLock<PassSessionStore>>,
 ) -> Result<()> {
+    let session_locked = store
+        .read()
+        .expect("store rwlock poisoned")
+        .is_session_locked();
+
+    if session_locked {
+        eprintln!(
+            "Session has a lock, creating new items and refreshing information from Pass has been disabled."
+        );
+    }
+
     client
         .emit_telemetry(&CommandEvent::new("ssh-agent-start"))
         .await;
     let vault_query = VaultQuery::new(share_id, vault_name)?;
 
-    // Resolve the target share ID for creating new identities
-    let create_target_share_id = if let Some(ref target) = create_new_identities {
+    // Resolve the target share ID for creating new identities (skipped when session is locked)
+    let create_target_share_id = if session_locked {
+        None
+    } else if let Some(ref target) = create_new_identities {
         Some(resolve_vault_to_share_id(&client, target).await?)
     } else {
         None
@@ -287,6 +308,7 @@ async fn run_start(
         key_storage,
         socket_path,
         refresh_interval,
+        session_locked,
     );
 
     tokio::select! {
