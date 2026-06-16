@@ -175,16 +175,6 @@ pub fn success_code() -> Option<Response> {
     )
 }
 
-pub fn error_response(status: u16, json_body: &impl serde::Serialize) -> Option<Response> {
-    let body = serde_json::to_vec(json_body).unwrap();
-    Some(
-        Response::builder()
-            .status(status)
-            .body(axum::body::Body::from(body))
-            .unwrap(),
-    )
-}
-
 pub fn error_response_from_json(status: u16, json_str: &str) -> Option<Response> {
     Some(
         Response::builder()
