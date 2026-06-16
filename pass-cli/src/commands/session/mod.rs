@@ -30,16 +30,16 @@ pub mod unlock;
 
 #[derive(Subcommand)]
 pub enum SessionCommands {
-    #[command(about = "Lock the current session with a PIN")]
+    #[command(about = "Lock the current session with a lock code")]
     Lock {
         #[arg(
             long,
             help = "Time in seconds before the session auto-unlocks (min 30, max 900)",
             default_value = "300"
         )]
-        lock_time: u32,
+        idle_timeout: u32,
     },
-    #[command(about = "Unlock the current session with a PIN")]
+    #[command(about = "Unlock the current session with a lock code")]
     Unlock,
     #[command(about = "Remove the session lock entirely")]
     RemoveLock,
@@ -51,7 +51,9 @@ pub async fn run(
     store: Arc<RwLock<PassSessionStore>>,
 ) -> Result<()> {
     match subcommand {
-        SessionCommands::Lock { lock_time } => lock::run(client, store, Some(lock_time)).await,
+        SessionCommands::Lock {
+            idle_timeout: lock_time,
+        } => lock::run(client, store, Some(lock_time)).await,
         SessionCommands::Unlock => unlock::run(client, store).await,
         SessionCommands::RemoveLock => remove_lock::run(client, store).await,
     }

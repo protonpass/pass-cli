@@ -19,7 +19,7 @@
 
 use crate::helpers::CliPassClient as PassClient;
 use crate::utils::ask_for_input;
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{Context, Result, bail, ensure};
 use parking_lot::RwLock;
 use pass_auth::store::PassSessionStore;
 use std::sync::Arc;

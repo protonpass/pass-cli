@@ -18,7 +18,7 @@
  */
 
 use crate::storage::SessionStorage;
-use anyhow::{anyhow, Context};
+use anyhow::{Context, anyhow};
 use muon::app::{AppName, AppVersion, SemVer};
 use muon::auth::Auth;
 use muon::common::Server;
@@ -30,8 +30,8 @@ use pass_domain::crypto::EncryptionTag;
 use pass_domain::{AccountType, LocalKeyProvider};
 use std::collections::HashMap;
 use std::str::FromStr;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 pub type PassSessionKeyType = ();
 

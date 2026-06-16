@@ -5,7 +5,7 @@ Manage the session lock to prevent unauthorized access to your Proton Pass CLI s
 ## Synopsis
 
 ```bash
-pass-cli session lock [--lock-time SECONDS]
+pass-cli session lock [--idle-timeout SECONDS]
 pass-cli session unlock
 pass-cli session remove-lock
 ```
@@ -29,7 +29,7 @@ unusable again without a lock code.
 Lock the current session with a lock code.
 
 ```bash
-pass-cli session lock [--lock-time SECONDS]
+pass-cli session lock [--idle-timeout SECONDS]
 ```
 
 You will be prompted to enter a lock code. The lock code is not stored anywhere, it is sent to the Proton Pass API to
@@ -38,7 +38,8 @@ lock. You must use the same lock code to unlock or remove the lock later.
 
 **Options:**
 
-- `--lock-time SECONDS` Time in seconds before the session auto-unlocks. Must be between 30 and 900. Default: `300` (5
+- `--idle-timeout SECONDS` Time in seconds before the session auto-unlocks. Must be between 30 and 900. Default: `300` (
+  5
   minutes).
 
 **Examples:**
@@ -50,7 +51,7 @@ pass-cli session lock
 # Session locked successfully
 
 # Lock with a custom 10-minute timeout
-pass-cli session lock --lock-time 600
+pass-cli session lock --idle-timeout 600
 # Enter lock code:
 # Session locked successfully
 ```
@@ -113,7 +114,7 @@ automatically.
 - **lock code strength** Choose a lock code that is not trivially guessable. There is no minimum length enforced by the
   CLI, but a
   longer lock code is harder to brute-force.
-- **Auto-unlock timeout** Keep `--lock-time` short on shared or unattended systems. The default of 300 seconds is a
+- **Auto-unlock timeout** Keep `--idle-timeout` short on shared or unattended systems. The default of 300 seconds is a
   reasonable balance for interactive use.
 - **Session vs. logout** Locking a session is not a substitute for `logout`. A locked session is still authenticated;
   it is just gated by the lock code. Use `logout` when you want to fully terminate the session.
