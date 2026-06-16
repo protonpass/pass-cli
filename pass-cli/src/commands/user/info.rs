@@ -20,8 +20,9 @@ use crate::commands::OutputFormat;
 use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result};
 use jiff::Timestamp;
+use parking_lot::RwLock;
 use pass_auth::PassSessionStore;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 #[derive(serde::Serialize)]
 struct UserInfoJsonOutput {
@@ -46,10 +47,7 @@ pub async fn run(
         anyhow::anyhow!("No addresses found. Please add an address to your account.")
     })?;
     let user_info = client.get_user_access().await?;
-    let session_has_lock = store
-        .read()
-        .expect("store rwlock poisoned")
-        .has_session_lock();
+    let session_has_lock = store.read().has_session_lock();
 
     match output_format {
         OutputFormat::Human => {

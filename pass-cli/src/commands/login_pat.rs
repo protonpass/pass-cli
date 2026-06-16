@@ -21,11 +21,12 @@ use crate::auth::auth_helpers::create_authenticator;
 use crate::features::CliClientFeatures;
 use crate::helpers::{CliPassClient as PassClient, PassClientExt, SessionExt};
 use anyhow::{Context, Result};
+use parking_lot::RwLock;
 use pass::FirstTimeSetupKey;
 use pass_auth::Authenticator;
 use pass_auth::PassSessionStore;
 use pass_auth::os::ProdClient;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 pub async fn login_personal_access_token(
     authenticator: Authenticator,

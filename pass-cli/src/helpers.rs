@@ -18,10 +18,10 @@
  */
 
 use anyhow::{Result, anyhow};
+use parking_lot::RwLock;
 use pass::{PassClient, PassClientContext};
 use pass_auth::os::ProdContext;
 use std::sync::Arc;
-use std::sync::RwLock;
 
 use crate::features::CliClientFeatures;
 use pass_auth::PassSessionStore;
@@ -34,8 +34,8 @@ pub trait SessionExt {
 #[async_trait::async_trait]
 impl SessionExt for Arc<RwLock<PassSessionStore>> {
     async fn get_user_id(&self) -> Result<String> {
-        let store_guard = self.read().expect("store rwlock poisoned");
-        let auth = store_guard.auth.lock().expect("auth mutex poisoned");
+        let store_guard = self.read();
+        let auth = store_guard.auth.lock();
         let user_id = auth
             .as_ref()
             .and_then(|a| a.user_id().map(|u| u.to_string()));

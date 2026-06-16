@@ -25,7 +25,8 @@ use anyhow::{Context, bail};
 use muon::auth::LoginFlow;
 use muon::common::sdk::Sdk;
 use muon::{GET, Session};
-use std::sync::{Arc, RwLock};
+use parking_lot::RwLock;
+use std::sync::Arc;
 use zeroize::Zeroizing;
 
 pub struct AuthenticationResult {
@@ -85,7 +86,7 @@ pub async fn perform_interactive_login(
 
     // Check if it needs extra password
     let needs_extra_password = {
-        let store_guard = store.read().expect("store rwlock poisoned");
+        let store_guard = store.read();
         store_guard.needs_extra_password()
     };
 

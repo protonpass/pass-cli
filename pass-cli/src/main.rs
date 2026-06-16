@@ -343,9 +343,9 @@ async fn run() -> Result<()> {
             }
             // Check if session needs extra password and get account type
             let (needs_extra_password, user_id, account_type) = {
-                let store_guard = store.read().expect("store rwlock poisoned");
+                let store_guard = store.read();
                 let needs_extra_password = store_guard.needs_extra_password();
-                let auth = store_guard.auth.lock().expect("auth mutex poisoned");
+                let auth = store_guard.auth.lock();
                 let user_id = auth
                     .as_ref()
                     .and_then(|a| a.user_id().map(|u| u.to_string()));

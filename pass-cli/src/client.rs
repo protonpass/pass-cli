@@ -23,11 +23,12 @@ use crate::storage::FileSystemSessionStorage;
 use crate::utils::ask_for_input;
 use anyhow::Context;
 use muon::env::Environment;
+use parking_lot::RwLock;
 use pass_auth::os::ProdClient;
 use pass_auth::store::{CustomEnv, PassSessionStore, SerializedEnv};
 use std::io::Read;
 use std::path::PathBuf;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use zeroize::Zeroizing;
 
 const APP_NAME: &str = "cli-pass";
@@ -164,7 +165,7 @@ pub async fn get_client(
         Ok((client, store)) => {
             // Check if environment has switched
             let env_switched = {
-                let store_guard = store.read().expect("store rwlock poisoned");
+                let store_guard = store.read();
                 !store_using_current_env(&store_guard.env)
             };
             if env_switched {

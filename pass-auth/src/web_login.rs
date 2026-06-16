@@ -29,12 +29,13 @@ use muon::auth::{Auth, Tokens};
 use muon::common::sdk::Sdk;
 use muon::env::{Env, Environment};
 use muon::{GET, Session};
+use parking_lot::RwLock;
 use pass_domain::aes_gcm::aead::consts::U16;
 use pass_domain::aes_gcm::aead::generic_array::GenericArray;
 use pass_domain::aes_gcm::aead::{Aead, Payload};
 use pass_domain::aes_gcm::{AesGcm, KeyInit};
 use std::str::FromStr;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 const POLL_INTERVAL_SECONDS: u64 = 10;
@@ -264,7 +265,7 @@ pub async fn perform_web_login(
     sdk: &Sdk,
 ) -> Result<WebLoginResult> {
     let env = {
-        let store_guard = store.read().expect("store rwlock poisoned");
+        let store_guard = store.read();
         store_guard.env.clone()
     };
 

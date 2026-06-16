@@ -20,15 +20,12 @@
 use crate::helpers::CliPassClient as PassClient;
 use crate::utils::ask_for_input;
 use anyhow::{Context, Result, bail};
+use parking_lot::RwLock;
 use pass_auth::store::PassSessionStore;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 pub async fn run(client: PassClient, store: Arc<RwLock<PassSessionStore>>) -> Result<()> {
-    if !store
-        .read()
-        .expect("store rwlock poisoned")
-        .has_session_lock()
-    {
+    if !store.read().has_session_lock() {
         bail!("Session is not locked");
     }
 

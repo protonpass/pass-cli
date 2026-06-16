@@ -28,10 +28,11 @@ use muon::app::App;
 use muon::client::builder::Hyper;
 use muon::common::{EnvProxy, Proxy};
 use muon::env::{Env, Environment};
+use parking_lot::RwLock;
 use pass_domain::LocalKeyProvider;
 use rand_chacha::ChaCha20Rng;
 use rand_chacha::rand_core::SeedableRng;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 pub const ENVIRONMENT_ENV_VAR: &str = "PROTON_PASS_ENVIRONMENT";
 const XDEBUG_SESSION_HEADER: &str = "XDEBUG_SESSION";

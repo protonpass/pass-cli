@@ -25,12 +25,13 @@ use muon::common::Server;
 use muon::env::{Env, Environment};
 use muon::store::Store;
 use muon::tls::pins::TlsPinSet;
+use parking_lot::{Mutex, RwLock};
 use pass_domain::crypto::EncryptionTag;
 use pass_domain::{AccountType, LocalKeyProvider};
 use std::collections::HashMap;
 use std::str::FromStr;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, Mutex, RwLock};
 
 pub type PassSessionKeyType = ();
 
@@ -218,7 +219,7 @@ impl PassSessionStore {
 
     fn inner_set_auth(&mut self, auth: Option<Auth>) {
         {
-            let mut lock = self.auth.lock().expect("auth mutex poisoned");
+            let mut lock = self.auth.lock();
             *lock = auth;
         }
 
@@ -241,7 +242,7 @@ impl Store for PassSessionStore {
 
     fn get_all_auth(&self) -> HashMap<PassSessionKeyType, Auth> {
         trace!("[STORE] PassSessionStore::get_all_auth()");
-        let lock = self.auth.lock().expect("auth mutex poisoned");
+        let lock = self.auth.lock();
         let mut res = HashMap::new();
         if let Some(auth) = lock.as_ref() {
             res.insert((), auth.clone());
@@ -268,17 +269,17 @@ impl Store for SharedPassSessionStore {
     type Key = PassSessionKeyType;
 
     fn set_auth(&mut self, key: PassSessionKeyType, auth: Auth) {
-        let mut inner = self.inner.write().expect("store rwlock poisoned");
+        let mut inner = self.inner.write();
         inner.set_auth(key, auth);
     }
 
     fn remove_auth(&mut self, key: &PassSessionKeyType) {
-        let mut inner = self.inner.write().expect("store rwlock poisoned");
+        let mut inner = self.inner.write();
         inner.remove_auth(key);
     }
 
     fn get_all_auth(&self) -> HashMap<PassSessionKeyType, Auth> {
-        let inner = self.inner.read().expect("store rwlock poisoned");
+        let inner = self.inner.read();
         inner.get_all_auth()
     }
 }
@@ -376,7 +377,7 @@ impl PassSessionStore {
 
     pub async fn serialize(&self) -> anyhow::Result<()> {
         let serialized = {
-            let auth = self.auth.lock().expect("auth mutex poisoned");
+            let auth = self.auth.lock();
             SerializedStore {
                 env: SerializedEnv::from(self.env.clone()),
                 auth: auth.clone(),
@@ -418,7 +419,7 @@ impl PassSessionStore {
     }
 
     pub fn needs_extra_password(&self) -> bool {
-        let auth = self.auth.lock().expect("auth mutex poisoned");
+        let auth = self.auth.lock();
         if let Some(ref auth) = *auth {
             !auth.has_scope("pass")
         } else {

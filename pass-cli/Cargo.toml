@@ -38,6 +38,7 @@ urlencoding = "2.1"
 zeroize.workspace = true
 zeroizing-alloc = "0.1.0"
 
+parking_lot.workspace = true
 anyhow.workspace = true
 base64.workspace = true
 async-trait.workspace = true

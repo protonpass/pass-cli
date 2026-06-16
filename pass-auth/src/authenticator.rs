@@ -26,9 +26,10 @@ use crate::store::PassSessionStore;
 use crate::{extra_password, interactive_login, personal_access_token, post_login, web_login};
 use anyhow::{Context, Result, bail};
 use muon::common::sdk::Sdk;
+use parking_lot::RwLock;
 use pass::{FirstTimeSetupKey, PassClient};
 use pass_domain::{AccountType, LocalKeyProvider};
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use zeroize::Zeroizing;
 
 pub struct Authenticator {
@@ -43,7 +44,7 @@ pub struct Authenticator {
 impl Authenticator {
     async fn persist_store(store: &Arc<RwLock<PassSessionStore>>) -> Result<()> {
         let store_snapshot = {
-            let store_guard = store.read().expect("store rwlock poisoned");
+            let store_guard = store.read();
             store_guard.clone()
         };
 
@@ -100,7 +101,7 @@ impl Authenticator {
         }
 
         {
-            let mut store_guard = store.write().expect("store rwlock poisoned");
+            let mut store_guard = store.write();
             store_guard.set_account_type(AccountType::User);
         }
 
@@ -133,7 +134,7 @@ impl Authenticator {
 
         // Check if extra password is needed
         let needs_extra_password = {
-            let store_guard = store.read().expect("store rwlock poisoned");
+            let store_guard = store.read();
             store_guard.needs_extra_password()
         };
 
@@ -188,7 +189,7 @@ impl Authenticator {
 
         // Set account type in store for regular user login
         {
-            let mut store_guard = store.write().expect("store rwlock poisoned");
+            let mut store_guard = store.write();
             store_guard.set_account_type(AccountType::User);
         }
 
@@ -247,7 +248,7 @@ impl Authenticator {
         };
 
         {
-            let mut store_guard = store.write().expect("store rwlock poisoned");
+            let mut store_guard = store.write();
             store_guard.set_account_type(AccountType::PersonalAccessToken);
         }
 
@@ -295,7 +296,7 @@ impl Authenticator {
 
         // Update store with the resolved account type
         {
-            let mut store_guard = store.write().expect("store rwlock poisoned");
+            let mut store_guard = store.write();
             store_guard.set_account_type(account_type);
         }
 

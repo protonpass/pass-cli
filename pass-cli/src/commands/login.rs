@@ -22,11 +22,11 @@ use crate::features::CliClientFeatures;
 use crate::helpers::CliPassClient as PassClient;
 use crate::helpers::{PassClientExt, SessionExt};
 use anyhow::{Context, Result};
+use parking_lot::RwLock;
 use pass::FirstTimeSetupKey;
 use pass_auth::PassSessionStore;
 use pass_auth::os::ProdClient;
 use std::sync::Arc;
-use std::sync::RwLock;
 
 #[cfg(feature = "no-login-restriction")]
 async fn is_login_allowed(_client: &PassClient) -> Result<bool> {

@@ -32,6 +32,7 @@ use crate::telemetry::event::CommandEvent;
 use anyhow::{Context, Result, anyhow};
 use clap::Subcommand;
 use key_storage::{KeyStorage, SshIdentity};
+use parking_lot::RwLock;
 use pass::is_id;
 use pass::ssh_key::SshKeyItemCreatePayload;
 use pass_auth::store::PassSessionStore;
@@ -40,7 +41,7 @@ use ssh_agent_lib::ssh_encoding::LineEnding;
 use ssh_key::HashAlg;
 pub(crate) use ssh_key_parsing::parse_private_key_with_rsa_pem_fallback;
 use std::path::PathBuf;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use tokio::sync::mpsc::{UnboundedReceiver, unbounded_channel};
 
 #[derive(Subcommand)]
@@ -251,10 +252,7 @@ async fn run_start(
     client: PassClient,
     store: Arc<RwLock<PassSessionStore>>,
 ) -> Result<()> {
-    let session_has_lock = store
-        .read()
-        .expect("store rwlock poisoned")
-        .has_session_lock();
+    let session_has_lock = store.read().has_session_lock();
 
     if session_has_lock {
         eprintln!(
