@@ -19,13 +19,14 @@
 
 use crate::commands::item::agent_monitor::send_reason_if_agent_with_name;
 use crate::commands::item::common::{ItemQuery, ShareQuery};
-use crate::commands::secret_resolver::ItemReference;
+use crate::commands::item::totp::generate_totp_token;
+use crate::commands::secret_resolver::{ItemReference, TotpOutput};
 use crate::commands::{OutputFormat, settings_helper};
 use crate::helpers::CliPassClient as PassClient;
 use crate::telemetry::event::CommandEvent;
 use anyhow::{Context, Result, anyhow, bail};
 use pass::FindItemQuery;
-use pass_domain::EventAction;
+use pass_domain::{EventAction, Field};
 
 pub enum ViewItemQuery {
     Ids {
@@ -83,7 +84,7 @@ pub async fn run(
             .unwrap_or(OutputFormat::Human),
     };
 
-    let (item, effective_field) = match query {
+    let (item, effective_field, totp) = match query {
         ViewItemQuery::Ids {
             share_query,
             item_query,
@@ -106,13 +107,14 @@ pub async fn run(
                 Some(&item.item.content.title),
             )
             .await?;
-            (item, field)
+            (item, field, None)
         }
         ViewItemQuery::Uri(uri) => {
             client
                 .emit_telemetry(&CommandEvent::new("item-view-uri"))
                 .await;
             let reference = ItemReference::parse(&uri).context("Invalid item reference")?;
+            let totp = reference.totp;
             let item_query = FindItemQuery::new(&reference.share_id, &reference.item_id);
             let item = client
                 .find_item(item_query)
@@ -130,12 +132,20 @@ pub async fn run(
                 Some(&full_item.item.content.title),
             )
             .await?;
-            (full_item, reference.field_name)
+            (full_item, reference.field_name, totp)
         }
     };
 
     if let Some(field) = effective_field {
         match item.item.get_field(&field) {
+            Some(Field::Totp(totp_uri)) => {
+                let output = totp.unwrap_or_default();
+                let value = match output {
+                    TotpOutput::Uri => totp_uri,
+                    TotpOutput::Code => generate_totp_token(&totp_uri)?,
+                };
+                println!("{}", value);
+            }
             Some(field_value) => println!("{}", field_value.value()),
             None => bail!("Field does not exist: {}", &field),
         }

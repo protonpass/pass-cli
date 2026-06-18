@@ -18,12 +18,13 @@
  */
 
 use crate::commands::item::agent_monitor::send_reason_if_agent;
+use crate::commands::item::totp::generate_totp_token;
 use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result, anyhow};
 use async_trait::async_trait;
 use fluent_uri::Uri;
 use pass::FindItemQuery;
-use pass_domain::{EventAction, ItemId, ShareId};
+use pass_domain::{EventAction, Field, ItemId, ShareId};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -152,10 +153,6 @@ impl ItemReference {
         })
     }
 
-    pub fn totp_output(&self) -> TotpOutput {
-        self.totp.unwrap_or_default()
-    }
-
     // Takes a borrowed str so the returned Uri<&str> can borrow from it without
     // the ownership transfer that would drop the backing string too early.
     fn ensure_format(uri: &str) -> Result<Uri<&str>> {
@@ -185,6 +182,10 @@ impl ItemReference {
 }
 
 impl SecretReference {
+    pub fn totp_output(&self) -> TotpOutput {
+        self.totp.unwrap_or_default()
+    }
+
     pub fn parse(uri: &str) -> Result<Self> {
         let item_ref = ItemReference::parse(uri)?;
 
@@ -245,7 +246,14 @@ impl SecretResolver for PassClientResolver {
                 secret_ref.item_id
             )
         })?;
-        Ok(field.value())
+
+        match field {
+            Field::Totp(totp_uri) => match secret_ref.totp_output() {
+                TotpOutput::Uri => Ok(totp_uri),
+                TotpOutput::Code => generate_totp_token(&totp_uri),
+            },
+            _ => Ok(field.value()),
+        }
     }
     async fn resolve_secret_and_send_reason(&self, secret_ref: &SecretReference) -> Result<String> {
         let share_id = ShareId::new(secret_ref.share_id.clone());

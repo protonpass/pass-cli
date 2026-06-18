@@ -101,10 +101,11 @@ struct TotpOutput {
     tokens: HashMap<String, String>,
 }
 
-fn generate_totp_token(totp_uri: &str) -> Result<String> {
+pub(crate) fn generate_totp_token(totp_uri: &str) -> Result<String> {
     let totp = TOTP::from_uri(totp_uri)
         .context("Failed to parse TOTP content. Please ensure the field contains a valid TOTP URI or base32 secret")?;
 
+    // jiff's 'Timestamp::now()' already returns UTC
     let timestamp = Timestamp::now().as_second() as u64;
     let token = totp
         .generate_token(timestamp)
