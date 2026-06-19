@@ -51,9 +51,10 @@ impl SshEventProcessor {
             .await
             .context("Failed to process events")?;
 
-        // Process updates (and creates) and deletes
+        // Process item updates, creates, deletes, and share deletes
         self.handle_updated_items(result.updated_items).await?;
         self.handle_deleted_items(result.deleted_items).await?;
+        self.handle_deleted_shares(result.deleted_shares).await?;
 
         Ok(())
     }
@@ -96,6 +97,18 @@ impl SshEventProcessor {
             }
         }
 
+        Ok(())
+    }
+
+    async fn handle_deleted_shares(&self, share_ids: Vec<ShareId>) -> Result<()> {
+        for share_id in share_ids {
+            if !self.should_process_event(&share_id).await? {
+                continue;
+            }
+            self.key_storage
+                .identity_remove_by_share_id(&share_id)
+                .await;
+        }
         Ok(())
     }
 

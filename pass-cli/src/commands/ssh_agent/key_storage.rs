@@ -243,4 +243,22 @@ impl KeyStorage {
             Err(anyhow!("Identity not found or not from ProtonPass"))
         }
     }
+
+    // Remove all ProtonPass-sourced identities for a given share (for share deletion / unsharing)
+    // Only removes ProtonPass-sourced keys, preserves User-added keys
+    pub async fn identity_remove_by_share_id(&self, share_id: &ShareId) {
+        let mut identities = self.identities.lock().await;
+        let before = identities.len();
+        identities.retain(|i| match &i.source {
+            IdentitySource::ProtonPass { share_id: s, .. } => s != share_id,
+            IdentitySource::User => true,
+        });
+        let removed = before - identities.len();
+        if removed > 0 {
+            info!(
+                "Removed {} SSH key(s) for deleted share {}",
+                removed, share_id
+            );
+        }
+    }
 }
