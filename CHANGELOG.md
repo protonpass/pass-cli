@@ -1,3 +1,19 @@
+## 2.2.0 (2026-06-25)
+
+### Features :tada:
+
+- Allow for session lock on the CLI via `pass-cli session [lock/unlock]`.
+- Allow for `?totp=uri` and `?totp=code` querystring parameters on secret references for TOTP fields.
+
+### Fixes :bug:
+
+- Improve SSH Agent handling of deleted vaults.
+- Print the invite token in the JSON output of `pass-cli invite list`.
+
+### Other
+
+- Add a `Developer resources` section on the docs.
+
 ## 2.1.4 (2026-06-15)
 
 ### Fixes :bug:
