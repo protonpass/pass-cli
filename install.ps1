@@ -263,7 +263,7 @@ function Install-Binary {
         Write-Host ""
         Write-Host "Run this command in PowerShell (as Administrator):"
         Write-Host ""
-        Write-Host "  [Environment]::SetEnvironmentVariable('Path', `$env:Path + ';$installDir', 'User')"
+        Write-Host "  [Environment]::SetEnvironmentVariable('Path', [Environment]::GetEnvironmentVariable('Path', 'User') + ';$installDir', 'User')"
         Write-Host ""
         Write-Host "Or manually add this directory to your PATH:"
         Write-Host "  $installDir"
