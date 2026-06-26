@@ -24,7 +24,7 @@ use anyhow::{Context, Result, anyhow};
 use async_trait::async_trait;
 use fluent_uri::Uri;
 use pass::FindItemQuery;
-use pass_domain::{EventAction, Field, ItemId, ShareId};
+use pass_domain::{EventAction, Field};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -222,22 +222,22 @@ impl SecretResolver for PassClientResolver {
     async fn resolve_secret(&self, secret_ref: &SecretReference) -> Result<String> {
         let query = FindItemQuery::new(&secret_ref.share_id, &secret_ref.item_id);
 
-        let share_id = ShareId::new(secret_ref.share_id.clone());
-        let item_id = ItemId::new(secret_ref.item_id.clone());
-        send_reason_if_agent(
-            &self.client,
-            EventAction::ItemRead,
-            &share_id,
-            Some(&item_id),
-        )
-        .await?;
-
         let item = self.client.find_item(query).await.with_context(|| {
             format!(
                 "Failed to retrieve item {} from share {}",
                 secret_ref.item_id, secret_ref.share_id
             )
         })?;
+
+        // Send the monitor event after name -> ID resolution so the correct resolved IDs are
+        // reported, not the raw vault/item name strings from the URI.
+        send_reason_if_agent(
+            &self.client,
+            EventAction::ItemRead,
+            &item.share_id,
+            Some(&item.id),
+        )
+        .await?;
 
         let field = item.get_field(&secret_ref.field_name).ok_or_else(|| {
             anyhow!(
@@ -256,15 +256,6 @@ impl SecretResolver for PassClientResolver {
         }
     }
     async fn resolve_secret_and_send_reason(&self, secret_ref: &SecretReference) -> Result<String> {
-        let share_id = ShareId::new(secret_ref.share_id.clone());
-        let item_id = ItemId::new(secret_ref.item_id.clone());
-        send_reason_if_agent(
-            &self.client,
-            EventAction::ItemRead,
-            &share_id,
-            Some(&item_id),
-        )
-        .await?;
         self.resolve_secret(secret_ref).await
     }
 }
