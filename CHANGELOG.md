@@ -1,3 +1,13 @@
+## 2.2.1 (2026-06-29)
+
+### Fixes :bug:
+
+- Fix a bug that stored agent audit logs on a wrong format.
+
+### Other
+
+- Dependency upgrades.
+
 ## 2.2.0 (2026-06-25)
 
 ### Features :tada:
