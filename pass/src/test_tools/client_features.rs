@@ -19,10 +19,11 @@
 
 use anyhow::Result;
 use async_lock::RwLock;
+use pass_domain::models::organization_policy::OrganizationInfo;
 use pass_domain::{
     AccountCrypto, ClientFeatures, CoreEventStorage, CursorEntry, DataStorage, DecryptedFolderKey,
     DecryptedShareKey, FolderId, FolderKeyStorage, FsStorage, LocalKey, LocalKeyProvider,
-    PgpCrypto, ShareId, ShareKeyStorage,
+    OrganizationPolicyEntry, OrganizationPolicyStorage, PgpCrypto, ShareId, ShareKeyStorage,
 };
 use pass_fs::InMemoryFsStorage;
 use pass_pgp::{NativePgpCrypto, ProtonAccountCrypto};
@@ -148,10 +149,44 @@ impl CoreEventStorage for InMemoryCoreEventStorage {
 }
 
 #[derive(Clone)]
+pub struct InMemoryOrganizationPolicyStorage {
+    policy: Arc<RwLock<Option<OrganizationInfo>>>,
+}
+
+impl InMemoryOrganizationPolicyStorage {
+    pub fn new() -> Self {
+        Self {
+            policy: Arc::new(RwLock::new(None)),
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl OrganizationPolicyStorage for InMemoryOrganizationPolicyStorage {
+    async fn get_policy(&self) -> Result<Option<OrganizationPolicyEntry>> {
+        Ok(self
+            .policy
+            .read()
+            .await
+            .clone()
+            .map(|policy| OrganizationPolicyEntry {
+                policy,
+                updated_at: 0, // always stale so tests exercise the full sync path
+            }))
+    }
+
+    async fn set_policy(&self, policy: &OrganizationInfo) -> Result<()> {
+        *self.policy.write().await = Some(policy.clone());
+        Ok(())
+    }
+}
+
+#[derive(Clone)]
 pub struct InMemoryDataStorage {
     share_key_storage: Arc<dyn ShareKeyStorage>,
     folder_key_storage: Arc<dyn FolderKeyStorage>,
     core_event_storage: Arc<dyn CoreEventStorage>,
+    organization_policy_storage: Arc<dyn OrganizationPolicyStorage>,
 }
 
 impl InMemoryDataStorage {
@@ -160,6 +195,7 @@ impl InMemoryDataStorage {
             share_key_storage: Arc::new(InMemoryShareKeyStorage::new()),
             folder_key_storage: Arc::new(InMemoryFolderKeyStorage::new()),
             core_event_storage: Arc::new(InMemoryCoreEventStorage::new()),
+            organization_policy_storage: Arc::new(InMemoryOrganizationPolicyStorage::new()),
         }
     }
 }
@@ -176,6 +212,10 @@ impl DataStorage for InMemoryDataStorage {
 
     async fn get_core_event_storage(&self) -> Arc<dyn CoreEventStorage> {
         self.core_event_storage.clone()
+    }
+
+    async fn get_organization_policy_storage(&self) -> Arc<dyn OrganizationPolicyStorage> {
+        self.organization_policy_storage.clone()
     }
 }
 

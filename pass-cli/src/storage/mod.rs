@@ -20,11 +20,13 @@
 mod core_event_storage;
 mod data_storage;
 mod folder_key_storage;
+mod organization_policy_storage;
 mod session_storage;
 mod share_key_storage;
 
 pub use core_event_storage::DatabaseCoreEventStorage;
 pub use data_storage::CliDataStorage;
 pub use folder_key_storage::DatabaseFolderKeyStorage;
+pub use organization_policy_storage::DatabaseOrganizationPolicyStorage;
 pub use session_storage::FileSystemSessionStorage;
 pub use share_key_storage::DatabaseShareKeyStorage;

@@ -47,6 +47,7 @@ mod local_crypto;
 mod logout;
 pub mod monitor;
 pub(crate) mod muon_ext;
+mod organization;
 mod pagination;
 pub mod password;
 mod permission;
@@ -72,6 +73,11 @@ pub use item::create::note;
 pub use item::create::ssh_key;
 pub use item::create::wifi;
 pub use item::find::FindItemQuery;
+pub use organization::{
+    OrganizationAliasCreateMode, OrganizationExportMode, OrganizationInfo,
+    OrganizationPasswordPolicy, OrganizationSettings, OrganizationShareMode,
+    OrganizationVaultCreateMode,
+};
 pub use personal_access_token::{
     CreatePersonalAccessTokenArgs, CreatePersonalAccessTokenResponse, PersonalAccessToken,
     PersonalAccessTokenAccess, RenewPersonalAccessTokenResponse,

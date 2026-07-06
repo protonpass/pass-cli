@@ -110,5 +110,16 @@ pub fn get_migrations() -> Vec<Migration> {
                     );
                 ",
         },
+        Migration {
+            id: 7,
+            description: "Create organization_policies table",
+            sql: "
+                    CREATE TABLE organization_policies (
+                        user_id TEXT NOT NULL PRIMARY KEY,
+                        policy_json TEXT NOT NULL,
+                        updated_at INTEGER NOT NULL
+                    );
+                ",
+        },
     ]
 }

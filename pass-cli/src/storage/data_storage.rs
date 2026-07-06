@@ -17,13 +17,16 @@
  *
  */
 
-use pass_domain::{CoreEventStorage, DataStorage, FolderKeyStorage, ShareKeyStorage};
+use pass_domain::{
+    CoreEventStorage, DataStorage, FolderKeyStorage, OrganizationPolicyStorage, ShareKeyStorage,
+};
 use std::sync::Arc;
 
 pub struct CliDataStorage {
     share_key_storage: Arc<dyn ShareKeyStorage>,
     folder_key_storage: Arc<dyn FolderKeyStorage>,
     core_event_storage: Arc<dyn CoreEventStorage>,
+    organization_policy_storage: Arc<dyn OrganizationPolicyStorage>,
 }
 
 impl CliDataStorage {
@@ -31,11 +34,13 @@ impl CliDataStorage {
         share_key_storage: Arc<dyn ShareKeyStorage>,
         folder_key_storage: Arc<dyn FolderKeyStorage>,
         core_event_storage: Arc<dyn CoreEventStorage>,
+        organization_policy_storage: Arc<dyn OrganizationPolicyStorage>,
     ) -> Self {
         Self {
             share_key_storage,
             folder_key_storage,
             core_event_storage,
+            organization_policy_storage,
         }
     }
 }
@@ -52,5 +57,9 @@ impl DataStorage for CliDataStorage {
 
     async fn get_core_event_storage(&self) -> Arc<dyn CoreEventStorage> {
         self.core_event_storage.clone()
+    }
+
+    async fn get_organization_policy_storage(&self) -> Arc<dyn OrganizationPolicyStorage> {
+        self.organization_policy_storage.clone()
     }
 }

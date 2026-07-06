@@ -166,7 +166,7 @@ pub fn setup_user_access_with_limits(
         success(GetUserInfoResponse {
             access: UserInfo {
                 plan: PassPlan {
-                    type_: plan_type,
+                    plan_type,
                     internal_name: TEST_PLAN_NAME.to_string(),
                     display_name: "Test Plan".to_string(),
                     manage_subscription: false,
@@ -254,7 +254,7 @@ pub fn setup_paid_user(api: &ProtonAPI) {
         success(GetUserInfoResponse {
             access: UserInfo {
                 plan: PassPlan {
-                    type_: PlanType::Plus,
+                    plan_type: PlanType::Plus,
                     internal_name: "plus2022".to_string(),
                     display_name: "Plus".to_string(),
                     manage_subscription: false,
