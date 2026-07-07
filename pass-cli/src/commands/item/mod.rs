@@ -107,7 +107,7 @@ pub enum ItemCommands {
         #[arg(long, default_value = "viewer")]
         role: Role,
     },
-    #[command(about = "View an item", alias = "get", alias = "read")]
+    #[command(about = "View an item", alias = "get", alias = "show")]
     View {
         #[arg(long, help = "Share ID of the vault containing the item")]
         share_id: Option<String>,

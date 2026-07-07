@@ -347,14 +347,14 @@ rm -P /tmp/id_ed25519_temp  # macOS
 
     Once imported, your SSH keys can be loaded into any SSH agent using the [`ssh-agent load`](./ssh-agent.md#ssh-agent-integration) command or by starting Proton Pass CLI's built-in SSH agent with [`ssh-agent start`](./ssh-agent.md#proton-pass-cli-as-your-ssh-agent).
 
-### view (aliases: `get`, `read`)
+### view (aliases: `get`, `show`)
 
 View an item's details.
 
 ```bash
 pass-cli item view [OPTIONS] [URI]
 pass-cli item get [OPTIONS] [URI]
-pass-cli item read [OPTIONS] [URI]
+pass-cli item show [OPTIONS] [URI]
 ```
 
 **Description:**
@@ -413,8 +413,8 @@ pass-cli item view "pass://abc123def/item456/totp?totp=uri"
 # Using the 'get' alias
 pass-cli item get --share-id "abc123def" --item-id "item456"
 
-# Using the 'read' alias
-pass-cli item read --vault-name "MyVault" --item-title "MyItem"
+# Using the 'show' alias
+pass-cli item show --vault-name "MyVault" --item-title "MyItem"
 ```
 
 ### update
