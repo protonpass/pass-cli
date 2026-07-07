@@ -53,11 +53,14 @@ pub enum ItemCommands {
         #[arg(
             long = "vault-name",
             value_name = "VAULT_NAME",
+            conflicts_with = "share_id",
             help = "Name of the vault to list items from"
         )]
         vault_name_long: Option<String>,
         #[arg(
             value_name = "VAULT_NAME",
+            conflicts_with = "share_id",
+            conflicts_with = "vault_name_long",
             help = "Name of the vault to list items from (positional)"
         )]
         vault_name_pos: Option<String>,
