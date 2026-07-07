@@ -50,8 +50,17 @@ pub enum ItemCommands {
     List {
         #[arg(long, help = "Share ID of the vault to list items from")]
         share_id: Option<String>,
-        #[arg(help = "Name of the vault to list items from")]
-        vault_name: Option<String>,
+        #[arg(
+            long = "vault-name",
+            value_name = "VAULT_NAME",
+            help = "Name of the vault to list items from"
+        )]
+        vault_name_long: Option<String>,
+        #[arg(
+            value_name = "VAULT_NAME",
+            help = "Name of the vault to list items from (positional)"
+        )]
+        vault_name_pos: Option<String>,
         #[arg(
             long,
             help = "Filter items by type (note, login, alias, credit-card, identity, ssh-key, wifi, custom)"
@@ -95,7 +104,7 @@ pub enum ItemCommands {
         #[arg(long, default_value = "viewer")]
         role: Role,
     },
-    #[command(about = "View an item")]
+    #[command(about = "View an item", alias = "get", alias = "read")]
     View {
         #[arg(long, help = "Share ID of the vault containing the item")]
         share_id: Option<String>,
@@ -200,13 +209,16 @@ pub async fn run(subcommand: ItemCommands, client: PassClient) -> Result<()> {
     match subcommand {
         ItemCommands::List {
             share_id,
-            vault_name,
+            vault_name_long,
+            vault_name_pos,
             filter_type,
             filter_state,
             sort_by,
             output,
             show_secrets,
         } => {
+            // Combine positional and long vault_name arguments
+            let vault_name = vault_name_long.or(vault_name_pos);
             let query = match (&share_id, &vault_name) {
                 (None, None) => {
                     if let Some(default_share_id) =
