@@ -36,7 +36,7 @@ pass-cli item list [OPTIONS] [VAULT_NAME]
 **Mutually exclusive options:**
 
 - `--share-id`, `--vault-name`, and positional `VAULT_NAME` are mutually exclusive. You can provide one, or none if a default vault is configured.
-- `--vault-name` and positional `VAULT_NAME` serve the same purpose; use whichever is more convenient for your script.
+- `--vault-name` and positional `VAULT_NAME` serve the same purpose but **cannot be used together**. Use either `--vault-name VAULT_NAME` or just `VAULT_NAME` as a positional argument, not both.
 
 **Using default settings:**
 

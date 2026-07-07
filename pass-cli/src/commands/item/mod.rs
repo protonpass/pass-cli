@@ -220,6 +220,13 @@ pub async fn run(subcommand: ItemCommands, client: PassClient) -> Result<()> {
             output,
             show_secrets,
         } => {
+            // Error if both --vault-name and positional VAULT_NAME are provided
+            if vault_name_long.is_some() && vault_name_pos.is_some() {
+                return Err(anyhow!(
+                    "Cannot specify both --vault-name and positional VAULT_NAME. \
+                     Please use either '--vault-name VAULT_NAME' or just 'VAULT_NAME' as a positional argument, not both."
+                ));
+            }
             // Combine positional and long vault_name arguments
             let vault_name = vault_name_long.or(vault_name_pos);
             let query = match (&share_id, &vault_name) {
