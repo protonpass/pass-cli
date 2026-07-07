@@ -23,22 +23,24 @@ The `item` command provides operations for managing items within vaults. Items a
 List items in vaults.
 
 ```bash
-pass-cli item list [VAULT_NAME] [--share-id SHARE_ID] [--output FORMAT]
+pass-cli item list [OPTIONS] [VAULT_NAME]
 ```
 
 **Options:**
 
-- `VAULT_NAME` - Name of the vault to list items from. Specify `VAULT_NAME` if you are not passing a `--share-id`. Used as an argument
-- `--share-id SHARE_ID` - Share ID of the vault to list items from. Specify `--share-id` if you are not passing a `VAULT_NAME`. Used as a flag
+- `VAULT_NAME` - Name of the vault to list items from (positional argument)
+- `--share-id SHARE_ID` - Share ID of the vault to list items from
+- `--vault-name VAULT_NAME` - Name of the vault to list items from (alternative to positional argument)
 - `--output FORMAT` - Output format: `human` or `json`. Uses default format from settings if not specified.
 
 **Mutually exclusive options:**
 
-- `--share-id` and `VAULT_NAME` are mutually exclusive. You can provide one, or neither if a default vault is configured.
+- `--share-id`, `--vault-name`, and positional `VAULT_NAME` are mutually exclusive. You can provide one, or none if a default vault is configured.
+- `--vault-name` and positional `VAULT_NAME` are mutually exclusive; use whichever is more convenient for your script.
 
 **Using default settings:**
 
-If you have set a default vault using [`settings set default-vault`](settings.md#set-default-vault), you can omit both `VAULT_NAME` and `--share-id`. Similarly, if you've set a default output format, you can omit `--output`.
+If you have set a default vault using [`settings set default-vault`](settings.md#set-default-vault), you can omit all vault identification parameters. Similarly, if you've set a default output format, you can omit `--output`.
 
 **Examples:**
 
@@ -46,8 +48,11 @@ If you have set a default vault using [`settings set default-vault`](settings.md
 # List items using default vault and format (requires settings configured)
 pass-cli item list
 
-# List items in a specific vault by name
+# List items in a specific vault by name (positional)
 pass-cli item list "Personal Vault"
+
+# List items in a specific vault by name (using --vault-name flag)
+pass-cli item list --vault-name "Personal Vault"
 
 # List items in a specific vault by share ID
 pass-cli item list --share-id "abc123def"
@@ -342,13 +347,19 @@ rm -P /tmp/id_ed25519_temp  # macOS
 
     Once imported, your SSH keys can be loaded into any SSH agent using the [`ssh-agent load`](./ssh-agent.md#ssh-agent-integration) command or by starting Proton Pass CLI's built-in SSH agent with [`ssh-agent start`](./ssh-agent.md#proton-pass-cli-as-your-ssh-agent).
 
-### view
+### view (aliases: `get`, `show`)
 
 View an item's details.
 
 ```bash
 pass-cli item view [OPTIONS] [URI]
+pass-cli item get [OPTIONS] [URI]
+pass-cli item show [OPTIONS] [URI]
 ```
+
+**Description:**
+
+The `view` command displays details about a specific item. For convenience, this command is also available under the aliases `get` and `read`, which are commonly used in other password managers.
 
 **Options:**
 
@@ -398,6 +409,12 @@ pass-cli item view "pass://abc123def/item456/totp"
 
 # View a TOTP field and get the raw otpauth:// URI
 pass-cli item view "pass://abc123def/item456/totp?totp=uri"
+
+# Using the 'get' alias
+pass-cli item get --share-id "abc123def" --item-id "item456"
+
+# Using the 'show' alias
+pass-cli item show --vault-name "MyVault" --item-title "MyItem"
 ```
 
 ### update

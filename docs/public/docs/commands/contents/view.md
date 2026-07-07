@@ -1,10 +1,16 @@
-# `view` command
+# `view` command (aliases: `get`, `read`)
 
 View an item's details.
 
 ```bash
 pass-cli item view [OPTIONS] [URI]
+pass-cli item get [OPTIONS] [URI]
+pass-cli item read [OPTIONS] [URI]
 ```
+
+**Description:**
+
+The `view` command displays details about a specific item. For convenience, this command is also available under the aliases `get` and `read`, which are commonly used in other password managers.
 
 **Options:**
 
@@ -41,5 +47,11 @@ pass-cli item view --share-id "abc123def" --item-id "item456" --field "username"
 
 # View item in JSON format
 pass-cli item view --share-id "abc123def" --item-id "item456" --output json
+
+# Using the 'get' alias
+pass-cli item get --share-id "abc123def" --item-id "item456"
+
+# Using the 'read' alias
+pass-cli item read --vault-name "MyVault" --item-title "MyItem"
 ```
 
