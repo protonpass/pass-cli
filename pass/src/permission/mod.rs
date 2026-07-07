@@ -17,6 +17,7 @@
  *
  */
 
+use crate::organization::{OrganizationAliasCreateMode, OrganizationVaultCreateMode};
 use crate::{PassClient, PassClientContext, PassPlan, PlanType};
 use anyhow::{Context, Result, anyhow};
 use pass_domain::{AccountType, ItemContent, ItemId, PermissionFlag, ShareId, ShareType};
@@ -114,6 +115,9 @@ impl<C: PassClientContext> PassClient<C> {
     }
 
     async fn create_vault_guard(&self, plan: PassPlan) -> Result<()> {
+        self.check_organization_vault_creation(plan.plan_type)
+            .await?;
+
         let vault_limit = match plan.vault_limit {
             None => return Ok(()),
             Some(limit) => limit,
@@ -127,6 +131,63 @@ impl<C: PassClientContext> PassClient<C> {
             Err(anyhow!(
                 "Cannot create a new vault ({vault_count}/{vault_limit})"
             ))
+        }
+    }
+
+    async fn check_organization_vault_creation(&self, plan_type: PlanType) -> Result<()> {
+        let org_policy = self.get_organization_policy_for_plan(plan_type).await?;
+
+        // If no organization policy applies, allow vault creation
+        let Some(org_policy) = org_policy else {
+            return Ok(());
+        };
+
+        let is_org_admin = org_policy.can_update;
+        match org_policy.settings.vault_create_mode {
+            OrganizationVaultCreateMode::Allowed => Ok(()),
+            OrganizationVaultCreateMode::OnlyOrgAdmins => {
+                if is_org_admin {
+                    return Ok(());
+                }
+                Err(anyhow!(
+                    "Your organization does not allow you to create new vaults"
+                ))
+            }
+            OrganizationVaultCreateMode::OnlyOrgAdminsAndPersonalVault => {
+                if is_org_admin {
+                    return Ok(());
+                }
+                // Check if user already owns a vault (Personal Vault)
+                let shares = self.list_shares().await?;
+                let has_owned_vault = shares
+                    .iter()
+                    .filter(|share| share.is_vault_share() && share.is_owner())
+                    .count()
+                    > 0;
+
+                if !has_owned_vault {
+                    return Ok(());
+                }
+                Err(anyhow!(
+                    "Your organization only allows you to create a personal vault, but you already have one"
+                ))
+            }
+        }
+    }
+
+    async fn check_organization_alias_creation(&self, plan_type: PlanType) -> Result<()> {
+        let org_policy = self.get_organization_policy_for_plan(plan_type).await?;
+
+        // If no organization policy applies, allow alias creation
+        let Some(org_policy) = org_policy else {
+            return Ok(());
+        };
+
+        match org_policy.settings.alias_create_mode {
+            OrganizationAliasCreateMode::AllowedForAllMembers => Ok(()),
+            OrganizationAliasCreateMode::Nobody => Err(anyhow!(
+                "Your organization does not allow you to create aliases"
+            )),
         }
     }
 
@@ -185,6 +246,9 @@ impl<C: PassClientContext> PassClient<C> {
     }
 
     async fn create_alias_guard(&self, plan: PassPlan) -> Result<()> {
+        self.check_organization_alias_creation(plan.plan_type)
+            .await?;
+
         let alias_limit = match plan.alias_limit {
             None => return Ok(()),
             Some(limit) => limit,
@@ -265,7 +329,7 @@ impl<C: PassClientContext> PassClient<C> {
     }
 
     async fn create_paid_item_guard(&self, plan: PassPlan) -> Result<()> {
-        match plan.type_ {
+        match plan.plan_type {
             PlanType::Free => Err(anyhow!(
                 "Your plan does not include creating this type of item"
             )),

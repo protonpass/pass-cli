@@ -173,15 +173,15 @@ pub async fn run(mut args: LoginArgs, client: PassClient) -> Result<()> {
     // Handle password generation options
     let password = if let Some(settings) = args.generate_password {
         if settings.is_empty() {
-            Some(generate_default_password()?)
+            Some(generate_default_password(&client).await?)
         } else {
-            Some(generate_custom_password(&settings)?)
+            Some(generate_custom_password(&client, &settings).await?)
         }
     } else if let Some(word_count) = args.generate_passphrase {
         if word_count.is_empty() {
-            Some(generate_default_passphrase()?)
+            Some(generate_default_passphrase(&client).await?)
         } else {
-            Some(generate_custom_passphrase(&word_count)?)
+            Some(generate_custom_passphrase(&client, &word_count).await?)
         }
     } else {
         args.password
@@ -225,7 +225,7 @@ async fn create_login_from_template(
     Ok(())
 }
 
-fn generate_default_password() -> Result<String> {
+async fn generate_default_password(client: &PassClient) -> Result<String> {
     let config = RandomPasswordConfig {
         length: 16,
         numbers: true,
@@ -233,11 +233,13 @@ fn generate_default_password() -> Result<String> {
         symbols: true,
     };
 
-    pass::password::generate(PasswordGenerationArgs::Random(config))
+    client
+        .generate_password(PasswordGenerationArgs::Random(config))
+        .await
         .context("Failed to generate default password")
 }
 
-fn generate_custom_password(custom_args: &str) -> Result<String> {
+async fn generate_custom_password(client: &PassClient, custom_args: &str) -> Result<String> {
     let parts: Vec<&str> = custom_args.split(',').collect();
 
     if parts.is_empty() {
@@ -267,11 +269,13 @@ fn generate_custom_password(custom_args: &str) -> Result<String> {
         symbols,
     };
 
-    pass::password::generate(PasswordGenerationArgs::Random(config))
+    client
+        .generate_password(PasswordGenerationArgs::Random(config))
+        .await
         .context("Failed to generate custom password")
 }
 
-fn generate_default_passphrase() -> Result<String> {
+async fn generate_default_passphrase(client: &PassClient) -> Result<String> {
     let config = PassphraseConfig {
         separator: WordSeparator::Hyphens,
         capitalise: true,
@@ -279,11 +283,13 @@ fn generate_default_passphrase() -> Result<String> {
         count: 5,
     };
 
-    pass::password::generate(PasswordGenerationArgs::Passphrase(config))
+    client
+        .generate_password(PasswordGenerationArgs::Passphrase(config))
+        .await
         .context("Failed to generate default passphrase")
 }
 
-fn generate_custom_passphrase(word_count_str: &str) -> Result<String> {
+async fn generate_custom_passphrase(client: &PassClient, word_count_str: &str) -> Result<String> {
     let count = word_count_str
         .parse::<u32>()
         .with_context(|| format!("Invalid word count: {word_count_str}"))?;
@@ -295,6 +301,8 @@ fn generate_custom_passphrase(word_count_str: &str) -> Result<String> {
         count,
     };
 
-    pass::password::generate(PasswordGenerationArgs::Passphrase(config))
+    client
+        .generate_password(PasswordGenerationArgs::Passphrase(config))
+        .await
         .context("Failed to generate custom passphrase")
 }

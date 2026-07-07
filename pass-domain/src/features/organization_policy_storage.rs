@@ -17,13 +17,16 @@
  *
  */
 
-use crate::{CoreEventStorage, FolderKeyStorage, OrganizationPolicyStorage, ShareKeyStorage};
-use std::sync::Arc;
+use crate::models::organization_policy::OrganizationInfo;
+use anyhow::Result;
+
+pub struct OrganizationPolicyEntry {
+    pub policy: OrganizationInfo,
+    pub updated_at: i64,
+}
 
 #[async_trait::async_trait]
-pub trait DataStorage: Send + Sync {
-    async fn get_share_key_storage(&self) -> Arc<dyn ShareKeyStorage>;
-    async fn get_folder_key_storage(&self) -> Arc<dyn FolderKeyStorage>;
-    async fn get_core_event_storage(&self) -> Arc<dyn CoreEventStorage>;
-    async fn get_organization_policy_storage(&self) -> Arc<dyn OrganizationPolicyStorage>;
+pub trait OrganizationPolicyStorage: Send + Sync {
+    async fn get_policy(&self) -> Result<Option<OrganizationPolicyEntry>>;
+    async fn set_policy(&self, policy: &OrganizationInfo) -> Result<()>;
 }

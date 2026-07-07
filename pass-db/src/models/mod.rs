@@ -20,6 +20,7 @@
 mod activity_time;
 mod core_event_cursor;
 mod folder_key;
+mod organization_policy;
 mod share_key;
 mod telemetry_event;
 mod user_setting;
@@ -27,6 +28,7 @@ mod user_setting;
 pub use activity_time::ActivityTimeModel;
 pub use core_event_cursor::CoreEventCursorModel;
 pub use folder_key::FolderKeyModel;
+pub use organization_policy::OrganizationPolicyModel;
 pub use share_key::ShareKeyModel;
 pub use telemetry_event::TelemetryEventModel;
 pub use user_setting::{Setting, UserSettingModel};

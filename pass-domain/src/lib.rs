@@ -21,12 +21,12 @@
 mod macros;
 
 pub mod crypto;
-mod feature_flag;
-mod features;
-mod models;
-mod protos;
+pub mod feature_flag;
+pub mod features;
+pub mod models;
+pub mod protos;
 pub mod telemetry;
-mod types;
+pub mod types;
 pub mod utils;
 
 macro_rules! implement_custom_methods {
@@ -67,6 +67,7 @@ pub use models::folder::*;
 pub use models::group::*;
 pub use models::invite::*;
 pub use models::item::*;
+pub use models::organization_policy::*;
 pub use models::personal_access_token::*;
 pub use models::share::*;
 pub use models::vault::*;

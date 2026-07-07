@@ -36,7 +36,7 @@ pub enum PlanType {
 pub struct PassPlan {
     /// Type of plan for this user, can be free, plus or business
     #[serde(rename = "Type")]
-    pub type_: PlanType,
+    pub plan_type: PlanType,
     /// Internal name of the plan
     #[serde(rename = "InternalName")]
     pub internal_name: String,

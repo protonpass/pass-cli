@@ -17,7 +17,9 @@
  *
  */
 
-use anyhow::{Context, Result};
+use crate::organization::OrganizationPasswordPolicy;
+use crate::{PassClient, PassClientContext};
+use anyhow::{Context, Result, anyhow};
 
 pub enum PasswordGenerationArgs {
     Random(RandomPasswordConfig),
@@ -99,6 +101,116 @@ pub fn generate(args: PasswordGenerationArgs) -> Result<String> {
                 .generate_passphrase(&mapped)
                 .context("Error generating passphrase")
         }
+    }
+}
+
+fn validate_random_password_config(
+    config: &RandomPasswordConfig,
+    policy: &OrganizationPasswordPolicy,
+) -> Result<()> {
+    if !policy.random_password_allowed {
+        return Err(anyhow!(
+            "Your organization does not allow generating random passwords"
+        ));
+    }
+    if let Some(min) = policy.random_password_min_length
+        && config.length < min
+    {
+        return Err(anyhow!(
+            "Your organization requires random passwords to be at least {min} characters long"
+        ));
+    }
+    if let Some(max) = policy.random_password_max_length
+        && config.length > max
+    {
+        return Err(anyhow!(
+            "Your organization requires random passwords to be at most {max} characters long"
+        ));
+    }
+    if let Some(true) = policy.random_password_must_include_numbers
+        && !config.numbers
+    {
+        return Err(anyhow!(
+            "Your organization requires random passwords to include numbers"
+        ));
+    }
+    if let Some(true) = policy.random_password_must_include_symbols
+        && !config.symbols
+    {
+        return Err(anyhow!(
+            "Your organization requires random passwords to include symbols"
+        ));
+    }
+    if let Some(true) = policy.random_password_must_include_uppercase
+        && !config.uppercase_letters
+    {
+        return Err(anyhow!(
+            "Your organization requires random passwords to include uppercase characters"
+        ));
+    }
+    Ok(())
+}
+
+fn validate_passphrase_config(
+    config: &PassphraseConfig,
+    policy: &OrganizationPasswordPolicy,
+) -> Result<()> {
+    if !policy.memorable_password_allowed {
+        return Err(anyhow!(
+            "Your organization does not allow generating memorable passwords"
+        ));
+    }
+    if let Some(min) = policy.memorable_password_min_words
+        && config.count < min
+    {
+        return Err(anyhow!(
+            "Your organization requires memorable passwords to have at least {min} words"
+        ));
+    }
+    if let Some(max) = policy.memorable_password_max_words
+        && config.count > max
+    {
+        return Err(anyhow!(
+            "Your organization requires memorable passwords to have at most {max} words"
+        ));
+    }
+    if let Some(true) = policy.memorable_password_must_capitalize
+        && !config.capitalise
+    {
+        return Err(anyhow!(
+            "Your organization requires memorable passwords to capitalise words"
+        ));
+    }
+    if let Some(true) = policy.memorable_password_must_include_numbers
+        && !config.include_numbers
+    {
+        return Err(anyhow!(
+            "Your organization requires memorable passwords to include numbers"
+        ));
+    }
+    Ok(())
+}
+
+fn validate_against_policy(
+    args: &PasswordGenerationArgs,
+    policy: &OrganizationPasswordPolicy,
+) -> Result<()> {
+    match args {
+        PasswordGenerationArgs::Random(config) => validate_random_password_config(config, policy),
+        PasswordGenerationArgs::Passphrase(config) => validate_passphrase_config(config, policy),
+    }
+}
+
+impl<C: PassClientContext> PassClient<C> {
+    pub async fn generate_password(&self, args: PasswordGenerationArgs) -> Result<String> {
+        if let Some(org_policy) = self
+            .get_organization_policy()
+            .await
+            .context("Error getting organization policy")?
+        {
+            validate_against_policy(&args, &org_policy.settings.password_policy)?;
+        }
+        generate(args)
     }
 }
 

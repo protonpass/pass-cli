@@ -26,6 +26,7 @@ pub(crate) mod folder;
 pub(crate) mod group;
 pub(crate) mod invite;
 pub(crate) mod item;
+pub mod organization_policy;
 pub(crate) mod personal_access_token;
 pub(crate) mod share;
 pub(crate) mod vault;

@@ -21,7 +21,8 @@ pub(crate) mod env_key_provider;
 pub(crate) mod keyring;
 
 use crate::storage::{
-    CliDataStorage, DatabaseCoreEventStorage, DatabaseFolderKeyStorage, DatabaseShareKeyStorage,
+    CliDataStorage, DatabaseCoreEventStorage, DatabaseFolderKeyStorage,
+    DatabaseOrganizationPolicyStorage, DatabaseShareKeyStorage,
 };
 use crate::telemetry::SqliteTelemetryHandler;
 use anyhow::{Context, Result};
@@ -92,6 +93,7 @@ pub struct CliClientFeatures {
     pub share_key_storage: Arc<DatabaseShareKeyStorage>,
     pub folder_key_storage: Arc<DatabaseFolderKeyStorage>,
     pub core_event_storage: Arc<DatabaseCoreEventStorage>,
+    pub organization_policy_storage: Arc<DatabaseOrganizationPolicyStorage>,
     pub user_id: Arc<RwLock<Option<String>>>,
 
     #[allow(dead_code)]
@@ -123,10 +125,13 @@ impl CliClientFeatures {
         let share_key_storage = Arc::new(DatabaseShareKeyStorage::new(db.clone()));
         let folder_key_storage = Arc::new(DatabaseFolderKeyStorage::new(db.clone()));
         let core_event_storage = Arc::new(DatabaseCoreEventStorage::new(db.clone()));
+        let organization_policy_storage =
+            Arc::new(DatabaseOrganizationPolicyStorage::new(db.clone()));
         let data_storage: Arc<dyn DataStorage> = Arc::new(CliDataStorage::new(
             share_key_storage.clone(),
             folder_key_storage.clone(),
             core_event_storage.clone(),
+            organization_policy_storage.clone(),
         ));
 
         Ok(Self {
@@ -138,6 +143,7 @@ impl CliClientFeatures {
             share_key_storage,
             folder_key_storage,
             core_event_storage,
+            organization_policy_storage,
             key_provider,
         })
     }
@@ -150,7 +156,8 @@ impl CliClientFeatures {
         self.telemetry_handler.set_user_id(user_id.clone()).await;
         self.share_key_storage.set_user_id(user_id.clone()).await;
         self.folder_key_storage.set_user_id(user_id.clone()).await;
-        self.core_event_storage.set_user_id(user_id).await;
+        self.core_event_storage.set_user_id(user_id.clone()).await;
+        self.organization_policy_storage.set_user_id(user_id).await;
     }
 
     pub async fn get_user_id(&self) -> Option<String> {
