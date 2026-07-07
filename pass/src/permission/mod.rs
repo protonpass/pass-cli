@@ -176,13 +176,19 @@ impl<C: PassClientContext> PassClient<C> {
     }
 
     async fn check_organization_alias_creation(&self, plan_type: PlanType) -> Result<()> {
-        if let Some(org_policy) = self.get_organization_policy_for_plan(plan_type).await?
-            && org_policy.settings.alias_create_mode == OrganizationAliasCreateMode::Nobody {
-                return Err(anyhow!(
-                    "Your organization does not allow you to create aliases"
-                ));
-            }
-        Ok(())
+        let org_policy = self.get_organization_policy_for_plan(plan_type).await?;
+
+        // If no organization policy applies, allow alias creation
+        let Some(org_policy) = org_policy else {
+            return Ok(());
+        };
+
+        match org_policy.settings.alias_create_mode {
+            OrganizationAliasCreateMode::AllowedForAllMembers => Ok(()),
+            OrganizationAliasCreateMode::Nobody => Err(anyhow!(
+                "Your organization does not allow you to create aliases"
+            )),
+        }
     }
 
     async fn update_vault_guard(&self, share_id: ShareId) -> Result<()> {

@@ -17,7 +17,7 @@
  *
  */
 
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use pass_db::{DatabaseManager, OrganizationPolicyModel};
 use pass_domain::{
     OrganizationPolicyEntry, OrganizationPolicyStorage,
@@ -79,8 +79,7 @@ impl OrganizationPolicyStorage for DatabaseOrganizationPolicyStorage {
     async fn set_policy(&self, policy: &OrganizationInfo) -> Result<()> {
         let user_id = self.user_id.read().await.clone();
         let Some(user_id) = user_id else {
-            warn!("No user_id set, skipping organization policy storage");
-            return Ok(());
+            return Err(anyhow!("No user_id set, cannot store organization policy"));
         };
         OrganizationPolicyModel::upsert(&self.db, &user_id, policy).await
     }
