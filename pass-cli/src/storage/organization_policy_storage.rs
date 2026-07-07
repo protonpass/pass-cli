@@ -26,7 +26,7 @@ use pass_domain::{
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-const ORGANIZATION_POLICY_CACHE_TTL_SECS: i64 = 8 * 60 * 60; // 8 hours
+const ORGANIZATION_POLICY_CACHE_TTL_SECS: i64 = 3600; // 1 hour
 
 fn is_stale(updated_at: i64, now: i64) -> bool {
     now - updated_at >= ORGANIZATION_POLICY_CACHE_TTL_SECS
