@@ -23,7 +23,7 @@ use pass_domain::{
     PublicKey, UnlockedAddressKey, UnlockedAddressKeys, UserKey, UserKeyExt,
 };
 use proton_crypto::crypto::{
-    DataEncoding, Decryptor, DecryptorSync, PGPProviderSync, Verifier, VerifierSync,
+    DataEncoding, Decryptor, DecryptorSync, PGPProviderSync, VerifiedData, Verifier, VerifierSync,
 };
 use proton_crypto_account::keys::{
     ArmoredPrivateKey, EncryptedKeyToken, KeyId, KeyTokenSignature, LockedKey, UserKeys,
@@ -337,6 +337,11 @@ fn unlock_address_key_with_passphrase<T: PGPProviderSync>(
     address_key: &AddressKey,
     passphrase: T::VerifiedData,
 ) -> Result<UnlockedAddressKey> {
+    if let Err(e) = passphrase.verification_result() {
+        warn!("Error verifying address passphrase signature: {e:#}");
+        return Err(anyhow!(e));
+    }
+
     let as_private_key = provider
         .private_key_import(&address_key.private_key, passphrase, DataEncoding::Auto)
         .context("Error importing private address key for unlock with passphrase")?;

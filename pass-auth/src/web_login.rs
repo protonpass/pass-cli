@@ -36,7 +36,7 @@ use pass_domain::aes_gcm::aead::{Aead, Payload};
 use pass_domain::aes_gcm::{AesGcm, KeyInit};
 use std::str::FromStr;
 use std::sync::Arc;
-use zeroize::{Zeroize, ZeroizeOnDrop};
+use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 
 const POLL_INTERVAL_SECONDS: u64 = 10;
 const MAX_POLL_ATTEMPTS: u32 = 60; // 60 times every 10 seconds -> 10 minutes total
@@ -135,8 +135,9 @@ fn decrypt_payload(encryption_key: &[u8], payload: &str) -> Result<SessionPayloa
     let decrypted = cipher
         .decrypt(nonce, payload)
         .map_err(|e| anyhow!("Error decrypting payload: {e}"))?;
+    let decrypted_zeroizing = Zeroizing::new(decrypted);
     let parsed: SessionPayload =
-        serde_json::from_slice(&decrypted).context("Error parsing payload")?;
+        serde_json::from_slice(&decrypted_zeroizing).context("Error parsing payload")?;
 
     Ok(parsed)
 }
