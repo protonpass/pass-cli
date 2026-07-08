@@ -34,8 +34,7 @@ use pass_domain::{
 use pass_fs::RealFsStorage;
 use pass_pgp::{NativePgpCrypto, ProtonAccountCrypto};
 use std::env;
-use std::fs::File;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::info;
@@ -186,28 +185,30 @@ impl FsLocalKeyProvider {
 
         info!("Couldn't find local key file, generating one");
 
-        Self::create_key_file(&key_path).context("Error creating local key file")?;
-
         let key = pass_domain::crypto::generate_encryption_key();
-        tokio::fs::write(key_path, &key)
-            .await
-            .context("Error writing key")?;
-
-        Ok(key)
-    }
-
-    fn create_key_file(path: &Path) -> Result<File> {
-        let f = File::create(path).context("Error creating local key file")?;
 
         #[cfg(not(target_os = "windows"))]
         {
-            use std::fs::Permissions;
-            use std::os::unix::fs::PermissionsExt;
-            f.set_permissions(Permissions::from_mode(0o600))
-                .context("Error setting permissions")?;
+            use std::fs::OpenOptions;
+            use std::io::Write;
+            use std::os::unix::fs::OpenOptionsExt;
+            let mut file = OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .mode(0o600)
+                .open(&key_path)
+                .context("Error creating local key file")?;
+            file.write_all(&key).context("Error writing key")?;
         }
 
-        Ok(f)
+        #[cfg(target_os = "windows")]
+        {
+            tokio::fs::write(&key_path, &key)
+                .await
+                .context("Error writing key")?;
+        }
+
+        Ok(key)
     }
 
     fn local_key_path(&self) -> Result<PathBuf> {
