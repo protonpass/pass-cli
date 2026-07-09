@@ -86,8 +86,9 @@ fn load_dotenv_file(path: &str) -> Result<DotenvFile> {
             let value = line[eq_pos + 1..].trim().to_string();
 
             // Remove quotes if present
-            let value = if (value.starts_with('"') && value.ends_with('"'))
-                || (value.starts_with('\'') && value.ends_with('\''))
+            let value = if (value.len() >= 2)
+                && ((value.starts_with('"') && value.ends_with('"'))
+                    || (value.starts_with('\'') && value.ends_with('\'')))
             {
                 value[1..value.len() - 1].to_string()
             } else {
@@ -633,5 +634,46 @@ _PRIVATE=secret
             masked, "The key is <concealed by Proton Pass>",
             "resolved .env secret value must be masked in output"
         );
+    }
+
+    #[test]
+    fn test_load_dotenv_file_single_quote_value() {
+        use std::io::Write;
+        use tempfile::NamedTempFile;
+
+        // Test that a value that is exactly one quote character doesn't panic
+        // KEY=" means the value is literally just one double-quote character
+        // KEY='' means the value is literally just one single-quote character
+        let content = r#"
+SINGLE_DOUBLE_QUOTE="
+SINGLE_SINGLE_QUOTE='
+TWO_CHAR_DOUBLE="ab"
+TWO_CHAR_SINGLE='ab'
+EMPTY_QUOTED=""
+EMPTY_QUOTED_SINGLE=''
+"#;
+
+        let mut temp_file = NamedTempFile::new().unwrap();
+        temp_file.write_all(content.as_bytes()).unwrap();
+        temp_file.flush().unwrap();
+
+        let result = load_dotenv_file(temp_file.path().to_str().unwrap()).unwrap();
+
+        // SINGLE_* should keep their single quote as-is since len < 2 (no stripping)
+        // TWO_CHAR_* should have quotes stripped
+        // EMPTY_QUOTED_* should become empty strings
+        assert_eq!(result.vars.len(), 6);
+        assert_eq!(result.vars[0].name, "SINGLE_DOUBLE_QUOTE");
+        assert_eq!(result.vars[0].value, "\""); // Single quote preserved (len < 2, no stripping)
+        assert_eq!(result.vars[1].name, "SINGLE_SINGLE_QUOTE");
+        assert_eq!(result.vars[1].value, "'"); // Single quote preserved (len < 2, no stripping)
+        assert_eq!(result.vars[2].name, "TWO_CHAR_DOUBLE");
+        assert_eq!(result.vars[2].value, "ab");
+        assert_eq!(result.vars[3].name, "TWO_CHAR_SINGLE");
+        assert_eq!(result.vars[3].value, "ab");
+        assert_eq!(result.vars[4].name, "EMPTY_QUOTED");
+        assert_eq!(result.vars[4].value, "");
+        assert_eq!(result.vars[5].name, "EMPTY_QUOTED_SINGLE");
+        assert_eq!(result.vars[5].value, "");
     }
 }
