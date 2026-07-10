@@ -5,6 +5,22 @@
 ### Other
 -->
 
+## 2.2.3 (2026-07-10)
+
+### Features :tada:
+
+- `pass-cli` now checks organization policies locally before performing operations.
+
+### Fixes :bug:
+
+- Some fixes and improvements regarding parsing and memory handling.
+- Added some aliases for some commands.
+
+### Other
+
+- `item list` now supports VAULT_NAME as positional argument or as `--` argument.
+- Dependency upgrades.
+
 ## 2.2.2 (2026-07-02)
 
 ### Features :tada:
