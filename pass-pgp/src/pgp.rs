@@ -165,12 +165,9 @@ impl pass_domain::PgpCrypto for NativePgpCrypto {
             .decrypt(data, DataEncoding::Bytes)
             .context("Could not decrypt data")?;
 
-        match res.verification_result() {
-            Ok(info) => trace!("Verification successful: {info:?}"),
-            Err(err) => {
-                warn!("Error verifying signature: {err:?}");
-                return Err(anyhow!("Error verifying signature"));
-            }
+        if let Err(err) = res.verification_result() {
+            warn!("Error verifying signature: {err:?}");
+            return Err(anyhow!("Error verifying signature"));
         }
 
         Ok(res.as_ref().to_vec())
@@ -236,12 +233,9 @@ impl pass_domain::PgpCrypto for NativePgpCrypto {
             },
         };
 
-        match res.verification_result() {
-            Ok(info) => trace!("Verification successful: {info:?}"),
-            Err(err) => {
-                warn!("Error verifying signature: {err:?}");
-                return Err(anyhow!("Error verifying signature"));
-            }
+        if let Err(err) = res.verification_result() {
+            warn!("Error verifying signature: {err:?}");
+            return Err(anyhow!("Error verifying signature"));
         }
 
         Ok(res.as_ref().to_vec())

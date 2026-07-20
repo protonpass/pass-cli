@@ -33,14 +33,19 @@ pub fn create_client_config() -> Result<ClientConfig> {
 }
 
 pub fn create_client_config_with_base_dir(base_dir: PathBuf) -> Result<ClientConfig> {
-    Ok(ClientConfig {
+    let config = ClientConfig {
         base_dir,
         environment: std::env::var(pass_auth::ENVIRONMENT_ENV_VAR).ok(),
         proxy_config: pass_auth::ProxyConfig::from_env(),
         debug_config: pass_auth::config::DebugConfig::from_env(),
         app_header: None,
         post_login_config: pass_auth::PostLoginConfig::default(),
-    })
+        product_name: Some("Pass".to_string()),
+        product_version: Some(env!("CARGO_PKG_VERSION").to_string()),
+        locale: Some(pass_domain::headers::detect_locale()),
+    };
+
+    Ok(config)
 }
 
 pub fn create_authenticator(client_features: Arc<CliClientFeatures>) -> Result<Authenticator> {

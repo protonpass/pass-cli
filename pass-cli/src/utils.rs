@@ -44,9 +44,8 @@ pub fn ask_for_input(prompt: &str, secure: bool) -> anyhow::Result<String> {
 
             if !value.trim().is_empty() {
                 return Ok(value.replace("\n", "").trim().to_string());
-            } else {
-                eprintln!("Value is empty");
             }
+            eprintln!("Value is empty");
         }
     }
 }
@@ -105,7 +104,7 @@ pub fn create_sdk() -> anyhow::Result<Sdk> {
     Sdk::new("pass-cli", env!("CARGO_PKG_VERSION")).context("Cannot create Sdk instance")
 }
 
-/// Format a timestamp (UTC) to current system timezine with time portion
+/// Format a timestamp (UTC) to current system timezone with time portion
 #[allow(dead_code)]
 pub fn format_timestamp_with_time(timestamp: Timestamp) -> String {
     let zoned = timestamp.to_zoned(TimeZone::system());

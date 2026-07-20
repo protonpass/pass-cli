@@ -17,32 +17,25 @@
  *
  */
 
-#[macro_use]
-extern crate tracing;
+use super::{OsInfo, OsInfoResult};
+use sysinfo::System;
 
-pub mod authenticator;
-pub mod callbacks;
-pub mod client_builder;
-pub mod config;
-pub mod error;
-pub mod extra_password;
-pub mod interactive_login;
-pub mod os;
-pub mod personal_access_token;
-pub mod post_login;
-pub mod storage;
-pub mod store;
-mod utils;
-pub mod web_login;
+pub fn get_windows_os_info() -> OsInfoResult {
+    let os_name = "Windows".to_string();
+    let os_version = System::kernel_version().unwrap_or_else(|| "10.0.0".to_string());
+    let platform = Some(System::cpu_arch());
 
-pub use authenticator::Authenticator;
-pub use callbacks::{AuthEventHandler, CredentialProvider};
-pub use client_builder::ENVIRONMENT_ENV_VAR;
-pub use config::{ClientConfig, DebugConfig, PostLoginConfig, ProxyConfig};
-pub use error::AuthError;
-pub use storage::SessionStorage;
-pub use store::{PassSessionStore, SharedPassSessionStore};
+    Ok(OsInfo::new(os_name, os_version, platform))
+}
 
-// Re-exports for ease of use
-pub use pass_domain::headers;
-pub use pass_domain::os_info;
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_windows_os_info() {
+        let info = get_windows_os_info().unwrap();
+        assert_eq!(info.os_name, "Windows");
+        assert!(!info.os_version.is_empty());
+    }
+}
