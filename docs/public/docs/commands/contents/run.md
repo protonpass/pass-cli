@@ -134,13 +134,17 @@ pass-cli run --no-masking -- ./my-app
 pass-cli run -- ./my-app --config production --verbose
 ```
 
-### Interactive programs
+### Scripts and non-interactive programs
 
-The command supports stdin/stdout/stderr forwarding:
+The `run` command is designed to execute scripts and non-interactive programs with secrets injected as environment variables. It forwards stdin, stdout, and stderr to allow basic input/output operations.
+
+Note that `pass-cli run` is not intended to provide a full TTY experience for interactive programs, but more aimed for simple scripting needs where secrets need to be injected, this command works well:
 
 ```bash
-pass-cli run -- python
+pass-cli run -- ./my-script.sh
 ```
+
+For fully interactive terminal applications requiring pseudo-terminal support, please run your program directly without `pass-cli run` and set up secrets through other means, such as via `export MY_SECRET=$(pass-cli item view "pass://...")`.
 
 ### Complex example
 

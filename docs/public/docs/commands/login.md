@@ -264,7 +264,7 @@ After successful login:
 - Your session is stored in a platform-specific location
 - The session persists across command invocations
 - Use `pass-cli logout` to end the session
-- Use `pass-cli test` to verify your session is valid
+- Use `pass-cli info` to verify your session is valid
 
 ## Troubleshooting
 

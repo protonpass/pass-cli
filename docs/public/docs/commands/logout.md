@@ -110,12 +110,11 @@ To verify logout was successful:
 
 ```bash
 # This should require authentication
-pass-cli test
+pass-cli info
 # Expected: Error indicating authentication is required
 ```
 
 ## Related commands
 
 - **[login](login.md)** - Authenticate and start a new session
-- **[test](test.md)** - Verify current authentication status
 - **[info](info.md)** - Display current session information

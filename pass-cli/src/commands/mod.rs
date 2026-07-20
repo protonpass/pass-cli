@@ -40,7 +40,6 @@ pub mod settings_helper;
 pub mod share;
 pub mod ssh_agent;
 pub mod support;
-pub mod test;
 pub mod totp;
 pub mod update;
 pub mod user;
