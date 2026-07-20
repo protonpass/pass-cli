@@ -30,6 +30,7 @@ use muon::common::{EnvProxy, Proxy};
 use muon::env::{Env, Environment};
 use parking_lot::RwLock;
 use pass_domain::LocalKeyProvider;
+use pass_domain::headers::{ClientHeaders, HeaderBuilder};
 use rand_chacha::ChaCha20Rng;
 use rand_chacha::rand_core::SeedableRng;
 use std::sync::Arc;
@@ -37,6 +38,26 @@ use std::sync::Arc;
 pub const ENVIRONMENT_ENV_VAR: &str = "PROTON_PASS_ENVIRONMENT";
 const XDEBUG_SESSION_HEADER: &str = "XDEBUG_SESSION";
 const APP_NAME: &str = "cli-pass";
+
+fn generate_headers(config: &ClientConfig) -> ClientHeaders {
+    let product_name = config
+        .product_name
+        .clone()
+        .unwrap_or_else(|| APP_NAME.to_string());
+
+    let product_version = config
+        .product_version
+        .clone()
+        .unwrap_or_else(|| env!("CARGO_PKG_VERSION").to_string());
+
+    let mut builder = HeaderBuilder::new(&product_name, &product_version);
+
+    if let Some(ref locale) = config.locale {
+        builder = builder.with_locale(locale);
+    }
+
+    builder.build()
+}
 
 fn get_env(config: &ClientConfig) -> SerializedEnv {
     let env_string = config
@@ -130,6 +151,10 @@ pub async fn create_client(
     let shared_store = SharedPassSessionStore::new(store);
     let store_ref = shared_store.inner.clone();
 
+    // Generate headers for all requests
+    let headers = generate_headers(config);
+    trace!("Generated headers: {headers:?}");
+
     // Proxy must be configured before with_persistence due to typestate constraints
     let mut transport_builder = muon::Client::builder_with_transport::<Hyper>(app, current_env)
         .with_operating_system(ProdOs::default(), ChaCha20Rng::from_os_rng())
@@ -148,6 +173,11 @@ pub async fn create_client(
     let mut builder = transport_builder
         .with_persistence(shared_store)
         .without_cookie_store();
+
+    // Apply default headers (including our custom headers)
+    for (name, value) in headers.to_http_headers() {
+        builder = builder.with_default_headers((name, value));
+    }
 
     // Add XDEBUG_SESSION header if configured
     if let Some(ref debug_config) = config.debug_config

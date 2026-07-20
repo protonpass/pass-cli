@@ -27,6 +27,9 @@ pub struct ClientConfig {
     pub debug_config: Option<DebugConfig>,
     pub app_header: Option<String>,
     pub post_login_config: PostLoginConfig,
+    pub product_name: Option<String>,
+    pub product_version: Option<String>,
+    pub locale: Option<String>,
 }
 
 impl ClientConfig {
@@ -38,6 +41,9 @@ impl ClientConfig {
             debug_config: None,
             app_header: None,
             post_login_config: PostLoginConfig::default(),
+            product_name: None,
+            product_version: None,
+            locale: None,
         }
     }
 
@@ -63,6 +69,21 @@ impl ClientConfig {
 
     pub fn with_post_login_config(mut self, post_login_config: PostLoginConfig) -> Self {
         self.post_login_config = post_login_config;
+        self
+    }
+
+    pub fn with_product_name(mut self, name: String) -> Self {
+        self.product_name = Some(name);
+        self
+    }
+
+    pub fn with_product_version(mut self, version: String) -> Self {
+        self.product_version = Some(version);
+        self
+    }
+
+    pub fn with_locale(mut self, locale: String) -> Self {
+        self.locale = Some(locale);
         self
     }
 }

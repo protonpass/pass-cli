@@ -152,6 +152,9 @@ pub async fn get_client(
         debug_config: pass_auth::config::DebugConfig::from_env(),
         app_header: Some(get_app_header()),
         post_login_config: pass_auth::PostLoginConfig::default(),
+        product_name: Some("Pass".to_string()),
+        product_version: Some(env!("CARGO_PKG_VERSION").to_string()),
+        locale: Some(pass_domain::headers::detect_locale()),
     };
 
     let result = pass_auth::client_builder::create_client(
