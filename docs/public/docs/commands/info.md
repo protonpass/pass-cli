@@ -55,9 +55,6 @@ pass-cli info
 echo "=== Session Information ==="
 pass-cli info
 
-echo "=== Connection Test ==="
-pass-cli test
-
 echo "=== Available Vaults ==="
 pass-cli vault list
 ```
@@ -112,6 +109,5 @@ The `info` command shows information that is mainly safe to display to the opera
 
 - **[login](login.md)** - Authenticate and create a session
 - **[logout](logout.md)** - End current session
-- **[test](test.md)** - Test connection and authentication
 - **[user info](user.md#info)** - More detailed user account information
 - **[session](session.md)** - Create, remove, or trigger the session lock
