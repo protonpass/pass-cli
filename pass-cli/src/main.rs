@@ -83,8 +83,6 @@ enum Commands {
         #[arg(long, help = "Force logout even if remote logout fails")]
         force: bool,
     },
-    #[command(about = "Test if the authenticated connection can be established")]
-    Test,
     #[command(about = "Show information about the current session")]
     Info {
         #[arg(short, long, value_enum, help = "Output format")]
@@ -375,7 +373,6 @@ async fn run() -> Result<()> {
 
     match cli.command {
         Commands::Logout { .. } => commands::logout::run(client).await,
-        Commands::Test => commands::test::run(client).await,
         Commands::Info { output } => commands::info::run(client, base_dir, output, store).await,
         Commands::Inject {
             file_mode,
