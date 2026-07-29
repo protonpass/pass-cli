@@ -61,6 +61,20 @@ impl Manager for EncryptedSqliteManager {
         let key = self.get_sqlcipher_key();
 
         tokio::task::spawn_blocking(move || {
+            // Check if file does not exist and create it with right permissions
+            #[cfg(unix)]
+            {
+                use std::fs::{OpenOptions, Permissions};
+                use std::os::unix::fs::PermissionsExt;
+
+                if !std::path::Path::new(&path).exists() {
+                    let mut options = OpenOptions::new();
+                    options.write(true).create(true).truncate(false);
+                    let _ = options.open(&path);
+                    let _ = std::fs::set_permissions(&path, Permissions::from_mode(0o600));
+                }
+            }
+
             let conn = rusqlite::Connection::open(&path)?;
             // Set SQLCipher encryption key immediately after opening
             // Use pragma_update instead of execute because PRAGMA key returns results
