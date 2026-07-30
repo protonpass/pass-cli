@@ -78,6 +78,8 @@ impl PersonalAccessTokenQuery {
 
 #[derive(Clone, Debug, clap::ValueEnum)]
 pub enum PatExpiration {
+    #[value(name = "1h")]
+    OneHour,
     #[value(name = "1d")]
     OneDay,
     #[value(name = "1w")]
@@ -100,7 +102,7 @@ pub enum PersonalAccessTokenCommands {
         name: String,
         #[arg(
             long,
-            help = "Expiration for the personal access token (1d, 1w, 1m, 3m, 6m, 1y)"
+            help = "Expiration for the personal access token (1h, 1d, 1w, 1m, 3m, 6m, 1y)"
         )]
         expiration: PatExpiration,
         #[arg(long)]
@@ -124,7 +126,7 @@ pub enum PersonalAccessTokenCommands {
         personal_access_token_name: Option<String>,
         #[arg(
             long,
-            help = "New expiration for the personal access token (1d, 1w, 1m, 3m, 6m, 1y)"
+            help = "New expiration for the personal access token (1h, 1d, 1w, 1m, 3m, 6m, 1y)"
         )]
         expiration: PatExpiration,
         #[arg(long)]
@@ -139,6 +141,7 @@ pub enum PersonalAccessTokenCommands {
 
 pub fn expiration_to_timestamp(expiration: &PatExpiration) -> Result<i64> {
     let span = match expiration {
+        PatExpiration::OneHour => Span::new().hours(1),
         PatExpiration::OneDay => Span::new().days(1),
         PatExpiration::OneWeek => Span::new().weeks(1),
         PatExpiration::OneMonth => Span::new().months(1),

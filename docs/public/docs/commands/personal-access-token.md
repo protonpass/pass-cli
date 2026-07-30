@@ -47,7 +47,7 @@ Creates a new personal access token. The token is printed immediately after crea
 | Flag | Required | Description                                                                            |
 |---|---|----------------------------------------------------------------------------------------|
 | `--name` | Yes | A descriptive name for the token                                                       |
-| `--expiration` | Yes | How long until the token expires: `1d`, `1w`, `1m`, `3m`, `6m`, `1y`                   |
+| `--expiration` | Yes | How long until the token expires: `1h`, `1d`, `1w`, `1m`, `3m`, `6m`, `1y`                  |
 | `--output` | No | Output format: `human` (default, unless you have defined it in the `settings`) or `json` |
 
 ### Example
@@ -106,7 +106,7 @@ Renews a token with a new expiration date, starting from now. A renewed token ou
 |----------------------------------------------|---|---|
 | `--personal-access-token-id` / `--pat-id`    | One of these | Token ID to renew |
 | `--personal-access-token-name` / `--pat-name` | One of these | Token name to renew |
-| `--expiration`                               | Yes | New expiration: `1d`, `1w`, `1m`, `3m`, `6m`, `1y` |
+| `--expiration`                               | Yes | New expiration: `1h`, `1d`, `1w`, `1m`, `3m`, `6m`, `1y` |
 | `--output`                                   | No | Output format: `human` or `json` |
 
 ```bash

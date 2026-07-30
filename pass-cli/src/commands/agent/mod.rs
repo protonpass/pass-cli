@@ -81,7 +81,7 @@ pub enum AgentCommands {
     Create {
         #[arg(help = "Agent name")]
         name: String,
-        #[arg(long, help = "Expiration (1d, 1w, 1m, 3m, 6m, 1y)")]
+        #[arg(long, help = "Expiration (1h, 1d, 1w, 1m, 3m, 6m, 1y)")]
         expiration: crate::commands::personal_access_token::PatExpiration,
         #[arg(
             long = "vault",
@@ -121,7 +121,7 @@ pub enum AgentCommands {
     Renew {
         #[arg(help = "Agent name")]
         name: String,
-        #[arg(long, help = "New expiration (1d, 1w, 1m, 3m, 6m, 1y)")]
+        #[arg(long, help = "New expiration (1h, 1d, 1w, 1m, 3m, 6m, 1y)")]
         expiration: crate::commands::personal_access_token::PatExpiration,
         #[arg(long)]
         output: Option<crate::commands::OutputFormat>,
