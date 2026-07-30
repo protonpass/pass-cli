@@ -83,7 +83,7 @@ Creates a new agent. The output is always JSON and contains the token string and
 | Argument | Required | Description |
 |---|---|---|
 | `<NAME>` | Yes | A name for the agent |
-| `--expiration` | Yes | Token lifetime: `1d`, `1w`, `1m`, `3m`, `6m`, `1y` |
+| `--expiration` | Yes | Token lifetime: `1h`, `1d`, `1w`, `1m`, `3m`, `6m`, `1y` |
 | `--vault` | No | Vault name to grant access to. Can be repeated to grant access to multiple vaults |
 
 If you skip `--vault` you can grant access later with `agent access grant`. You may specify `--vault <VAULT_NAME>` many times to grant access to resources in one go.
@@ -138,7 +138,7 @@ Issues a new token for the agent with a new expiration date. The old token stops
 | Argument | Required | Description |
 |---|---|---|
 | `<NAME>` | Yes | Agent name |
-| `--expiration` | Yes | New lifetime: `1d`, `1w`, `1m`, `3m`, `6m`, `1y` |
+| `--expiration` | Yes | New lifetime: `1h`, `1d`, `1w`, `1m`, `3m`, `6m`, `1y` |
 | `--output` | No | `json` (default) prints the full JSON payload; `human` prints only the token string |
 
 ```bash
