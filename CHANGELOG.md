@@ -5,6 +5,21 @@
 ### Other
 -->
 
+## 2.2.4 (2026-07-31)
+
+### Features :tada:
+
+- PAT and Agent expiration can now be granted for 1h.
+
+### Fixes :bug:
+
+- Fix permissions for file creation for the locally encrypted db.
+
+### Other
+
+- Documentation fixes.
+- Removal of `pass-cli test`.
+
 ## 2.2.3 (2026-07-10)
 
 ### Features :tada:
