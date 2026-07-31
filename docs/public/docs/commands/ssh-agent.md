@@ -281,29 +281,29 @@ The lookup order is:
 
 The daemon does not modify your shell environment. You need to set `SSH_AUTH_SOCK` yourself so that SSH tools can find the socket.
 
-=== "Linux"
+**Linux**
 
-    Add the following line to your `~/.bashrc` or `~/.zshrc`:
+Add the following line to your `~/.bashrc` or `~/.zshrc`:
 
-    ```bash
-    export SSH_AUTH_SOCK="$HOME/.ssh/proton-pass-agent.sock"
-    ```
+```bash
+export SSH_AUTH_SOCK="$HOME/.ssh/proton-pass-agent.sock"
+```
 
-=== "macOS"
+**macOS** 
 
-    Add the following line to your `~/.zshrc` (or `~/.bashrc` if you use Bash):
+Add the following line to your `~/.zshrc` (or `~/.bashrc` if you use Bash):
 
-    ```bash
-    export SSH_AUTH_SOCK="$HOME/.ssh/proton-pass-agent.sock"
-    ```
+```bash
+export SSH_AUTH_SOCK="$HOME/.ssh/proton-pass-agent.sock"
+```
 
-=== "Windows (PowerShell)"
+**Windows (PowerShell)**
 
-    Add the following line to your PowerShell profile (`$PROFILE`):
+Add the following line to your PowerShell profile (`$PROFILE`):
 
-    ```powershell
-    $env:SSH_AUTH_SOCK = "$env:USERPROFILE\.ssh\proton-pass-agent.sock"
-    ```
+```powershell
+$env:SSH_AUTH_SOCK = "$env:USERPROFILE\.ssh\proton-pass-agent.sock"
+```
 
 ### Starting the daemon automatically on login
 
@@ -311,80 +311,80 @@ If you want the daemon to start automatically when you log in, the recommended a
 
 Take into account that these files are examples that you may need to adapt to your use-case, such as the path
 
-=== "Linux (systemd)"
+**Linux (systemd)**
 
-    Create the file `~/.config/systemd/user/proton-pass-ssh-agent.service`:
+Create the file `~/.config/systemd/user/proton-pass-ssh-agent.service`:
 
-    ```ini
-    [Unit]
-    Description=Proton Pass SSH Agent
+```ini
+[Unit]
+Description=Proton Pass SSH Agent
 
-    [Service]
-    ExecStart=/home/youruser/.local/bin/pass-cli ssh-agent start --socket-path %h/.ssh/proton-pass-agent.sock
-    Restart=on-failure
+[Service]
+ExecStart=/home/youruser/.local/bin/pass-cli ssh-agent start --socket-path %h/.ssh/proton-pass-agent.sock
+Restart=on-failure
 
-    [Install]
-    WantedBy=default.target
-    ```
+[Install]
+WantedBy=default.target
+```
 
-    Then enable and start it:
+Then enable and start it:
 
-    ```bash
-    systemctl --user enable --now proton-pass-ssh-agent.service
-    ```
+```bash
+systemctl --user enable --now proton-pass-ssh-agent.service
+```
 
-=== "macOS (launchctl)"
+**macOS (launchctl)**
 
-    Create the file `~/Library/LaunchAgents/com.proton.pass-cli.ssh-agent.plist`:
+Create the file `~/Library/LaunchAgents/com.proton.pass-cli.ssh-agent.plist`:
 
-    ```xml
-    <?xml version="1.0" encoding="UTF-8"?>
-    <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
-      "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-    <plist version="1.0">
-    <dict>
-      <key>Label</key>
-      <string>com.proton.pass-cli.ssh-agent</string>
-      <key>ProgramArguments</key>
-      <array>
-        <string>/Users/youruser/.local/bin/pass-cli</string>
-        <string>ssh-agent</string>
-        <string>start</string>
-      </array>
-      <key>RunAtLoad</key>
-      <true/>
-      <key>KeepAlive</key>
-      <true/>
-    </dict>
-    </plist>
-    ```
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.proton.pass-cli.ssh-agent</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/youruser/.local/bin/pass-cli</string>
+    <string>ssh-agent</string>
+    <string>start</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+</dict>
+</plist>
+```
 
-    Then load it:
+Then load it:
 
-    ```bash
-    launchctl load ~/Library/LaunchAgents/com.proton.pass-cli.ssh-agent.plist
-    ```
+```bash
+launchctl load ~/Library/LaunchAgents/com.proton.pass-cli.ssh-agent.plist
+```
 
-=== "Windows (Task Scheduler)"
+**Windows (Task Scheduler)**
 
-    Open Task Scheduler, create a new task with:
+Open Task Scheduler, create a new task with:
 
-    - **Trigger:** At log on
-    - **Action:** Start a program
-    - **Program:** `pass-cli`
-    - **Arguments:** `ssh-agent start`
-    - **Settings:** Check "Run whether user is logged on or not" if you want it to run in the background without a visible window.
+- **Trigger:** At log on
+- **Action:** Start a program
+- **Program:** `pass-cli`
+- **Arguments:** `ssh-agent start`
+- **Settings:** Check "Run whether user is logged on or not" if you want it to run in the background without a visible window.
 
-    Alternatively, from an elevated PowerShell prompt:
+Alternatively, from an elevated PowerShell prompt:
 
-    ```powershell
-    $action = New-ScheduledTaskAction -Execute "pass-cli" -Argument "ssh-agent start"
-    $trigger = New-ScheduledTaskTrigger -AtLogOn
-    $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit 0
-    Register-ScheduledTask -TaskName "ProtonPassSSHAgent" -Action $action -Trigger $trigger -Settings $settings
-    ```
+```powershell
+$action = New-ScheduledTaskAction -Execute "pass-cli" -Argument "ssh-agent start"
+$trigger = New-ScheduledTaskTrigger -AtLogOn
+$settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit 0
+Register-ScheduledTask -TaskName "ProtonPassSSHAgent" -Action $action -Trigger $trigger -Settings $settings
+```
 
-The `daemon start` / `daemon stop` commands are a simpler alternative when you just want to start and stop the agent on demand, without setting up a system service.
+The `daemon start` / `daemon stop` commands are a simpler alternative when you just want to start and stop the agent on demand, without setting up a system service. However, they require you to run that command manually at least once.
 
 ## Debugging SSH key items
 
