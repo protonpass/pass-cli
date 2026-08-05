@@ -22,6 +22,7 @@ mod daemon;
 mod debug;
 mod event_handler;
 mod event_processor;
+mod fs;
 mod key_load;
 mod key_storage;
 mod load_agent;
