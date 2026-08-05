@@ -17,6 +17,7 @@
  *
  */
 
+use crate::commands::ssh_agent::fs::safe_ensure_dir_exists;
 use anyhow::{Context, Result, anyhow};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -41,7 +42,7 @@ struct DaemonInfo {
 
 fn write_pid_file(path: &Path, info: &DaemonInfo) -> Result<()> {
     if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent).context("Failed to create PID file directory")?;
+        safe_ensure_dir_exists(parent).context("Failed to create PID file directory")?;
     }
     let content = serde_json::to_string_pretty(info).context("Failed to serialize PID file")?;
     std::fs::write(path, content).context("Failed to write PID file")
@@ -108,7 +109,7 @@ pub fn run_daemon_start(
 
     if let Some(ref log_path) = log_file {
         if let Some(parent) = log_path.parent() {
-            std::fs::create_dir_all(parent)
+            safe_ensure_dir_exists(parent)
                 .with_context(|| format!("Failed to create log directory: {}", parent.display()))?;
         }
         let file = std::fs::OpenOptions::new()

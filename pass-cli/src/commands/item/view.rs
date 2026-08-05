@@ -147,7 +147,7 @@ pub async fn run(
                 println!("{}", value);
             }
             Some(field_value) => println!("{}", field_value.value()),
-            None => bail!("Field does not exist: {}", &field),
+            None => bail!("Field does not exist: {}", field),
         }
     } else {
         match output {

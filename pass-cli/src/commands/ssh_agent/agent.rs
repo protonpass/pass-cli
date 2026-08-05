@@ -35,6 +35,7 @@ use super::event_handler::SshAgentEventHandler;
 use super::event_processor::SshEventProcessor;
 use super::key_storage::{IdentitySource, KeyStorage};
 use super::{SshIdentity, VaultQuery, get_default_socket_path};
+use crate::commands::ssh_agent::fs::safe_ensure_dir_exists;
 use crate::helpers::CliPassClient as PassClient;
 use ssh_key::private::KeypairData;
 use ssh_key::{Algorithm, HashAlg, Signature};
@@ -74,9 +75,9 @@ pub async fn start_agent(
 
         // Ensure parent directory exists
         if let Some(parent) = socket_path.parent() {
-            tokio::fs::create_dir_all(parent)
-                .await
-                .context("Failed to create socket directory")?;
+            safe_ensure_dir_exists(parent).with_context(|| {
+                format!("Failed to create socket directory: {}", parent.display())
+            })?;
         }
 
         // Create Unix socket
