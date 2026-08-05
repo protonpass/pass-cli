@@ -5,6 +5,16 @@
 ### Other
 -->
 
+## 2.2.5 (2026-08-05)
+
+### Fixes :bug:
+
+- Fix permissions for file creation for the ssh agent files.
+
+### Other
+
+- Dependency upgrades.
+
 ## 2.2.4 (2026-07-31)
 
 ### Features :tada:
