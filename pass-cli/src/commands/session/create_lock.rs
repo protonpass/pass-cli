@@ -48,6 +48,9 @@ pub async fn run(
     if client.is_agent_session() {
         bail!("Session lock is not available for agent sessions");
     }
+    if client.is_pat_account() {
+        bail!("Session lock is not available for PAT sessions");
+    }
     if store.read().get_session_lock_after_seconds().is_some() {
         bail!("Session already has a lock");
     }
