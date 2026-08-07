@@ -25,7 +25,7 @@ use ssh_agent_lib::agent::{ListeningSocket, Session, listen};
 use ssh_agent_lib::error::AgentError;
 use ssh_agent_lib::proto::extension::{QueryResponse, SessionBind};
 use ssh_agent_lib::proto::{
-    AddIdentity, AddIdentityConstrained, AddSmartcardKeyConstrained, Credential, Extension,
+    AddIdentity, AddIdentityConstrained, AddSmartcardKeyConstrained, Extension, PrivateCredential,
     RemoveIdentity, SignRequest, SmartcardKey, message,
 };
 use ssh_key::{private::PrivateKey as SshPrivateKey, public::PublicKey as SshPublicKey};
@@ -235,7 +235,7 @@ impl Session for KeyStorage {
             // For now, always return the regular public key
             // Certificates are handled during signing, not in identity listing
             identities.push(message::Identity {
-                pubkey: identity.pubkey_data.clone(),
+                credential: identity.pubkey_data.clone().into(),
                 comment: identity.comment.clone(),
             })
         }
@@ -243,7 +243,7 @@ impl Session for KeyStorage {
     }
 
     async fn sign(&mut self, sign_request: SignRequest) -> Result<Signature, AgentError> {
-        let pubkey: SshPublicKey = sign_request.pubkey.clone().into();
+        let pubkey: SshPublicKey = sign_request.credential.key_data().clone().into();
 
         debug!(
             "Sign request for public key: {}",
@@ -380,7 +380,7 @@ impl Session for KeyStorage {
 
     async fn add_identity(&mut self, identity: AddIdentity) -> Result<(), AgentError> {
         match identity.credential {
-            Credential::Key { privkey, comment } => {
+            PrivateCredential::Key { privkey, comment } => {
                 let privkey = SshPrivateKey::try_from(privkey).map_err(AgentError::other)?;
                 let identity =
                     SshIdentity::new(privkey, comment, IdentitySource::User).map_err(|e| {
@@ -389,7 +389,7 @@ impl Session for KeyStorage {
                 self.identity_add(identity).await;
                 Ok(())
             }
-            Credential::Cert {
+            PrivateCredential::Cert {
                 algorithm,
                 certificate,
                 comment,
@@ -445,7 +445,7 @@ impl Session for KeyStorage {
     }
 
     async fn remove_identity(&mut self, identity: RemoveIdentity) -> Result<(), AgentError> {
-        let pubkey: SshPublicKey = identity.pubkey.into();
+        let pubkey: SshPublicKey = identity.credential.key_data().clone().into();
         info!(
             "Received a remove_identity request for pubkey: {}",
             pubkey.fingerprint(HashAlg::Sha256)
