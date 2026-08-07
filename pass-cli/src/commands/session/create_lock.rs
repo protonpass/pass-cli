@@ -51,7 +51,15 @@ pub async fn run(
     if store.read().get_session_lock_after_seconds().is_some() {
         bail!("Session already has a lock");
     }
-    let pin = ask_for_input("Enter lock code: ", true).context("Error reading lock code")?;
+    let pin_first = ask_for_input("Enter lock code: ", true).context("Error reading lock code")?;
+    let pin_second =
+        ask_for_input("Re-enter lock code: ", true).context("Error reading lock code")?;
+
+    if pin_first != pin_second {
+        bail!("Lock codes do not match");
+    }
+
+    let pin = pin_first;
 
     let lock_time = lock_time.unwrap_or(DEFAULT_LOCK_TIME);
     let lock_time = validate_lock_time(lock_time)?;
