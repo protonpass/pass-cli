@@ -59,7 +59,7 @@ libc = "0.2"
 nix = { version = "0.31.3", features = ["signal", "process"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-apple-native-keyring-store = { version = "1.0.0", features = ["keychain"] }
+apple-native-keyring-store = { version = "=1.0.0", features = ["keychain"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 linux-keyutils-keyring-store = "1.0.0"
