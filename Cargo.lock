@@ -428,6 +428,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
+name = "base64"
+version = "0.23.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ac07cdecf99051d9a5238b80f35af32cdeba5b336e55d957b318b50137e18da5"
+
+[[package]]
 name = "base64ct"
 version = "1.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -439,7 +445,7 @@ version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "abaf6da45c74385272ddf00e1ac074c7d8a6c1a1dda376902bd6a427522a8b2c"
 dependencies = [
- "base64",
+ "base64 0.22.1",
  "blowfish",
  "getrandom 0.3.4",
  "subtle",
@@ -1974,7 +1980,7 @@ version = "0.3.7"
 source = "sparse+https://rust-registry.proton.me/index/"
 checksum = "b7b5cc13d44c7e3187ab354735d01d8cf091673f8b6405c71b1a02ef3c86e25c"
 dependencies = [
- "base64",
+ "base64 0.22.1",
  "bindgen",
  "hex",
  "zeroize",
@@ -2283,7 +2289,7 @@ version = "0.1.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "96547c2556ec9d12fb1578c4eaf448b04993e7fb79cbaad930a656880a6bdfa0"
 dependencies = [
- "base64",
+ "base64 0.22.1",
  "bytes",
  "futures-channel",
  "futures-util",
@@ -3601,7 +3607,7 @@ dependencies = [
  "async-lock",
  "async-trait",
  "axum",
- "base64",
+ "base64 0.23.1",
  "bytes",
  "futures",
  "jiff",
@@ -3626,7 +3632,7 @@ dependencies = [
  "anyhow",
  "async-compat",
  "async-trait",
- "base64",
+ "base64 0.23.1",
  "futures",
  "muon",
  "parking_lot",
@@ -3649,7 +3655,7 @@ dependencies = [
  "anyhow",
  "apple-native-keyring-store",
  "async-trait",
- "base64",
+ "base64 0.23.1",
  "clap",
  "clap_complete",
  "dirs",
@@ -3862,7 +3868,7 @@ version = "3.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d30c53c26bc5b31a98cd02d20f25a7c8567146caf63ed593a9d87b2775291be"
 dependencies = [
- "base64",
+ "base64 0.22.1",
  "serde_core",
 ]
 
@@ -3934,7 +3940,7 @@ dependencies = [
  "aes-gcm",
  "aes-kw",
  "argon2",
- "base64",
+ "base64 0.22.1",
  "bitfields",
  "block-padding",
  "blowfish",
@@ -4320,7 +4326,7 @@ version = "0.19.2"
 source = "sparse+https://rust-registry.proton.me/index/"
 checksum = "44da3c028bdac38410c5ed802d3aa673395ae1782a62a3faf8808ff579744a45"
 dependencies = [
- "base64",
+ "base64 0.22.1",
  "derive_more 2.1.1",
  "futures",
  "hex",
@@ -4425,7 +4431,7 @@ version = "0.8.3"
 source = "sparse+https://rust-registry.proton.me/index/"
 checksum = "b5faf161c5694eb762a27f0e6327a430e197ccecaf6229def019e8ab6e934dc0"
 dependencies = [
- "base64",
+ "base64 0.22.1",
  "bcrypt",
  "crypto-bigint",
  "getrandom 0.2.17",
@@ -4770,7 +4776,7 @@ version = "0.12.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eddd3ca559203180a307f12d114c268abf583f59b03cb906fd0b3ff8646c1147"
 dependencies = [
- "base64",
+ "base64 0.22.1",
  "bytes",
  "futures-core",
  "futures-util",
@@ -5260,7 +5266,7 @@ version = "3.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "76a5c54c7310e7b8b9577c286d7e399ddd876c3e12b3ed917a8aabc4b96e9e8c"
 dependencies = [
- "base64",
+ "base64 0.22.1",
  "bs58",
  "chrono",
  "hex",
@@ -5561,9 +5567,9 @@ dependencies = [
 
 [[package]]
 name = "ssh-agent-lib"
-version = "0.5.2"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3d0582e6e5724c4a5d038472976e8fad64d824b3de37210aa60c35883e3e766"
+checksum = "b528981371b3bfdfe927a5ef37221446e0ba44551e673b569fd0fd38e5dcb292"
 dependencies = [
  "async-trait",
  "byteorder",
