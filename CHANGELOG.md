@@ -5,6 +5,18 @@
 ### Other
 -->
 
+## 2.2.6 (2026-08-10)
+
+### Fixes :bug:
+
+- Prevent PAT sessions from enabling session lock with a meaningful message.
+- Request confirmation of session lock code when enabling it.
+
+### Other
+
+- Reverted back macOS keychain to previous lock behaviour.
+- Dependency upgrades.
+
 ## 2.2.5 (2026-08-05)
 
 ### Fixes :bug:
