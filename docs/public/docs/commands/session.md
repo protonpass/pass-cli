@@ -15,6 +15,8 @@ pass-cli session remove-lock
 
 The `session` command lets you add a lock code-based lock to your active session. When the session is locked, all operations that require the Proton Pass API are blocked until you unlock it with the correct lock code. This is useful when you want to keep your session authenticated but prevent anyone with access to your terminal from running commands. The lock is enforced server-side: even if local state is tampered with, the Proton Pass API will reject requests until the session is unlocked. The lock also auto-expires after the configured timeout, at which point the session becomes unusable again without a lock code.
 
+The session lock is only available for standard user sessions. PAT sessions and agent sessions cannot have a session lock, and they have a lifetime of 2 hours.
+
 ## Subcommands
 
 ### create-lock

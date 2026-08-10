@@ -2,6 +2,7 @@
 
 Agents are a way to give an AI agent or automated process scoped, audited access to your Proton Pass secrets.
 Each agent is a personal access token with a dedicated flag that enables access logging, so you can see which items were read, when, and for what stated reason.
+Agent sessions have a lifetime of 2 hours and cannot have a session lock.
 
 ## How it works
 

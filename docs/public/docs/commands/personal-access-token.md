@@ -18,7 +18,7 @@ pass-cli personal-access-token <COMMAND>
 
 Personal access tokens let you authenticate with Proton Pass without using your full account credentials. Each token can be scoped to specific vaults or individual items, and you control the permission level - which makes them well suited for CI pipelines, automated scripts, or any environment where you don't want to hand over full account access.
 
-Tokens have a mandatory expiration date, so they automatically stop working after a set period.
+Tokens have a mandatory expiration date, so they automatically stop working after a set period. Sessions established with a personal access token have a lifetime of 2 hours, so you need to log in again once it expires. PAT sessions cannot have a session lock.
 
 ## Subcommands
 

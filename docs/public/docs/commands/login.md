@@ -165,7 +165,7 @@ PROTON_PASS_PERSONAL_ACCESS_TOKEN=pst_xxxx...xxxx::TOKENKEY pass-cli login
 pass-cli login --personal-access-token "pst_xxxx...xxxx::TOKENKEY"
 ```
 
-Once logged in, the session works like any other. Run `pass-cli info` to verify it. It will show the token name under "Personal Access Token" instead of a user email.
+Once logged in, the session works like any other. Run `pass-cli info` to verify it. It will show the token name under "Personal Access Token" instead of a user email. Note that PAT sessions have a lifetime of 2 hours and cannot have a session lock.
 
 For more details on creating tokens and managing their access, see the [`pat` command reference](personal-access-token.md).
 

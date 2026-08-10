@@ -42,7 +42,7 @@ This keeps the token out of your shell history and is the easiest option for aut
 pass-cli login --personal-access-token "pst_xxxx...xxxx::TOKENKEY"
 ```
 
-Once logged in, the CLI behaves normally. Commands like `pass-cli info` will show the token name under "Personal Access Token" instead of a user email.
+Once logged in, the CLI behaves normally. Commands like `pass-cli info` will show the token name under "Personal Access Token" instead of a user email. Note that PAT sessions have a lifetime of 2 hours and cannot have a session lock.
 
 For instructions on creating and managing tokens, see the [`pat` command reference](../commands/personal-access-token.md).
 
