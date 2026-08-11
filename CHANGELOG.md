@@ -5,6 +5,12 @@
 ### Other
 -->
 
+## 2.3.0 (2026-08-12)
+
+### Features :tada:
+
+- Add support for Proton second password.
+
 ## 2.2.6 (2026-08-10)
 
 ### Fixes :bug:
