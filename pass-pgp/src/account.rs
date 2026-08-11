@@ -247,6 +247,10 @@ impl AccountCrypto for ProtonAccountCrypto {
                 res.failed.len()
             );
 
+            for err in res.failed {
+                warn!("Failed to decrypt [key_id={}]: {:?}", key_id, err);
+            }
+
             for key in res.unlocked_keys {
                 let exported_public = provider
                     .public_key_export(&key.public_key, DataEncoding::Bytes)
@@ -261,6 +265,10 @@ impl AccountCrypto for ProtonAccountCrypto {
                     private_key: exported_private.as_ref().to_vec(),
                 })
             }
+        }
+
+        if keys.is_empty() {
+            return Err(anyhow::anyhow!("Could not decrypt any of the user keys"));
         }
 
         Ok(keys)
