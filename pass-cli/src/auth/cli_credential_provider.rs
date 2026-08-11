@@ -34,6 +34,10 @@ impl CredentialProvider for CliCredentialProvider {
         crate::client::get_password()
     }
 
+    async fn get_second_password(&self) -> Result<String> {
+        crate::client::get_second_password()
+    }
+
     async fn get_totp(&self) -> Result<String> {
         crate::client::get_totp()
     }

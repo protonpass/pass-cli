@@ -22,7 +22,7 @@ use crate::extra_password;
 use crate::os::{ProdClient, ProdContext};
 use crate::store::PassSessionStore;
 use anyhow::{Context, bail};
-use muon::auth::LoginFlow;
+use muon::auth::{LoginFlow, PasswordMode};
 use muon::common::sdk::Sdk;
 use muon::{GET, Session};
 use parking_lot::RwLock;
@@ -48,10 +48,18 @@ pub async fn perform_interactive_login(
         .context("Error creating session")?;
     let auth = session.auth();
     let password = credential_provider.get_password().await?;
+    let mut password = Zeroizing::new(password);
     let session = match auth.login(username, &password).await {
-        LoginFlow::Ok(session, _) => session,
+        LoginFlow::Ok(session, data) => {
+            if let PasswordMode::Two = data.password_mode {
+                info!("Account has TwoPassword mode, requesting it");
+                let second_password = credential_provider.get_second_password().await?;
+                password = Zeroizing::new(second_password);
+            }
+            session
+        }
 
-        LoginFlow::TwoFactor(session, _) => {
+        LoginFlow::TwoFactor(session, data) => {
             let has_totp = session.has_totp();
             let has_fido = session.fido_details().is_some();
 
@@ -65,7 +73,15 @@ pub async fn perform_interactive_login(
                             .await?;
                     }
                     let totp = credential_provider.get_totp().await?;
-                    session.totp(&totp).await?
+                    let authenticated_session = session.totp(&totp).await?;
+
+                    if let PasswordMode::Two = data.password_mode {
+                        info!("Account has TwoPassword mode, requesting it");
+                        let second_password = credential_provider.get_second_password().await?;
+                        password = Zeroizing::new(second_password);
+                    }
+
+                    authenticated_session
                 }
                 (false, true) => {
                     event_handler
@@ -101,10 +117,7 @@ pub async fn perform_interactive_login(
         .await
         .context("Error initializing session")?;
 
-    Ok(AuthenticationResult {
-        client,
-        password: Zeroizing::new(password),
-    })
+    Ok(AuthenticationResult { client, password })
 }
 
 async fn init_session(session: &Session<ProdContext>, sdk: &Sdk) -> anyhow::Result<()> {

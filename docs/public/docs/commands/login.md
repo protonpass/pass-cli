@@ -47,9 +47,10 @@ The login process follows these steps:
 
 1. **Password authentication** - You'll be prompted for your Proton account password
 2. **Two-factor authentication** (if enabled) - You'll be prompted for your TOTP token
-3. **Extra password** (if required) - Proton Pass users can configure their accounts to require an additional Pass-specific password
-4. **Initial setup** - The CLI performs first-time setup and creates a default vault named "Personal" if none exists
-5. **Permission check** - Verifies that your account is authorized to use the CLI
+3. **Second password** (if required) - Accounts with two-password mode prompt for a second password to unlock your data
+4. **Extra password** (if required) - Proton Pass users can configure their accounts to require an additional Pass-specific password
+5. **Initial setup** - The CLI performs first-time setup and creates a default vault named "Personal" if none exists
+6. **Permission check** - Verifies that your account is authorized to use the CLI
 
 ### Providing credentials
 
@@ -112,6 +113,36 @@ pass-cli login --interactive user@proton.me
 ```bash
 echo '123456' > /secure/totp.txt
 export PROTON_PASS_TOTP_FILE='/secure/totp.txt'
+pass-cli login --interactive user@proton.me
+```
+
+### Second password
+
+Accounts with two-password mode enabled require a second password, separate from your account password, to unlock your encrypted data.
+
+**Interactive (default):**
+
+If not supplied in any other way, after the password step (and after the TOTP step if enabled), you'll be prompted for your second password.
+
+```bash
+pass-cli login --interactive user@proton.me
+# Enter password:
+# (Optional) Enter TOTP:
+# Enter your second password to unlock your data:
+```
+
+**Via environment variable:**
+
+```bash
+export PROTON_PASS_SECOND_PASSWORD='your-second-password'
+pass-cli login --interactive user@proton.me
+```
+
+**Via file:**
+
+```bash
+echo 'your-second-password' > /secure/second-password.txt
+export PROTON_PASS_SECOND_PASSWORD_FILE='/secure/second-password.txt'
 pass-cli login --interactive user@proton.me
 ```
 
@@ -196,6 +227,7 @@ For scripting and automation, you can provide all credentials via environment va
 
 export PROTON_PASS_PASSWORD='your-password'
 export PROTON_PASS_TOTP='123456'
+export PROTON_PASS_SECOND_PASSWORD='your-second-password'
 export PROTON_PASS_EXTRA_PASSWORD='your-extra-password'
 
 pass-cli login --interactive user@proton.me
@@ -208,6 +240,7 @@ Or using files:
 
 export PROTON_PASS_PASSWORD_FILE='/secure/creds/password.txt'
 export PROTON_PASS_TOTP_FILE='/secure/creds/totp.txt'
+export PROTON_PASS_SECOND_PASSWORD_FILE='/secure/creds/second-password.txt'
 export PROTON_PASS_EXTRA_PASSWORD_FILE='/secure/creds/extra-password.txt'
 
 pass-cli login --interactive user@proton.me

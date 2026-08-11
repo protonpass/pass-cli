@@ -41,6 +41,8 @@ const TOTP_ENV_VAR: &str = "PROTON_PASS_TOTP";
 const TOTP_FILE_ENV_VAR: &str = "PROTON_PASS_TOTP_FILE";
 const USERNAME_ENV_VAR: &str = "PROTON_PASS_USERNAME";
 const USERNAME_FILE_ENV_VAR: &str = "PROTON_PASS_USERNAME_FILE";
+const SECOND_PASSWORD_ENV_VAR: &str = "PROTON_PASS_SECOND_PASSWORD";
+const SECOND_PASSWORD_FILE_ENV_VAR: &str = "PROTON_PASS_SECOND_PASSWORD_FILE";
 const APP_HEADER_ENV_VAR: &str = "PROTON_PASS_APP_HEADER";
 
 fn get_env() -> SerializedEnv {
@@ -94,6 +96,15 @@ pub fn get_extra_password() -> anyhow::Result<String> {
         EXTRA_PASSWORD_ENV_VAR,
         EXTRA_PASSWORD_FILE_ENV_VAR,
         "Enter Pass extra password: ",
+        true,
+    )
+}
+
+pub fn get_second_password() -> anyhow::Result<String> {
+    get_value(
+        SECOND_PASSWORD_ENV_VAR,
+        SECOND_PASSWORD_FILE_ENV_VAR,
+        "Enter your second password to unlock your data: ",
         true,
     )
 }
