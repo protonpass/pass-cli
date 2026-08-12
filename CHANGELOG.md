@@ -5,7 +5,13 @@
 ### Other
 -->
 
-## 2.3.0 (2026-08-12)
+## 2.3.1 (2026-08-12)
+
+### Fixes :bug:
+
+- Fix stream handling (`stdout` and `stderr`) for `pass-cli run`.
+
+## 2.3.0 (2026-08-11)
 
 ### Features :tada:
 
