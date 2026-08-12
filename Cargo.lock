@@ -3601,7 +3601,7 @@ dependencies = [
 
 [[package]]
 name = "pass"
-version = "2.3.0"
+version = "2.3.1"
 dependencies = [
  "anyhow",
  "async-lock",
@@ -3626,7 +3626,7 @@ dependencies = [
 
 [[package]]
 name = "pass-auth"
-version = "2.3.0"
+version = "2.3.1"
 dependencies = [
  "aes 0.8.4",
  "anyhow",
@@ -3650,7 +3650,7 @@ dependencies = [
 
 [[package]]
 name = "pass-cli"
-version = "2.3.0"
+version = "2.3.1"
 dependencies = [
  "anyhow",
  "apple-native-keyring-store",
@@ -3710,7 +3710,7 @@ dependencies = [
 
 [[package]]
 name = "pass-db"
-version = "2.3.0"
+version = "2.3.1"
 dependencies = [
  "anyhow",
  "deadpool",
@@ -3725,7 +3725,7 @@ dependencies = [
 
 [[package]]
 name = "pass-domain"
-version = "2.3.0"
+version = "2.3.1"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -3744,7 +3744,7 @@ dependencies = [
 
 [[package]]
 name = "pass-fs"
-version = "2.3.0"
+version = "2.3.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3754,7 +3754,7 @@ dependencies = [
 
 [[package]]
 name = "pass-pgp"
-version = "2.3.0"
+version = "2.3.1"
 dependencies = [
  "anyhow",
  "async-trait",
