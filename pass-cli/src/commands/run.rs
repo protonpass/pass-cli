@@ -288,7 +288,11 @@ fn handle_stream<R: Read + Send + 'static>(
             match line {
                 Ok(line) => {
                     let masked_line = mask_line(&line, &masking_regex_stdout);
-                    println!("{masked_line}");
+                    if is_stderr {
+                        eprintln!("{masked_line}");
+                    } else {
+                        println!("{masked_line}");
+                    }
                 }
                 Err(e) => {
                     if is_stderr {
