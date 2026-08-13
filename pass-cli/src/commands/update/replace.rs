@@ -81,6 +81,19 @@ fn strip_extended_length_path_prefix(path: &str) -> String {
     }
 }
 
+// Resolve the trusted Windows system directory (e.g. C:\Windows\System32)
+// from the SystemRoot environment variable, which is set by the OS and not
+// influenced by the process's current directory. Used so the update helper
+// cannot be tricked into running an attacker-planted "cmd.exe"/"xcopy.exe"
+// placed in a directory the CLI happened to be launched from.
+#[cfg(windows)]
+fn get_system_directory() -> String {
+    let system_root = std::env::var("SystemRoot")
+        .or_else(|_| std::env::var("windir"))
+        .unwrap_or_else(|_| r"C:\Windows".to_string());
+    format!(r"{system_root}\System32")
+}
+
 #[cfg(windows)]
 pub async fn replace_binary_from_dir(source_dir: &Path) -> Result<()> {
     use sha2::{Digest, Sha256};
@@ -114,16 +127,31 @@ pub async fn replace_binary_from_dir(source_dir: &Path) -> Result<()> {
 
     let script_path_str = script_path.to_string_lossy().to_string();
 
+    // Resolve every helper the batch invokes by absolute path so command
+    // resolution never falls back to PATH or the process's current
+    // directory, which an unprivileged user could otherwise plant
+    // executables in (e.g. a shared/writable working directory).
+    let system_dir = get_system_directory();
+    let cmd_exe = format!(r"{system_dir}\cmd.exe");
+    let timeout_exe = format!(r"{system_dir}\timeout.exe");
+    let tasklist_exe = format!(r"{system_dir}\tasklist.exe");
+    let find_exe = format!(r"{system_dir}\find.exe");
+    let xcopy_exe = format!(r"{system_dir}\xcopy.exe");
+
     let pid = std::process::id();
     let script_content = format!(
         "@echo off\r\n\
         :wait\r\n\
-        timeout /t 1 /nobreak >nul 2>&1\r\n\
-        tasklist /FI \"PID eq {pid}\" 2>nul | find \"{pid}\" >nul 2>&1\r\n\
+        \"{timeout_exe}\" /t 1 /nobreak >nul 2>&1\r\n\
+        \"{tasklist_exe}\" /FI \"PID eq {pid}\" 2>nul | \"{find_exe}\" \"{pid}\" >nul 2>&1\r\n\
         if not errorlevel 1 goto wait\r\n\
-        xcopy /Y /E /I /Q \"{source}\\*\" \"{dest}\\\" >nul 2>&1\r\n\
+        \"{xcopy_exe}\" /Y /E /I /Q \"{source}\\*\" \"{dest}\\\" >nul 2>&1\r\n\
         rmdir /S /Q \"{source}\" >nul 2>&1\r\n\
         del /F /Q \"{script}\" >nul 2>&1\r\n",
+        timeout_exe = timeout_exe,
+        tasklist_exe = tasklist_exe,
+        find_exe = find_exe,
+        xcopy_exe = xcopy_exe,
         pid = pid,
         source = source_dir_str,
         dest = install_dir_str,
@@ -154,8 +182,9 @@ pub async fn replace_binary_from_dir(source_dir: &Path) -> Result<()> {
     // We use 'start /B' to run in background, and CREATE_NO_WINDOW to prevent console creation
     const CREATE_NO_WINDOW: u32 = 0x08000000;
 
-    Command::new("cmd")
-        .args(&["/C", "start", "/B", "cmd", "/C", &script_path_str])
+    Command::new(&cmd_exe)
+        .args(&["/C", "start", "/B", &cmd_exe, "/C", &script_path_str])
+        .current_dir(install_dir)
         .creation_flags(CREATE_NO_WINDOW)
         .spawn()
         .context("Failed to spawn update helper")?;
