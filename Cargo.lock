@@ -3737,6 +3737,7 @@ dependencies = [
  "protoc-bin-vendored",
  "rand 0.10.2",
  "serde",
+ "serde_json",
  "strum 0.28.0",
  "sysinfo",
  "uuid",
