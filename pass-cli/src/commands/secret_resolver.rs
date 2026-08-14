@@ -31,7 +31,7 @@ use tokio::sync::Mutex;
 use urlencoding::decode;
 
 /// Controls what is returned when resolving a TOTP field.
-#[derive(Debug, Default, Clone, Copy, PartialEq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TotpOutput {
     #[default]
     Code,

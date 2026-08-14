@@ -17,7 +17,7 @@
  *
  */
 
-use super::secret_resolver::{PassClientResolver, SecretReference, SecretResolver};
+use super::secret_resolver::{PassClientResolver, SecretReference, SecretResolver, TotpOutput};
 use crate::commands::item::agent_monitor::ensure_reason_if_agent;
 use crate::helpers::CliPassClient as PassClient;
 use crate::telemetry::event::CommandEvent;
@@ -147,9 +147,17 @@ pub async fn run(
     Ok(())
 }
 
+#[derive(Debug, Clone, Eq, Hash, PartialEq)]
+struct SecretCacheKey {
+    share_id: String,
+    item_id: String,
+    field_name: String,
+    totp: Option<TotpOutput>,
+}
+
 pub struct TemplateProcessor<R: SecretResolver> {
     resolver: R,
-    secrets_cache: Arc<Mutex<HashMap<String, String>>>,
+    secrets_cache: Arc<Mutex<HashMap<SecretCacheKey, String>>>,
 }
 
 impl<R: SecretResolver> TemplateProcessor<R> {
@@ -177,10 +185,12 @@ impl<R: SecretResolver> TemplateProcessor<R> {
                 .with_context(|| format!("Invalid secret reference: {uri}"))?;
 
             // Create cache key
-            let cache_key = format!(
-                "{}:{}:{}",
-                secret_ref.share_id, secret_ref.item_id, secret_ref.field_name
-            );
+            let cache_key = SecretCacheKey {
+                share_id: secret_ref.share_id.clone(),
+                item_id: secret_ref.item_id.clone(),
+                field_name: secret_ref.field_name.clone(),
+                totp: secret_ref.totp,
+            };
 
             // Check cache first
             let secret_value = if let Some(cached_value) = cache.get(&cache_key) {
@@ -231,6 +241,7 @@ mod tests {
     use super::*;
     use crate::commands::secret_resolver::SecretReference;
     use crate::commands::secret_resolver::tests::StaticSecretResolver;
+    use async_trait::async_trait;
     use serde_json::json;
 
     #[test]
@@ -671,6 +682,113 @@ actual_password: {{ pass://real/secret/password }}
         assert!(result.contains("pass://docs/wiki/setup")); // Comment preserved  
         assert!(result.contains("pass://real/secret/password (not templated)")); // Comment preserved
         assert!(result.contains("actual_password: should_replace")); // Template replaced
+    }
+
+    /// Resolver that compares the full parsed tuple by equality, rather than
+    /// by joining components into a delimited string. Used to prove that
+    /// references which collide under a naive `"{share}:{item}:{field}"`
+    /// cache key still resolve to their own distinct value.
+    struct TupleSecretResolver {
+        secrets: Vec<(String, String, String, Option<TotpOutput>, String)>,
+    }
+
+    impl TupleSecretResolver {
+        fn new() -> Self {
+            Self {
+                secrets: Vec::new(),
+            }
+        }
+
+        fn with_secret(
+            mut self,
+            share_id: &str,
+            item_id: &str,
+            field_name: &str,
+            totp: Option<TotpOutput>,
+            value: &str,
+        ) -> Self {
+            self.secrets.push((
+                share_id.to_string(),
+                item_id.to_string(),
+                field_name.to_string(),
+                totp,
+                value.to_string(),
+            ));
+            self
+        }
+    }
+
+    #[async_trait(?Send)]
+    impl SecretResolver for TupleSecretResolver {
+        async fn resolve_secret(&self, secret_ref: &SecretReference) -> Result<String> {
+            self.secrets
+                .iter()
+                .find(|(share_id, item_id, field_name, totp, _)| {
+                    *share_id == secret_ref.share_id
+                        && *item_id == secret_ref.item_id
+                        && *field_name == secret_ref.field_name
+                        && *totp == secret_ref.totp
+                })
+                .map(|(_, _, _, _, value)| value.clone())
+                .ok_or_else(|| anyhow!("Secret not found"))
+        }
+
+        async fn resolve_secret_and_send_reason(
+            &self,
+            secret_ref: &SecretReference,
+        ) -> Result<String> {
+            self.resolve_secret(secret_ref).await
+        }
+    }
+
+    #[tokio::test]
+    async fn template_processor_does_not_collide_on_colon_in_name() {
+        // Under the old `format!("{share}:{item}:{field}")` cache key,
+        // ("A:B", "C", "D") and ("A", "B:C", "D") both joined to "A:B:C:D"
+        // and the second reference would silently reuse the first
+        // reference's value instead of being resolved. These two URIs
+        // decode to exactly that colliding pair of tuples.
+        let resolver = TupleSecretResolver::new()
+            .with_secret("A:B", "C", "D", None, "ATTACKER_VALUE")
+            .with_secret("A", "B:C", "D", None, "TRUSTED_VALUE");
+        let processor = TemplateProcessor::new(resolver);
+
+        let template = r#"
+attacker: {{ pass://A%3AB/C/D }}
+trusted: {{ pass://A/B%3AC/D }}
+"#;
+
+        let result = processor.process_template(template).await.unwrap();
+
+        assert!(result.contains("attacker: ATTACKER_VALUE"));
+        assert!(result.contains("trusted: TRUSTED_VALUE"));
+    }
+
+    #[tokio::test]
+    async fn template_processor_does_not_collide_on_totp_output_mode() {
+        // Same share/item/field but different `?totp=` output must not
+        // share a cache entry, or one mode's output would leak into the
+        // other's slot.
+        let resolver = TupleSecretResolver::new()
+            .with_secret(
+                "vault",
+                "item",
+                "otp",
+                Some(TotpOutput::Uri),
+                "otpauth://uri",
+            )
+            .with_secret("vault", "item", "otp", Some(TotpOutput::Code), "123456");
+        let processor = TemplateProcessor::new(resolver);
+
+        let template = r#"
+uri: {{ pass://vault/item/otp?totp=uri }}
+code: {{ pass://vault/item/otp?totp=code }}
+"#;
+
+        let result = processor.process_template(template).await.unwrap();
+
+        assert!(result.contains("uri: otpauth://uri"));
+        assert!(result.contains("code: 123456"));
     }
 
     #[test]

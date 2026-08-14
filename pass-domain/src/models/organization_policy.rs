@@ -19,6 +19,14 @@
 
 use serde::{Deserialize, Serialize};
 
+fn deserialize_null_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: Default + Deserialize<'de>,
+{
+    Ok(Option::<T>::deserialize(deserializer)?.unwrap_or_default())
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(try_from = "u8", into = "u8")]
 pub enum OrganizationVaultCreateMode {
@@ -138,7 +146,7 @@ impl From<OrganizationShareMode> for u8 {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct OrganizationPasswordPolicy {
     #[serde(rename = "RandomPasswordAllowed")]
     pub random_password_allowed: bool,
@@ -164,6 +172,24 @@ pub struct OrganizationPasswordPolicy {
     pub memorable_password_must_include_numbers: Option<bool>,
 }
 
+impl Default for OrganizationPasswordPolicy {
+    fn default() -> Self {
+        Self {
+            random_password_allowed: true,
+            random_password_min_length: None,
+            random_password_max_length: None,
+            random_password_must_include_numbers: None,
+            random_password_must_include_symbols: None,
+            random_password_must_include_uppercase: None,
+            memorable_password_allowed: true,
+            memorable_password_min_words: None,
+            memorable_password_max_words: None,
+            memorable_password_must_capitalize: None,
+            memorable_password_must_include_numbers: None,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct OrganizationSettings {
     #[serde(rename = "ShareMode")]
@@ -178,7 +204,11 @@ pub struct OrganizationSettings {
     pub force_lock_seconds: u32,
     #[serde(rename = "ExportMode")]
     pub export_mode: OrganizationExportMode,
-    #[serde(rename = "PasswordPolicy")]
+    #[serde(
+        default,
+        rename = "PasswordPolicy",
+        deserialize_with = "deserialize_null_default"
+    )]
     pub password_policy: OrganizationPasswordPolicy,
     #[serde(rename = "VaultCreateMode")]
     pub vault_create_mode: OrganizationVaultCreateMode,
@@ -192,4 +222,96 @@ pub struct OrganizationInfo {
     pub can_update: bool,
     #[serde(rename = "Settings")]
     pub settings: OrganizationSettings,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn organization_info_with_null_password_policy_uses_default() {
+        let json = serde_json::json!({
+            "CanUpdate": true,
+            "Settings": {
+                "ShareMode": 0,
+                "ShareAcceptMode": 0,
+                "ItemShareMode": 1,
+                "PublicLinkMode": 1,
+                "ForceLockSeconds": 0,
+                "ExportMode": 0,
+                "PasswordPolicy": null,
+                "VaultCreateMode": 0,
+                "AliasCreateMode": 0
+            }
+        });
+
+        let info: OrganizationInfo =
+            serde_json::from_value(json).expect("null PasswordPolicy should not fail to parse");
+
+        assert_eq!(
+            info.settings.password_policy,
+            OrganizationPasswordPolicy::default()
+        );
+    }
+
+    #[test]
+    fn organization_info_with_missing_password_policy_uses_default() {
+        let json = serde_json::json!({
+            "CanUpdate": true,
+            "Settings": {
+                "ShareMode": 0,
+                "ShareAcceptMode": 0,
+                "ItemShareMode": 1,
+                "PublicLinkMode": 1,
+                "ForceLockSeconds": 0,
+                "ExportMode": 0,
+                "VaultCreateMode": 0,
+                "AliasCreateMode": 0
+            }
+        });
+
+        let info: OrganizationInfo =
+            serde_json::from_value(json).expect("missing PasswordPolicy should not fail to parse");
+
+        assert_eq!(
+            info.settings.password_policy,
+            OrganizationPasswordPolicy::default()
+        );
+    }
+
+    #[test]
+    fn organization_info_with_present_password_policy_is_preserved() {
+        let json = serde_json::json!({
+            "CanUpdate": true,
+            "Settings": {
+                "ShareMode": 0,
+                "ShareAcceptMode": 0,
+                "ItemShareMode": 1,
+                "PublicLinkMode": 1,
+                "ForceLockSeconds": 0,
+                "ExportMode": 0,
+                "PasswordPolicy": {
+                    "RandomPasswordAllowed": false,
+                    "RandomPasswordMinLength": 4,
+                    "RandomPasswordMaxLength": 64,
+                    "RandomPasswordMustIncludeNumbers": true,
+                    "RandomPasswordMustIncludeSymbols": true,
+                    "RandomPasswordMustIncludeUppercase": true,
+                    "MemorablePasswordAllowed": false,
+                    "MemorablePasswordMinWords": 4,
+                    "MemorablePasswordMaxWords": 8,
+                    "MemorablePasswordMustCapitalize": true,
+                    "MemorablePasswordMustIncludeNumbers": true
+                },
+                "VaultCreateMode": 0,
+                "AliasCreateMode": 0
+            }
+        });
+
+        let info: OrganizationInfo =
+            serde_json::from_value(json).expect("present PasswordPolicy should parse");
+
+        assert!(!info.settings.password_policy.random_password_allowed);
+        assert!(!info.settings.password_policy.memorable_password_allowed);
+    }
 }

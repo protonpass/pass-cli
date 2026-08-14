@@ -13,6 +13,7 @@ jiff.workspace = true
 protobuf.workspace = true
 rand.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 uuid.workspace = true
 zeroize.workspace = true
 
@@ -23,3 +24,4 @@ sysinfo = "0.39.6"
 [build-dependencies]
 protobuf-codegen.workspace = true
 protoc-bin-vendored = "3.1.0"
+
