@@ -5,6 +5,13 @@
 ### Other
 -->
 
+## 2.3.2 (2026-08-14)
+
+### Other
+
+- Improve secret reference parsing.
+- Improve windows update process.
+
 ## 2.3.1 (2026-08-12)
 
 ### Fixes :bug:
