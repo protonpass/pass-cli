@@ -161,6 +161,8 @@ impl<C: PassClientContext> PassClient<C> {
             .context("Error sending create item request")?;
         let response: CreateItemResponse = assert_response!(response);
 
+        self.clear_items_cache(share_id).await;
+
         Ok(ItemId::new(response.item.item_id))
     }
 }

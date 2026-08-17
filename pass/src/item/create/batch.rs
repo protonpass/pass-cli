@@ -104,6 +104,8 @@ impl<C: PassClientContext> PassClient<C> {
             .context("Error sending batch create items request")?;
         let response: BatchCreateItemsResponse = assert_response!(response);
 
+        self.clear_items_cache(share_id).await;
+
         Ok(response
             .revisions
             .items

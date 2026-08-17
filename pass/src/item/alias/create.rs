@@ -65,6 +65,8 @@ impl<C: PassClientContext> PassClient<C> {
             .context("Error sending create alias request")?;
         let response: CreateItemResponse = assert_response!(res);
 
+        self.clear_items_cache(share_id).await;
+
         let email = match response.item.alias_email {
             Some(email) => email,
             None => return Err(anyhow!("Error getting email from created alias")),
