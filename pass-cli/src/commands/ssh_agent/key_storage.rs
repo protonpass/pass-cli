@@ -198,7 +198,7 @@ impl KeyStorage {
 
         // Find existing by share_id + item_id
         if let IdentitySource::ProtonPass { share_id, item_id } = &identity.source
-            && identities.iter().any(|i| match &i.source {
+            && let Some(index) = identities.iter().position(|i| match &i.source {
                 IdentitySource::ProtonPass {
                     share_id: s,
                     item_id: i,
@@ -206,11 +206,8 @@ impl KeyStorage {
                 IdentitySource::User => false,
             })
         {
-            // Replace existing
             info!("Updating existing SSH key: {}", identity.comment);
-            drop(identities);
-            let _ = self.identity_remove(&identity.public_key, false).await;
-            self.identity_add(identity).await;
+            identities[index] = identity;
             return;
         }
 
@@ -260,5 +257,58 @@ impl KeyStorage {
                 removed, share_id
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ssh_key::Algorithm;
+
+    fn make_identity(share_id: &str, item_id: &str, comment: &str) -> SshIdentity {
+        let private_key =
+            SshPrivateKey::random(&mut rand::rngs::OsRng, Algorithm::Ed25519).unwrap();
+        SshIdentity::new(
+            private_key,
+            comment.to_string(),
+            IdentitySource::ProtonPass {
+                share_id: ShareId::new(share_id.to_string()),
+                item_id: ItemId::new(item_id.to_string()),
+            },
+        )
+        .unwrap()
+    }
+
+    fn make_storage() -> KeyStorage {
+        let (sender, _receiver) = tokio::sync::mpsc::unbounded_channel();
+        KeyStorage::new(sender)
+    }
+
+    #[tokio::test]
+    async fn upsert_with_changed_public_key_replaces_old_identity() {
+        let storage = make_storage();
+
+        let key_a = make_identity("share-1", "item-1", "key-a");
+        let key_a_pubkey = key_a.public_key.clone();
+        storage.identity_upsert(key_a).await;
+
+        let key_b = make_identity("share-1", "item-1", "key-b");
+        let key_b_pubkey = key_b.public_key.clone();
+        storage.identity_upsert(key_b).await;
+
+        assert_eq!(storage.identities.lock().await.len(), 1);
+        assert!(storage.identity_from_pubkey(&key_a_pubkey).await.is_none());
+        assert!(storage.identity_from_pubkey(&key_b_pubkey).await.is_some());
+    }
+
+    #[tokio::test]
+    async fn upsert_with_unchanged_public_key_keeps_single_identity() {
+        let storage = make_storage();
+
+        let key_a = make_identity("share-1", "item-1", "key-a");
+        storage.identity_upsert(key_a.clone()).await;
+        storage.identity_upsert(key_a).await;
+
+        assert_eq!(storage.identities.lock().await.len(), 1);
     }
 }
