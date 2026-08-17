@@ -166,6 +166,9 @@ impl<C: PassClientContext> PassClient<C> {
 
     pub(crate) async fn clear_shares_cache(&self) {
         self.cache.delete(GetSharesCacheType).await;
+        // The vault list is derived from shares, so it must be invalidated
+        // together with the shares cache or it can serve stale results.
+        self.clear_vault_cache().await;
     }
 }
 

@@ -28,6 +28,10 @@ const MAX_CONCURRENCY: usize = 20;
 struct VaultListCacheType;
 
 impl<C: PassClientContext> PassClient<C> {
+    pub(crate) async fn clear_vault_cache(&self) {
+        self.cache.delete(VaultListCacheType).await;
+    }
+
     pub async fn list_vaults(&self) -> Result<Vec<Vault>> {
         {
             let cached: Option<Vec<Vault>> = self.cache.get(VaultListCacheType).await;
