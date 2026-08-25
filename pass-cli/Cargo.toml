@@ -32,7 +32,8 @@ semver = "1.0"
 sha1 = "0.10"
 sha2 = "0.10"
 ssh-agent-client-rs = "1.1.2"
-ssh-agent-lib = "0.6.0"
+# ssh-agent-lib = "0.6.0"
+ssh-agent-lib = { git = "https://github.com/cquintana92/ssh-agent-lib.git", rev = "5089da4a5bbada61445f2c949209da9c5528af3d" }
 ssh-key = { version = "0.6.7", features = ["crypto", "ed25519", "rsa", "p256", "p384", "p521", "encryption"] }
 tracing-subscriber = { version = "0.3", features = ["default"] }
 urlencoding = "2.1"
