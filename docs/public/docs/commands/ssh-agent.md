@@ -173,6 +173,13 @@ To connect to the agent, set SSH_AUTH_SOCK:
   export SSH_AUTH_SOCK=/home/youruser/.ssh/proton-pass-agent.sock
 ```
 
+On Windows, `SSH_AUTH_SOCK` must point to the named pipe instead of a socket path:
+
+```text
+To connect to the agent, set SSH_AUTH_SOCK:
+  $env:SSH_AUTH_SOCK="\\.\pipe\openssh-ssh-agent"
+```
+
 You can pass the same options as `ssh-agent start`:
 
 ```bash
@@ -299,10 +306,10 @@ export SSH_AUTH_SOCK="$HOME/.ssh/proton-pass-agent.sock"
 
 **Windows (PowerShell)**
 
-Add the following line to your PowerShell profile (`$PROFILE`):
+On Windows the agent always listens on the well-known named pipe `\\.\pipe\openssh-ssh-agent`, regardless of `--socket-path`. Add the following line to your PowerShell profile (`$PROFILE`):
 
 ```powershell
-$env:SSH_AUTH_SOCK = "$env:USERPROFILE\.ssh\proton-pass-agent.sock"
+$env:SSH_AUTH_SOCK = "\\.\pipe\openssh-ssh-agent"
 ```
 
 ### Starting the daemon automatically on login

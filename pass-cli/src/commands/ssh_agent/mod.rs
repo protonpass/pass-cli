@@ -172,6 +172,9 @@ impl VaultQuery {
     }
 }
 
+#[cfg(windows)]
+pub(crate) const WINDOWS_PIPE_NAME: &str = r"\\.\pipe\openssh-ssh-agent";
+
 #[cfg(unix)]
 fn get_default_socket_path() -> Result<PathBuf> {
     let home_dir = dirs::home_dir().ok_or_else(|| anyhow!("Could not determine home directory"))?;

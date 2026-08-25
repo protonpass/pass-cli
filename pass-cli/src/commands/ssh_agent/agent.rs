@@ -29,13 +29,11 @@ use ssh_agent_lib::proto::{
     RemoveIdentity, SignRequest, SmartcardKey, message,
 };
 use ssh_key::{private::PrivateKey as SshPrivateKey, public::PublicKey as SshPublicKey};
-use std::path::PathBuf;
 
 use super::event_handler::SshAgentEventHandler;
 use super::event_processor::SshEventProcessor;
 use super::key_storage::{IdentitySource, KeyStorage};
-use super::{SshIdentity, VaultQuery, get_default_socket_path};
-use crate::commands::ssh_agent::fs::safe_ensure_dir_exists;
+use super::{SshIdentity, VaultQuery};
 use crate::helpers::CliPassClient as PassClient;
 use ssh_key::private::KeypairData;
 use ssh_key::{Algorithm, HashAlg, Signature};
@@ -49,12 +47,6 @@ pub async fn start_agent(
     refresh_interval: u64,
     session_locked: bool,
 ) -> Result<()> {
-    let socket_path = if let Some(path) = socket_path {
-        PathBuf::from(path)
-    } else {
-        get_default_socket_path()?
-    };
-
     if refresh_interval > 0 {
         info!(
             "Automatic key refresh enabled (every {} seconds)",
@@ -65,8 +57,17 @@ pub async fn start_agent(
     }
     #[cfg(unix)]
     {
+        use super::get_default_socket_path;
+        use crate::commands::ssh_agent::fs::safe_ensure_dir_exists;
         use std::os::unix::fs::PermissionsExt;
+        use std::path::PathBuf;
         use tokio::net::UnixListener;
+
+        let socket_path = if let Some(path) = socket_path {
+            PathBuf::from(path)
+        } else {
+            get_default_socket_path()?
+        };
 
         // Remove existing socket if it exists
         if socket_path.exists() {
@@ -114,15 +115,16 @@ pub async fn start_agent(
 
     #[cfg(windows)]
     {
+        use super::WINDOWS_PIPE_NAME;
         use ssh_agent_lib::agent::NamedPipeListener;
 
-        // On Windows, use a named pipe
-        let pipe_name = r"\\.\pipe\openssh-ssh-agent";
+        let _ = socket_path;
 
-        eprintln!("SSH agent listening on: {}", pipe_name);
-        print_agent_startup_message(&socket_path.display().to_string(), refresh_interval);
+        eprintln!("SSH agent listening on: {}", WINDOWS_PIPE_NAME);
+        print_agent_startup_message(WINDOWS_PIPE_NAME, refresh_interval);
 
-        let listener = NamedPipeListener::bind(&pipe_name).context("Failed to bind named pipe")?;
+        let listener =
+            NamedPipeListener::bind(WINDOWS_PIPE_NAME).context("Failed to bind named pipe")?;
 
         // Run the agent
         run_agent_with_listener(

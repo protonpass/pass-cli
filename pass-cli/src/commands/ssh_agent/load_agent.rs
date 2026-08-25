@@ -45,9 +45,11 @@ fn get_system_agent_socket() -> Result<PathBuf> {
 
 #[cfg(windows)]
 fn get_system_agent_socket() -> Result<PathBuf> {
+    use super::WINDOWS_PIPE_NAME;
+
     match std::env::var("SSH_AUTH_SOCK") {
         Ok(v) => Ok(PathBuf::from(v)),
-        Err(_) => Ok(PathBuf::from(r"\\.\pipe\openssh-ssh-agent")),
+        Err(_) => Ok(PathBuf::from(WINDOWS_PIPE_NAME)),
     }
 }
 
