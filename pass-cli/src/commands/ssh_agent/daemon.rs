@@ -17,6 +17,8 @@
  *
  */
 
+#[cfg(windows)]
+use crate::commands::ssh_agent::WINDOWS_PIPE_NAME;
 use crate::commands::ssh_agent::fs::safe_ensure_dir_exists;
 use anyhow::{Context, Result, anyhow};
 use serde::{Deserialize, Serialize};
@@ -159,7 +161,7 @@ pub fn run_daemon_start(
     #[cfg(unix)]
     println!("  export SSH_AUTH_SOCK={}", socket_path_buf.display());
     #[cfg(windows)]
-    println!("  $env:SSH_AUTH_SOCK={}", socket_path_buf.display());
+    println!("  $env:SSH_AUTH_SOCK=\"{}\"", WINDOWS_PIPE_NAME);
 
     Ok(())
 }
@@ -193,7 +195,7 @@ pub fn run_daemon_status(pid_file: Option<PathBuf>) -> Result<()> {
             #[cfg(unix)]
             println!("  export SSH_AUTH_SOCK={}", info.socket_path.display());
             #[cfg(windows)]
-            println!("  $env:SSH_AUTH_SOCK={}", info.socket_path.display());
+            println!("  $env:SSH_AUTH_SOCK=\"{}\"", WINDOWS_PIPE_NAME);
         }
         (true, false) => {
             println!("Status:   degraded (process is running but socket is missing)");
