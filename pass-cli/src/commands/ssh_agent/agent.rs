@@ -118,7 +118,12 @@ pub async fn start_agent(
         use super::WINDOWS_PIPE_NAME;
         use ssh_agent_lib::agent::NamedPipeListener;
 
-        let _ = socket_path;
+        if socket_path.is_some() {
+            warn!(
+                "--socket-path is ignored on Windows; the agent always listens on {}",
+                WINDOWS_PIPE_NAME
+            );
+        }
 
         eprintln!("SSH agent listening on: {}", WINDOWS_PIPE_NAME);
         print_agent_startup_message(WINDOWS_PIPE_NAME, refresh_interval);
