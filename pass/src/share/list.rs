@@ -91,7 +91,7 @@ fn share_response_to_share(value: ShareResponse, is_pat: bool) -> Result<Share> 
         id: ShareId::new(value.share_id),
         address_id: AddressId::new(value.address_id),
         vault_id: VaultId::new(value.vault_id.clone()),
-        permission: Permission::new_from_role(&value.share_role_id, value.owner, value.permission),
+        permission: Permission::new_from_role(&value.share_role_id, is_owner, value.permission),
         share_role: ShareRole::from_value(&value.share_role_id, is_owner, value.permission),
         content: share_content,
         group_id: value.group_id.map(GroupId::new),
@@ -120,7 +120,7 @@ impl<C: PassClientContext> PassClient<C> {
         let response = self.send(GET!("/pass/v1/share")).await?;
         let res: GetSharesResponse = assert_response!(response);
 
-        let is_pat = self.is_pat_account();
+        let is_pat = self.is_pat_account() || self.is_agent_session();
         let mut result = vec![];
         for share in res.shares {
             result.push(share_response_to_share(share, is_pat)?);
