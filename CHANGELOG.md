@@ -5,6 +5,14 @@
 ### Other
 -->
 
+## 2.3.3 (2026-08-25)
+
+### Fixes :bug:
+
+- Bug that showed an Agent session as owner of a Share.
+- Bad socket paths for windows SSH agents.
+- SSH agent answering bad codes for unhandled SSH commands.
+
 ## 2.3.2 (2026-08-14)
 
 ### Other
