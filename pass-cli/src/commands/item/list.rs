@@ -17,6 +17,7 @@
  *
  */
 
+use crate::commands::item::common;
 use crate::commands::{OutputFormat, settings_helper};
 use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result, anyhow};
@@ -310,14 +311,10 @@ pub async fn run(
             .get_share(&share_id)
             .await
             .context("Error retrieving share")?;
-        if share.should_hide_sensitive_content() {
-            anyhow::bail!("You don't have permission to view sensitive content");
-        } else {
-            // Secrets of every listed item are exposed, so report them all as read
-            // (batched in the client).
-            let item_ids: Vec<ItemId> = items.iter().map(|item| item.id.clone()).collect();
-            client.mark_items_read(&share_id, &item_ids).await;
-        }
+        common::ensure_share_allows_viewing(&share)?;
+
+        let item_ids: Vec<ItemId> = items.iter().map(|item| item.id.clone()).collect();
+        client.mark_items_read(&share_id, &item_ids).await;
     }
 
     match output {

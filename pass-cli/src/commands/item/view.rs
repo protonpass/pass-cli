@@ -18,7 +18,7 @@
  */
 
 use crate::commands::item::agent_monitor::send_reason_if_agent_with_name;
-use crate::commands::item::common::{ItemQuery, ShareQuery};
+use crate::commands::item::common::{self, ItemQuery, ShareQuery};
 use crate::commands::item::totp::generate_totp_token;
 use crate::commands::secret_resolver::{ItemReference, TotpOutput};
 use crate::commands::{OutputFormat, settings_helper};
@@ -137,6 +137,8 @@ pub async fn run(
             (full_item, reference.field_name, totp)
         }
     };
+
+    common::ensure_sensitive_content_visible(&client, &item.item.share_id).await?;
 
     if let Some(field) = effective_field {
         match item.item.get_field(&field) {
