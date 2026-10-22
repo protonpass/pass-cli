@@ -208,6 +208,31 @@ pass-cli folder move --vault-name "Team Project" --folder-id "$CHILD_ID"
 pass-cli folder move --vault-name "Team Project" --folder-id "$CHILD_ID" --parent-folder-id "$PARENT_ID"
 ```
 
+### Put items in a folder
+
+Every `item create` subcommand accepts `--folder-id`, so items can be created straight into a folder.
+
+```bash
+# Get the folder ID first
+FOLDER_ID=$(pass-cli folder list --vault-name "Team Project" --output json \
+  | jq -r '.[] | select(.content.name == "Production") | .id')
+
+# Create the item inside that folder
+pass-cli item create login \
+  --vault-name "Team Project" \
+  --title "Admin Console" \
+  --username "admin" \
+  --generate-password \
+  --folder-id "$FOLDER_ID"
+
+# A note works the same way
+pass-cli item create note \
+  --vault-name "Team Project" \
+  --title "Deployment runbook" \
+  --note "Step by step release process" \
+  --folder-id "$FOLDER_ID"
+```
+
 ### Find a folder ID in a script
 
 ```bash
@@ -229,6 +254,7 @@ echo "Production folder ID: $FOLDER_ID"
 ## Best practices
 
 - Use folders for structure inside a vault, and vaults for permission boundaries, since folders inherit vault permissions
+- Pass `--folder-id` on `item create` instead of creating items at the vault root and moving them afterwards
 - Keep the hierarchy shallow. Deep trees are harder to navigate from the CLI
 - Use IDs rather than names in scripts, because names can repeat within a vault
 - Run `folder list` after structural changes to confirm the resulting layout

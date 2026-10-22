@@ -48,4 +48,12 @@ pass-cli folder list --vault-name "Personal"
 
 # Create a nested folder using the parent folder ID
 pass-cli folder create --vault-name "Personal" --name "Proton" --parent-id "folder_id_here"
+
+# Create an item directly inside a folder
+pass-cli item create login \
+  --vault-name "Personal" \
+  --title "Bank Login" \
+  --username "myuser" \
+  --generate-password \
+  --folder-id "folder_id_here"
 ```

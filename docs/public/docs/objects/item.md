@@ -23,6 +23,7 @@ All items share common properties:
 - **Title**: A descriptive name for the item
 - **Item ID**: An identifier for API operations. Remember that this Item ID is only unique in combination with the Share ID
 - **Vault**: The vault that contains this item
+- **Folder**: The optional folder inside the vault that holds the item. Items without one live at the vault root
 - **Type**: The specific type of item (login, note, etc.)
 - **Creation/modification dates**: When the item was created and last updated
 
@@ -78,6 +79,14 @@ pass-cli item view "pass://vault123/item456/password"
 
 # List all items in a vault
 pass-cli item list --share-id "vault123"
+
+# Create an item inside a folder
+pass-cli item create login \
+  --share-id "vault123" \
+  --title "GitLab Account" \
+  --username "myuser" \
+  --generate-password \
+  --folder-id "folder_id_here"
 ```
 
 For detailed information about secret references (uris starting with `pass://`), see the [secret references](../commands/contents/secret-references.md) documentation.

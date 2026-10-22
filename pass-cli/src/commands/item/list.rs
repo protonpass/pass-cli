@@ -20,13 +20,15 @@
 use crate::commands::{OutputFormat, settings_helper};
 use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result, anyhow};
-use pass::domain::{FolderId, Item, ItemContent, ItemFlag, ItemId, ItemState, ShareId, VaultId};
+use pass::domain::{
+    Folder, FolderId, Item, ItemContent, ItemFlag, ItemId, ItemState, ShareId, VaultId,
+};
+use std::collections::HashMap;
 use std::str::FromStr;
 
 #[derive(serde::Serialize)]
 struct ItemsList<T: serde::Serialize> {
     items: Vec<T>,
-    #[cfg(feature = "internal")]
     #[serde(skip_serializing_if = "Option::is_none")]
     folders: Option<Vec<FolderInfo>>,
 }
@@ -92,7 +94,6 @@ impl From<&Item> for ItemSummary {
     }
 }
 
-#[cfg(feature = "internal")]
 #[derive(serde::Serialize)]
 struct FolderInfo {
     folder_id: String,
@@ -311,7 +312,6 @@ pub async fn run(
 
     match output {
         OutputFormat::Json => {
-            #[cfg(feature = "internal")]
             let folders = match client.list_folders(&share_id).await {
                 Ok(folders) => Some(
                     folders
@@ -330,17 +330,12 @@ pub async fn run(
             };
 
             let json = if show_secrets {
-                let list = ItemsList {
-                    items,
-                    #[cfg(feature = "internal")]
-                    folders,
-                };
+                let list = ItemsList { items, folders };
                 serde_json::to_string_pretty(&list).context("Error serializing items")?
             } else {
                 let summaries: Vec<ItemSummary> = items.iter().map(ItemSummary::from).collect();
                 let list = ItemsList {
                     items: summaries,
-                    #[cfg(feature = "internal")]
                     folders,
                 };
                 serde_json::to_string_pretty(&list).context("Error serializing items")?
@@ -365,14 +360,65 @@ pub async fn run(
                 );
             }
 
-            #[cfg(feature = "internal")]
-            {
-                internal::display_folder_tree(&client, &share_id).await;
-            }
+            display_folder_tree(&client, &share_id).await;
         }
     }
 
     Ok(())
+}
+
+pub async fn display_folder_tree(client: &PassClient, share_id: &ShareId) {
+    match client.list_folders(share_id).await {
+        Ok(folders) => {
+            if !folders.is_empty() {
+                print_folder_tree(&folders);
+            }
+        }
+        Err(e) => {
+            error!("Error listing folders: {e:#}");
+        }
+    }
+}
+
+fn print_folder_tree(folders: &[Folder]) {
+    // Build a map of parent_id -> children
+    let mut children_map: HashMap<Option<String>, Vec<&Folder>> = HashMap::new();
+
+    for folder in folders {
+        let parent_key = folder.parent_folder_id.as_ref().map(|id| id.to_string());
+        children_map.entry(parent_key).or_default().push(folder);
+    }
+    println!("Folders:");
+
+    // Print root folders (those with no parent)
+    if let Some(root_folders) = children_map.get(&None) {
+        for (i, folder) in root_folders.iter().enumerate() {
+            let is_last = i == root_folders.len() - 1;
+            print_folder_node(folder, "", is_last, &children_map);
+        }
+    }
+}
+
+fn print_folder_node(
+    folder: &Folder,
+    prefix: &str,
+    is_last: bool,
+    children_map: &HashMap<Option<String>, Vec<&Folder>>,
+) {
+    // Print current folder
+    let branch = if is_last { "└── " } else { "├── " };
+    println!("{}{}{}", prefix, branch, folder.content.name);
+
+    // Print children
+    let folder_key = Some(folder.id.to_string());
+    if let Some(children) = children_map.get(&folder_key) {
+        let child_prefix = format!("{}{}", prefix, if is_last { "    " } else { "│   " });
+
+        for (i, child) in children.iter().enumerate() {
+            let is_last_child = i == children.len() - 1;
+            print_folder_node(child, &child_prefix, is_last_child, children_map);
+        }
+    }
 }
 
 #[cfg(test)]
@@ -441,66 +487,5 @@ mod tests {
         assert!(!json.contains("\"extra_fields\""));
         assert!(json.contains("\"title\""));
         assert!(json.contains("\"item_type\""));
-    }
-}
-
-#[cfg(feature = "internal")]
-mod internal {
-    use super::*;
-    use pass::domain::Folder;
-    use std::collections::HashMap;
-
-    pub async fn display_folder_tree(client: &PassClient, share_id: &ShareId) {
-        match client.list_folders(share_id).await {
-            Ok(folders) => {
-                if !folders.is_empty() {
-                    print_folder_tree(&folders);
-                }
-            }
-            Err(e) => {
-                error!("Error listing folders: {e:#}");
-            }
-        }
-    }
-
-    fn print_folder_tree(folders: &[Folder]) {
-        // Build a map of parent_id -> children
-        let mut children_map: HashMap<Option<String>, Vec<&Folder>> = HashMap::new();
-
-        for folder in folders {
-            let parent_key = folder.parent_folder_id.as_ref().map(|id| id.to_string());
-            children_map.entry(parent_key).or_default().push(folder);
-        }
-        println!("Folders:");
-
-        // Print root folders (those with no parent)
-        if let Some(root_folders) = children_map.get(&None) {
-            for (i, folder) in root_folders.iter().enumerate() {
-                let is_last = i == root_folders.len() - 1;
-                print_folder_node(folder, "", is_last, &children_map);
-            }
-        }
-    }
-
-    fn print_folder_node(
-        folder: &Folder,
-        prefix: &str,
-        is_last: bool,
-        children_map: &HashMap<Option<String>, Vec<&Folder>>,
-    ) {
-        // Print current folder
-        let branch = if is_last { "└── " } else { "├── " };
-        println!("{}{}{}", prefix, branch, folder.content.name);
-
-        // Print children
-        let folder_key = Some(folder.id.to_string());
-        if let Some(children) = children_map.get(&folder_key) {
-            let child_prefix = format!("{}{}", prefix, if is_last { "    " } else { "│   " });
-
-            for (i, child) in children.iter().enumerate() {
-                let is_last_child = i == children.len() - 1;
-                print_folder_node(child, &child_prefix, is_last_child, children_map);
-            }
-        }
     }
 }

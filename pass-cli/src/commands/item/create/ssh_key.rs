@@ -63,7 +63,6 @@ enum SshKeyCommand {
         title: String,
 
         /// Folder ID to create the item in
-        #[cfg(feature = "internal")]
         #[arg(long, help = "Folder ID to create the item in")]
         folder_id: Option<String>,
     },
@@ -94,7 +93,6 @@ enum SshKeyCommand {
         title: String,
 
         /// Folder ID to create the item in
-        #[cfg(feature = "internal")]
         #[arg(long, help = "Folder ID to create the item in")]
         folder_id: Option<String>,
     },
@@ -125,7 +123,6 @@ pub async fn run(args: SshKeyArgs, client: PassClient) -> Result<()> {
             mut share_id,
             vault_name,
             title,
-            #[cfg(feature = "internal")]
             folder_id,
         } => {
             // Apply default vault if both are None
@@ -134,12 +131,9 @@ pub async fn run(args: SshKeyArgs, client: PassClient) -> Result<()> {
                     .await?
                     .map(|id| id.to_string());
             }
-            #[cfg(feature = "internal")]
             let folder_id = folder_id
                 .as_ref()
                 .map(|id| pass::domain::FolderId::new(id.clone()));
-            #[cfg(not(feature = "internal"))]
-            let folder_id = None;
 
             run_import(
                 private_key_file,
@@ -159,7 +153,6 @@ pub async fn run(args: SshKeyArgs, client: PassClient) -> Result<()> {
             mut share_id,
             vault_name,
             title,
-            #[cfg(feature = "internal")]
             folder_id,
         } => {
             // Apply default vault if both are None
@@ -168,12 +161,9 @@ pub async fn run(args: SshKeyArgs, client: PassClient) -> Result<()> {
                     .await?
                     .map(|id| id.to_string());
             }
-            #[cfg(feature = "internal")]
             let folder_id = folder_id
                 .as_ref()
                 .map(|id| pass::domain::FolderId::new(id.clone()));
-            #[cfg(not(feature = "internal"))]
-            let folder_id = None;
 
             run_generate(
                 comment, key_type, password, share_id, vault_name, title, folder_id, client,
