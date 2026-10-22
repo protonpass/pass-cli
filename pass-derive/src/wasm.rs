@@ -29,7 +29,8 @@ use proc_macro2::TokenStream;
 use quote::{ToTokens, format_ident, quote};
 use syn::spanned::Spanned;
 use syn::{
-    Attribute, FnArg, ImplItemFn, Item, ItemFn, Pat, ReturnType, Signature, Type, parse_quote,
+    Attribute, FnArg, ImplItemFn, Item, ItemFn, Pat, ReceiverKind, ReturnType, Signature, Type,
+    parse_quote,
 };
 
 /// Adds what an exported struct/enum needs: `Tsify`, serde if the type
@@ -147,7 +148,7 @@ fn wrapper(
     for input in &sig.inputs {
         match input {
             FnArg::Receiver(receiver) => {
-                if receiver.reference.is_none() || receiver.mutability.is_some() {
+                if !matches!(receiver.kind, ReceiverKind::Reference(_, _, None)) {
                     return Err(syn::Error::new(
                         receiver.span(),
                         "exported methods must take `&self`",
