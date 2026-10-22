@@ -95,6 +95,7 @@ pub async fn run(
                 .await;
             let share_id = share_query.share_id(&client).await?;
             let item_id = item_query.item_id(&share_id, &client).await?;
+            common::ensure_sensitive_content_visible(&client, &share_id).await?;
             let item = client
                 .view_item(&share_id, &item_id)
                 .await
@@ -121,6 +122,7 @@ pub async fn run(
                 .find_item(item_query)
                 .await
                 .context("Error retrieving item")?;
+            common::ensure_sensitive_content_visible(&client, &item.share_id).await?;
             let full_item = client
                 .view_item(&item.share_id, &item.id)
                 .await
@@ -137,8 +139,6 @@ pub async fn run(
             (full_item, reference.field_name, totp)
         }
     };
-
-    common::ensure_sensitive_content_visible(&client, &item.item.share_id).await?;
 
     if let Some(field) = effective_field {
         match item.item.get_field(&field) {
