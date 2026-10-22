@@ -25,6 +25,7 @@ use std::collections::HashMap;
 pub struct ClientHeaders {
     pub accept_language: String,
     pub user_agent: String,
+    pub extra_headers: Vec<(String, String)>,
 }
 
 impl ClientHeaders {
@@ -32,21 +33,21 @@ impl ClientHeaders {
         Self {
             accept_language,
             user_agent,
+            extra_headers: Vec::new(),
         }
     }
 
     pub fn to_http_headers(&self) -> Vec<(String, String)> {
-        vec![
+        let mut headers = vec![
             ("Accept-Language".into(), self.accept_language.clone()),
             ("User-Agent".into(), self.user_agent.clone()),
-        ]
+        ];
+        headers.extend(self.extra_headers.iter().cloned());
+        headers
     }
 
     pub fn to_map(&self) -> HashMap<String, String> {
-        let mut map = HashMap::new();
-        map.insert("Accept-Language".into(), self.accept_language.clone());
-        map.insert("User-Agent".into(), self.user_agent.clone());
-        map
+        self.to_http_headers().into_iter().collect()
     }
 }
 
@@ -55,6 +56,7 @@ pub struct HeaderBuilder {
     product_name: String,
     product_version: String,
     locale: Option<String>,
+    extra_headers: Vec<(String, String)>,
 }
 
 impl HeaderBuilder {
@@ -63,6 +65,7 @@ impl HeaderBuilder {
             product_name: product_name.into(),
             product_version: product_version.into(),
             locale: None,
+            extra_headers: Vec::new(),
         }
     }
 
@@ -71,12 +74,19 @@ impl HeaderBuilder {
         self
     }
 
+    pub fn with_extra_header(mut self, name: &str, value: &str) -> Self {
+        self.extra_headers.push((name.into(), value.into()));
+        self
+    }
+
     pub fn build(self) -> ClientHeaders {
         let locale = self.locale.unwrap_or_else(|| DEFAULT_LOCALE.to_string());
-        ClientHeaders::new(
+        let mut headers = ClientHeaders::new(
             build_accept_language(&locale),
             build_user_agent(&self.product_name, &self.product_version),
-        )
+        );
+        headers.extra_headers = self.extra_headers;
+        headers
     }
 }
 
@@ -144,6 +154,18 @@ mod tests {
         assert!(h.user_agent.starts_with("Proton"));
         assert!(h.user_agent.contains("/"));
         assert!(h.user_agent.contains("(") && h.user_agent.contains(")"));
+    }
+
+    #[test]
+    fn test_extra_headers_included_in_http_headers() {
+        let h = HeaderBuilder::new("cli-pass", "2.2.3")
+            .with_extra_header("X-Foo", "bar")
+            .with_extra_header("X-Baz", "qux")
+            .build();
+        let headers = h.to_http_headers();
+        assert_eq!(headers.len(), 4);
+        assert_eq!(headers[2], ("X-Foo".to_string(), "bar".to_string()));
+        assert_eq!(headers[3], ("X-Baz".to_string(), "qux".to_string()));
     }
 
     #[test]
