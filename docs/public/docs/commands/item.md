@@ -31,6 +31,9 @@ pass-cli item list [OPTIONS] [VAULT_NAME]
 - `VAULT_NAME` - Name of the vault to list items from (positional argument)
 - `--share-id SHARE_ID` - Share ID of the vault to list items from
 - `--vault-name VAULT_NAME` - Name of the vault to list items from (alternative to positional argument)
+- `--filter-type TYPE` - Filter items by type: `note`, `login`, `alias`, `credit-card`, `identity`, `ssh-key`, `wifi`, `custom`
+- `--filter-state STATE` - Filter items by state: `active` or `trashed`
+- `--sort-by SORT_BY` - Sort items: `alphabetic-asc`, `alphabetic-desc`, `created-asc`, `created-desc`
 - `--output FORMAT` - Output format: `human` or `json`. Uses default format from settings if not specified.
 
 **Mutually exclusive options:**
@@ -62,7 +65,12 @@ pass-cli item list --output json
 
 # Using default vault but override format
 pass-cli item list --output human
+
+# List items showing which folder each one belongs to
+pass-cli item list --vault-name "Personal Vault" --output json | jq '.items[] | {title, folder_id}'
 ```
+
+JSON output has two top level keys: `items`, and `folders`, which lists every folder in the vault with its `folder_id`, `folder_name` and `parent_id`. In `human` format, an item inside a folder shows the folder name after its title, and the folder tree is printed after the item list.
 
 ### create
 
@@ -93,6 +101,7 @@ pass-cli item create login [OPTIONS]
 - `--url URL` - Associated URLs (can be used multiple times)
 - `--get-template` - Output a JSON template structure
 - `--from-template FILE` - Create from template file or `-` for stdin
+- `--folder-id FOLDER_ID` - ID of the folder to create the item in. Omit to create it at the vault root
 
 **Mutually exclusive options:**
 
@@ -152,6 +161,214 @@ pass-cli item create login --from-template template.json --vault-name "Personal"
 # Create from stdin template
 echo '{"title":"Test Login","username":"user","password":"pass","urls":["https://test.com"]}' | \
   pass-cli item create login --share-id "abc123def" --from-template -
+
+# Create a login inside a folder
+pass-cli item create login \
+  --vault-name "Personal" \
+  --title "Bank Login" \
+  --username "myuser" \
+  --generate-password \
+  --folder-id "folder_id_here"
+```
+
+#### create note
+
+Create a new secure note item.
+
+```bash
+pass-cli item create note [OPTIONS]
+```
+
+**Options:**
+
+- `--share-id SHARE_ID` - Share ID of the vault to create the item in
+- `--vault-name VAULT_NAME` - Name of the vault to create the item in
+- `--title TITLE` - Title of the note item (required unless using template)
+- `--note NOTE` - Note content (optional)
+- `--get-template` - Output a JSON template structure
+- `--from-template FILE` - Create from template file or `-` for stdin
+- `--folder-id FOLDER_ID` - ID of the folder to create the item in. Omit to create it at the vault root
+
+**Mutually exclusive options:**
+
+- `--share-id` and `--vault-name` are mutually exclusive. You can provide one, or neither if a default vault is configured.
+
+**Examples:**
+
+```bash
+# Create a note at the vault root
+pass-cli item create note \
+  --vault-name "Personal" \
+  --title "Recovery Codes" \
+  --note "Stored offline until needed"
+
+# Create a note inside a folder
+pass-cli item create note \
+  --share-id "abc123def" \
+  --title "Router Admin Notes" \
+  --note "Changed on 2026-01-10" \
+  --folder-id "folder_id_here"
+```
+
+#### create credit-card
+
+Create a new credit card item.
+
+```bash
+pass-cli item create credit-card [OPTIONS]
+```
+
+**Options:**
+
+- `--share-id SHARE_ID` - Share ID of the vault to create the item in
+- `--vault-name VAULT_NAME` - Name of the vault to create the item in
+- `--title TITLE` - Title of the credit card item (required unless using template)
+- `--cardholder-name NAME` - Name printed on the card (optional)
+- `--number NUMBER` - Card number (optional)
+- `--cvv CVV` - Verification number (optional)
+- `--expiration-date DATE` - Expiration date in format `YYYY-MM` (optional)
+- `--pin PIN` - Card PIN (optional)
+- `--note NOTE` - Note content (optional)
+- `--get-template` - Output a JSON template structure
+- `--from-template FILE` - Create from template file or `-` for stdin
+- `--folder-id FOLDER_ID` - ID of the folder to create the item in. Omit to create it at the vault root
+
+**Mutually exclusive options:**
+
+- `--share-id` and `--vault-name` are mutually exclusive. You can provide one, or neither if a default vault is configured.
+
+**Examples:**
+
+```bash
+# Create a credit card at the vault root
+pass-cli item create credit-card \
+  --vault-name "Personal" \
+  --title "Main Card" \
+  --cardholder-name "Jane Doe" \
+  --expiration-date "2027-12"
+
+# Create a credit card inside a folder
+pass-cli item create credit-card \
+  --share-id "abc123def" \
+  --title "Travel Card" \
+  --cardholder-name "Jane Doe" \
+  --folder-id "folder_id_here"
+```
+
+#### create identity
+
+Create a new identity item. Identities are built from a JSON template.
+
+```bash
+pass-cli item create identity [OPTIONS]
+```
+
+**Options:**
+
+- `--share-id SHARE_ID` - Share ID of the vault to create the item in
+- `--vault-name VAULT_NAME` - Name of the vault to create the item in
+- `--get-template` - Output a JSON template structure
+- `--from-template FILE` - Create from template file or `-` for stdin (required unless using `--get-template`)
+- `--folder-id FOLDER_ID` - ID of the folder to create the item in. Omit to create it at the vault root
+
+**Mutually exclusive options:**
+
+- `--share-id` and `--vault-name` are mutually exclusive. You can provide one, or neither if a default vault is configured.
+
+**Examples:**
+
+```bash
+# Get the identity template structure
+pass-cli item create identity --get-template > identity.json
+
+# Create an identity at the vault root
+pass-cli item create identity --vault-name "Personal" --from-template identity.json
+
+# Create an identity inside a folder
+pass-cli item create identity \
+  --share-id "abc123def" \
+  --from-template identity.json \
+  --folder-id "folder_id_here"
+```
+
+#### create wifi
+
+Create a new WiFi item.
+
+```bash
+pass-cli item create wifi [OPTIONS]
+```
+
+**Options:**
+
+- `--share-id SHARE_ID` - Share ID of the vault to create the item in
+- `--vault-name VAULT_NAME` - Name of the vault to create the item in
+- `--title TITLE` - Title of the WiFi item (required unless using template)
+- `--ssid SSID` - Network SSID (name) (required unless using template)
+- `--password PASSWORD` - Network password, leave empty for open networks (optional)
+- `--security TYPE` - Security type: `wpa`, `wpa2`, `wpa3`, `wep`, `open`, `none` (optional)
+- `--note NOTE` - Note content (optional)
+- `--get-template` - Output a JSON template structure
+- `--from-template FILE` - Create from template file or `-` for stdin
+- `--folder-id FOLDER_ID` - ID of the folder to create the item in. Omit to create it at the vault root
+
+**Mutually exclusive options:**
+
+- `--share-id` and `--vault-name` are mutually exclusive. You can provide one, or neither if a default vault is configured.
+
+**Examples:**
+
+```bash
+# Create a WiFi item at the vault root
+pass-cli item create wifi \
+  --vault-name "Home" \
+  --title "Home Network" \
+  --ssid "home-5g" \
+  --security wpa3
+
+# Create a WiFi item inside a folder
+pass-cli item create wifi \
+  --share-id "abc123def" \
+  --title "Office Guest" \
+  --ssid "office-guest" \
+  --security wpa2 \
+  --folder-id "folder_id_here"
+```
+
+#### create custom
+
+Create a new custom item. Custom items are built from a JSON template with sections and fields.
+
+```bash
+pass-cli item create custom [OPTIONS]
+```
+
+**Options:**
+
+- `--share-id SHARE_ID` - Share ID of the vault to create the item in
+- `--vault-name VAULT_NAME` - Name of the vault to create the item in
+- `--get-template` - Output a JSON template structure
+- `--from-template FILE` - Create from template file or `-` for stdin (required unless using `--get-template`)
+- `--folder-id FOLDER_ID` - ID of the folder to create the item in. Omit to create it at the vault root
+
+**Mutually exclusive options:**
+
+- `--share-id` and `--vault-name` are mutually exclusive. You can provide one, or neither if a default vault is configured.
+
+**Examples:**
+
+```bash
+# Get the custom template structure
+pass-cli item create custom --get-template > custom.json
+
+# Create a custom item at the vault root
+pass-cli item create custom --vault-name "Work" --from-template custom.json
+
+# Create a custom item inside a folder
+pass-cli item create custom \
+  --share-id "abc123def" \
+  --from-template custom.json \
+  --folder-id "folder_id_here"
 ```
 
 #### create ssh-key
@@ -183,6 +400,7 @@ pass-cli item create ssh-key generate [OPTIONS]
 - `--key-type TYPE` - Type of SSH key to generate: `ed25519` (default), `rsa2048`, or `rsa4096`
 - `--comment COMMENT` - Comment for the SSH key (optional)
 - `--password` - Enable passphrase protection for the SSH key (optional)
+- `--folder-id FOLDER_ID` - ID of the folder to create the item in. Omit to create it at the vault root
 
 **Mutually exclusive options:**
 
@@ -235,6 +453,12 @@ PROTON_PASS_SSH_KEY_PASSWORD="my-passphrase" \
   --share-id "abc123def" \
   --title "Automated Key" \
   --password
+
+# Generate a key inside a folder
+pass-cli item create ssh-key generate \
+  --vault-name "Development Keys" \
+  --title "Staging Deploy Key" \
+  --folder-id "folder_id_here"
 ```
 
 ##### create ssh-key import
@@ -252,6 +476,7 @@ pass-cli item create ssh-key import [OPTIONS]
 - `--vault-name VAULT_NAME` - Name of the vault to create the SSH key in
 - `--title TITLE` - Title of the SSH key item (required)
 - `--password` - Prompt for the passphrase if the private key is encrypted (optional)
+- `--folder-id FOLDER_ID` - ID of the folder to create the item in. Omit to create it at the vault root
 
 **Mutually exclusive options:**
 
@@ -321,6 +546,13 @@ PROTON_PASS_SSH_KEY_PASSWORD_FILE="/secure/passphrase.txt" \
   --share-id "abc123def" \
   --title "Key with File Passphrase" \
   --password
+
+# Import a key into a folder
+pass-cli item create ssh-key import \
+  --from-private-key ~/.ssh/id_ed25519 \
+  --vault-name "Personal Keys" \
+  --title "Laptop Key" \
+  --folder-id "folder_id_here"
 ```
 
 **Workflow for removing passphrase from existing key:**
@@ -796,6 +1028,30 @@ pass-cli item view --share-id "$SHARE_ID" --item-id "$ITEM_ID"
 pass-cli item view "pass://$SHARE_ID/$ITEM_ID/password"
 ```
 
+### Organize items in folders
+
+```bash
+# Create a folder and capture its ID
+FOLDER_ID=$(pass-cli folder create --vault-name "Web Accounts" --name "Work")
+
+# Create items directly inside the folder
+pass-cli item create login \
+  --vault-name "Web Accounts" \
+  --title "Jira" \
+  --username "developer123" \
+  --generate-password \
+  --folder-id "$FOLDER_ID"
+
+pass-cli item create note \
+  --vault-name "Web Accounts" \
+  --title "Onboarding notes" \
+  --note "VPN setup walkthrough" \
+  --folder-id "$FOLDER_ID"
+
+# Check where each item ended up
+pass-cli item list --vault-name "Web Accounts"
+```
+
 ## Best practices
 
 ### Item organization
@@ -803,6 +1059,7 @@ pass-cli item view "pass://$SHARE_ID/$ITEM_ID/password"
 - Use descriptive titles that make items easy to find
 - Include relevant URLs for login items
 - Group related items in the same vault
+- Use `--folder-id` when creating items that belong together, and get the ID from `pass-cli folder list`
 
 ### Security
 
@@ -832,5 +1089,6 @@ pass-cli item view "pass://$SHARE_ID/$ITEM_ID/password"
 ## Related commands
 
 - **[vault](vault.md)** - Manage vaults that contain items
+- **[folder](folder.md)** - Manage the folders that group items inside a vault
 - **[password](password.md)** - Generate and analyze passwords
 - **[share](share.md)** - Manage item and vault shares

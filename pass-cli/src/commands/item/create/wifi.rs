@@ -94,7 +94,7 @@ pub struct WifiArgs {
     from_template: Option<String>,
 
     /// Share ID
-    #[arg(long, required_unless_present_any = ["get_template", "from_template"])]
+    #[arg(long)]
     share_id: Option<String>,
 
     /// Vault name
@@ -122,19 +122,11 @@ pub struct WifiArgs {
     note: Option<String>,
 
     /// Folder ID to create the item in
-    #[cfg(feature = "internal")]
     #[arg(long, help = "Folder ID to create the item in")]
     folder_id: Option<String>,
 }
 
 pub async fn run(mut args: WifiArgs, client: PassClient) -> Result<()> {
-    // Apply default vault if both are None
-    if args.share_id.is_none() && args.vault_name.is_none() {
-        args.share_id = settings_helper::get_default_share_id(&client)
-            .await?
-            .map(|id| id.to_string());
-    }
-
     if args.get_template {
         let template = WifiTemplate::default();
         let json = serde_json::to_string_pretty(&template)
@@ -143,15 +135,19 @@ pub async fn run(mut args: WifiArgs, client: PassClient) -> Result<()> {
         return Ok(());
     }
 
+    // Apply default vault if both are None
+    if args.share_id.is_none() && args.vault_name.is_none() {
+        args.share_id = settings_helper::get_default_share_id(&client)
+            .await?
+            .map(|id| id.to_string());
+    }
+
     if let Some(template_path) = args.from_template {
         let share_query = ShareQuery::new(args.share_id, args.vault_name)?;
-        #[cfg(feature = "internal")]
         let folder_id = args
             .folder_id
             .as_ref()
             .map(|id| pass::domain::FolderId::new(id.clone()));
-        #[cfg(not(feature = "internal"))]
-        let folder_id = None;
 
         return create_wifi_from_template(&template_path, share_query, folder_id, client).await;
     }
@@ -180,13 +176,10 @@ pub async fn run(mut args: WifiArgs, client: PassClient) -> Result<()> {
         note: args.note,
     };
 
-    #[cfg(feature = "internal")]
     let folder_id = args
         .folder_id
         .as_ref()
         .map(|id| pass::domain::FolderId::new(id.clone()));
-    #[cfg(not(feature = "internal"))]
-    let folder_id = None;
 
     create_wifi_from_payload(payload, share_query, folder_id, client).await
 }

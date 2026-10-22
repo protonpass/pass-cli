@@ -153,7 +153,6 @@ pub struct CustomArgs {
     vault_name: Option<String>,
 
     /// Folder ID to create the item in
-    #[cfg(feature = "internal")]
     #[arg(long, help = "Folder ID to create the item in")]
     folder_id: Option<String>,
 }
@@ -180,13 +179,10 @@ pub async fn run(mut args: CustomArgs, client: PassClient) -> Result<()> {
 
     let share_query = ShareQuery::new(args.share_id, args.vault_name)?;
 
-    #[cfg(feature = "internal")]
     let folder_id = args
         .folder_id
         .as_ref()
         .map(|id| pass::domain::FolderId::new(id.clone()));
-    #[cfg(not(feature = "internal"))]
-    let folder_id = None;
 
     create_custom_from_template(&template_path, share_query, folder_id, client).await
 }
