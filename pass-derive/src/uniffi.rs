@@ -30,7 +30,9 @@ use crate::types::{Shape, shape, unwrap_result};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::spanned::Spanned;
-use syn::{Attribute, FnArg, ImplItemFn, Item, ItemFn, Pat, ReturnType, Signature, Type};
+use syn::{
+    Attribute, FnArg, ImplItemFn, Item, ItemFn, Pat, ReceiverKind, ReturnType, Signature, Type,
+};
 
 /// Adds the uniffi derive an exported struct/enum needs. Foreign field types
 /// (e.g. `jiff` datetimes) are registered once as custom types in `crate::sdk`.
@@ -109,7 +111,7 @@ fn wrapper(
     for input in &sig.inputs {
         match input {
             FnArg::Receiver(receiver) => {
-                if receiver.reference.is_none() || receiver.mutability.is_some() {
+                if !matches!(receiver.kind, ReceiverKind::Reference(_, _, None)) {
                     return Err(syn::Error::new(
                         receiver.span(),
                         "exported methods must take `&self`",
