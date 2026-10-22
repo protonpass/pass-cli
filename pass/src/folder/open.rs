@@ -286,6 +286,7 @@ mod tests {
             expiration_time: None,
             create_time: 0,
             group_id: None,
+            flags: 0,
         };
         let share_response_clone = share_response.clone();
         server.handler_with_method(

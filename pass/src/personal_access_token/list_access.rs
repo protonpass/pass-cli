@@ -290,6 +290,7 @@ mod tests {
                     expiration_time: None,
                     create_time: 1704067200,
                     group_id: None,
+                    flags: 0,
                 }],
             })
         });

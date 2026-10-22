@@ -287,6 +287,7 @@ pub async fn run(
             vault.share_id
         }
     };
+
     let mut items = client
         .list_items(&share_id)
         .await
@@ -305,9 +306,18 @@ pub async fn run(
     }
 
     if show_secrets {
-        // Secrets of every listed item are exposed, so report them all as read (batched in the client).
-        let item_ids: Vec<ItemId> = items.iter().map(|item| item.id.clone()).collect();
-        client.mark_items_read(&share_id, &item_ids).await;
+        let share = client
+            .get_share(&share_id)
+            .await
+            .context("Error retrieving share")?;
+        if share.should_hide_sensitive_content() {
+            anyhow::bail!("You don't have permission to view sensitive content");
+        } else {
+            // Secrets of every listed item are exposed, so report them all as read
+            // (batched in the client).
+            let item_ids: Vec<ItemId> = items.iter().map(|item| item.id.clone()).collect();
+            client.mark_items_read(&share_id, &item_ids).await;
+        }
     }
 
     match output {

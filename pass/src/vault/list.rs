@@ -216,6 +216,7 @@ mod tests {
                         expiration_time: None,
                         create_time: 12345678,
                         group_id: None,
+                        flags: 0,
                     },
                     ShareResponse {
                         share_id: SHARE_2_ID.to_string(),
@@ -232,6 +233,7 @@ mod tests {
                         expiration_time: None,
                         create_time: 12345678,
                         group_id: None,
+                        flags: 0,
                     },
                 ],
             })
