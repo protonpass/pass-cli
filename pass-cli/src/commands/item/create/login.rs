@@ -18,6 +18,7 @@
  */
 
 use crate::commands::item::agent_monitor::{ensure_reason_if_agent, send_reason_if_agent};
+use crate::commands::item::create::extra_fields::{ExtraFieldTemplate, into_payloads};
 use crate::commands::{item::common::ShareQuery, settings_helper};
 use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result, bail};
@@ -38,18 +39,24 @@ pub struct LoginTemplate {
     pub totp_uri: Option<String>,
     #[serde(default)]
     pub urls: Vec<String>,
+    #[serde(default)]
+    pub extra_fields: Vec<ExtraFieldTemplate>,
 }
 
-impl From<LoginTemplate> for LoginItemCreatePayload {
-    fn from(value: LoginTemplate) -> Self {
-        Self {
+impl TryFrom<LoginTemplate> for LoginItemCreatePayload {
+    type Error = anyhow::Error;
+
+    fn try_from(value: LoginTemplate) -> Result<Self> {
+        let extra_fields = into_payloads(value.extra_fields)?;
+        Ok(Self {
             title: value.title,
             email: value.email,
             username: value.username,
             password: value.password,
             totp_uri: value.totp_uri,
             urls: value.urls,
-        }
+            extra_fields,
+        })
     }
 }
 
@@ -190,6 +197,7 @@ pub async fn run(mut args: LoginArgs, client: PassClient) -> Result<()> {
         password,
         totp_uri: None,
         urls: args.url,
+        extra_fields: vec![],
     };
 
     let folder_id = args
@@ -206,10 +214,11 @@ async fn create_login_from_template(
     folder_id: Option<pass::domain::FolderId>,
     client: PassClient,
 ) -> Result<()> {
+    let payload = LoginItemCreatePayload::try_from(template)?;
     ensure_reason_if_agent(&client)?;
     let share_id = share_query.share_id(&client).await?;
     let res = client
-        .create_login(&share_id, template.into(), folder_id.as_ref())
+        .create_login(&share_id, payload, folder_id.as_ref())
         .await
         .context("Error creating login item")?;
     send_reason_if_agent(&client, EventAction::ItemCreate, &share_id, Some(&res)).await?;
@@ -298,4 +307,38 @@ async fn generate_custom_passphrase(client: &PassClient, word_count_str: &str) -
         .generate_password(PasswordGenerationArgs::Passphrase(config))
         .await
         .context("Failed to generate custom passphrase")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pass::custom::CustomFieldContentPayload;
+
+    #[test]
+    fn default_template_has_empty_extra_fields() {
+        let json = serde_json::to_value(LoginTemplate::default()).unwrap();
+        assert_eq!(json["extra_fields"], serde_json::json!([]));
+    }
+
+    #[test]
+    fn template_without_extra_fields_parses() {
+        let template: LoginTemplate = serde_json::from_str(r#"{"title": "t"}"#).unwrap();
+        let payload = LoginItemCreatePayload::try_from(template).unwrap();
+        assert!(payload.extra_fields.is_empty());
+    }
+
+    #[test]
+    fn template_extra_fields_are_passed_to_payload() {
+        let template: LoginTemplate = serde_json::from_str(
+            r#"{"title": "t", "extra_fields": [{"kind": "hidden", "title": "Recovery key"}]}"#,
+        )
+        .unwrap();
+        let payload = LoginItemCreatePayload::try_from(template).unwrap();
+        assert_eq!(1, payload.extra_fields.len());
+        assert_eq!("Recovery key", payload.extra_fields[0].field_name);
+        assert!(matches!(
+            &payload.extra_fields[0].content,
+            CustomFieldContentPayload::Hidden(v) if v.is_empty()
+        ));
+    }
 }

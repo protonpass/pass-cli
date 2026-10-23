@@ -18,7 +18,7 @@
  */
 
 use crate::constants::ITEM_CONTENT_CONTENT_FORMAT_VERSION;
-use crate::domain::{FolderId, ItemContent, ItemData, ItemId, ShareId, crypto};
+use crate::domain::{FolderId, ItemContent, ItemData, ItemExtraField, ItemId, ShareId, crypto};
 use crate::item::list::ItemRevision;
 use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
@@ -51,6 +51,7 @@ impl<C: PassClientContext> PassClient<C> {
         title: &str,
         note_content: &str,
         item_content: ItemContent,
+        extra_fields: Vec<ItemExtraField>,
         folder_id: Option<&FolderId>,
     ) -> Result<CreateItemRequest> {
         let content = ItemData {
@@ -58,7 +59,7 @@ impl<C: PassClientContext> PassClient<C> {
             note: note_content.to_string(),
             item_uuid: ItemData::generate_uuid(),
             content: item_content,
-            extra_fields: vec![],
+            extra_fields,
             platform_specific: None,
             custom_icon: None,
         };

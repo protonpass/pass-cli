@@ -18,6 +18,7 @@
  */
 
 use super::ItemCreatedEvent;
+use super::custom::{CustomFieldPayload, into_extra_fields};
 use crate::domain::{FolderId, IdentityItem, ItemContent, ItemId, ItemType, ShareId};
 use crate::permission::PermissionAction;
 use crate::{PassClient, PassClientContext};
@@ -61,6 +62,8 @@ pub struct IdentityItemCreatePayload {
     pub personal_website: Option<String>,
     pub work_phone_number: Option<String>,
     pub work_email: Option<String>,
+    #[sdk_export(default)]
+    pub extra_fields: Vec<CustomFieldPayload>,
 }
 
 /// Trims a string value.
@@ -82,6 +85,8 @@ impl<C: PassClientContext> PassClient<C> {
             share_id: share_id.clone(),
         })
         .await?;
+        let extra_fields = into_extra_fields(payload.extra_fields)?;
+
         let req = self
             .create_item_request(
                 share_id,
@@ -135,6 +140,7 @@ impl<C: PassClientContext> PassClient<C> {
                     // Extra sections
                     extra_sections: vec![],
                 })),
+                extra_fields,
                 folder_id,
             )
             .await
@@ -258,6 +264,7 @@ mod tests {
                     personal_website: None,
                     work_phone_number: None,
                     work_email: None,
+                    extra_fields: vec![],
                 },
                 None,
             )
@@ -387,6 +394,7 @@ mod tests {
                     personal_website: None,
                     work_phone_number: None,
                     work_email: None,
+                    extra_fields: vec![],
                 },
                 None,
             )
@@ -495,6 +503,7 @@ mod tests {
                     personal_website: None,
                     work_phone_number: None,
                     work_email: None,
+                    extra_fields: vec![],
                 },
                 None,
             )

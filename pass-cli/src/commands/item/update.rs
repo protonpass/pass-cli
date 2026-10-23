@@ -21,7 +21,7 @@ use super::common::{ItemQuery, ShareQuery};
 use crate::commands::item::agent_monitor::{ensure_reason_if_agent, send_reason_if_agent};
 use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result, anyhow};
-use pass::domain::{EventAction, UpdateFieldResult, update_field};
+use pass::domain::{EventAction, ExtraFieldKind, UpdateFieldResult, update_field_with_kind};
 
 fn parse_fields(fields: Vec<String>) -> Result<Vec<(String, String)>> {
     fields
@@ -45,6 +45,7 @@ pub async fn run(
     share_query: ShareQuery,
     item_query: ItemQuery,
     fields: Vec<String>,
+    field_type: ExtraFieldKind,
 ) -> Result<()> {
     let parsed_fields = parse_fields(fields)?;
 
@@ -72,7 +73,7 @@ pub async fn run(
 
     // Update each field
     for (field_name, field_value) in parsed_fields {
-        match update_field(&mut updated_content, &field_name, &field_value) {
+        match update_field_with_kind(&mut updated_content, &field_name, &field_value, field_type) {
             Ok(UpdateFieldResult::FieldUpdated) => {
                 println!("Updated field: {}", field_name);
                 fields_updated += 1;

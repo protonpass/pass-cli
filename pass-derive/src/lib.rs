@@ -33,6 +33,9 @@
 //!   for uniffi: `Record`/`Enum`). Upstream `proton-pass-types` types are
 //!   already exported under both targets, so they can be used in signatures
 //!   and fields without annotating anything.
+//!   Struct fields marked `#[sdk_export(default)]` can be omitted by SDK
+//!   callers and take their type's `Default` value (for wasm: `serde(default)`;
+//!   for uniffi: `uniffi(default)`).
 //! - **free functions**: get an exported wrapper, named in the target's
 //!   convention (`fooBar` for JS, unchanged for uniffi).
 //! - **`impl Foo<C>` blocks**: every method inside marked `#[sdk_export]`
@@ -61,7 +64,7 @@ pub fn sdk_export(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let item = parse_macro_input!(item as Item);
     let result = match item {
-        Item::Struct(_) | Item::Enum(_) => Ok(expand_type(item)),
+        Item::Struct(_) | Item::Enum(_) => expand_type(item),
         Item::Fn(item_fn) => expand_fn(item_fn),
         Item::Impl(item_impl) => expand_impl(item_impl),
         other => Err(syn::Error::new(
@@ -73,16 +76,66 @@ pub fn sdk_export(attr: TokenStream, item: TokenStream) -> TokenStream {
     result.unwrap_or_else(syn::Error::into_compile_error).into()
 }
 
-fn expand_type(mut item: Item) -> proc_macro2::TokenStream {
+fn expand_type(mut item: Item) -> syn::Result<proc_macro2::TokenStream> {
+    expand_field_defaults(&mut item)?;
     let wasm = wasm::prepare_type(&mut item);
     let uniffi = uniffi::prepare_type(&item);
     // `uniffi` goes first: for id newtypes it is a standalone item, and must not
     // sit between `wasm`'s attributes and the type they apply to.
-    quote! {
+    Ok(quote! {
         #uniffi
         #wasm
         #item
+    })
+}
+
+/// Replaces `#[sdk_export(default)]` on struct fields with each target's
+/// attribute for a field that falls back to its type's `Default`.
+fn expand_field_defaults(item: &mut Item) -> syn::Result<()> {
+    let (attrs, fields): (&[Attribute], Vec<&mut syn::Field>) = match item {
+        Item::Struct(s) => (&s.attrs, s.fields.iter_mut().collect()),
+        Item::Enum(e) => {
+            for field in e.variants.iter_mut().flat_map(|v| v.fields.iter_mut()) {
+                if let Some(attr) = field.attrs.iter().find(|a| a.path().is_ident("sdk_export")) {
+                    return Err(syn::Error::new(
+                        attr.span(),
+                        "`#[sdk_export(default)]` is only supported on struct fields",
+                    ));
+                }
+            }
+            return Ok(());
+        }
+        _ => unreachable!("only called for structs and enums"),
+    };
+    let derives_serde = wasm::derives_serde(attrs);
+
+    for field in fields {
+        let mut is_default = false;
+        let mut error = None;
+        field.attrs.retain(|attr| {
+            if !attr.path().is_ident("sdk_export") {
+                return true;
+            }
+            match attr.parse_args::<syn::Ident>() {
+                Ok(arg) if arg == "default" => is_default = true,
+                _ => {
+                    error = Some(syn::Error::new(
+                        attr.span(),
+                        "expected `#[sdk_export(default)]` on struct fields",
+                    ))
+                }
+            }
+            false
+        });
+        if let Some(error) = error {
+            return Err(error);
+        }
+        if is_default {
+            field.attrs.push(wasm::default_field_attr(derives_serde));
+            field.attrs.push(uniffi::default_field_attr());
+        }
     }
+    Ok(())
 }
 
 fn expand_fn(item_fn: syn::ItemFn) -> syn::Result<proc_macro2::TokenStream> {

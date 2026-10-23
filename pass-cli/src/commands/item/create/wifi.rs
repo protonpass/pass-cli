@@ -18,6 +18,7 @@
  */
 
 use crate::commands::item::agent_monitor::{ensure_reason_if_agent, send_reason_if_agent};
+use crate::commands::item::create::extra_fields::{ExtraFieldTemplate, into_payloads};
 use crate::commands::{item::common::ShareQuery, settings_helper};
 use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result, bail};
@@ -36,6 +37,8 @@ struct WifiTemplate {
     security: Option<String>,
     #[serde(default)]
     note: Option<String>,
+    #[serde(default)]
+    extra_fields: Vec<ExtraFieldTemplate>,
 }
 
 impl Default for WifiTemplate {
@@ -46,6 +49,7 @@ impl Default for WifiTemplate {
             password: Some("".to_string()),
             security: Some("".to_string()),
             note: Some("".to_string()),
+            extra_fields: vec![],
         }
     }
 }
@@ -64,6 +68,7 @@ impl WifiTemplate {
             password: self.password,
             security,
             note: self.note,
+            extra_fields: into_payloads(self.extra_fields)?,
         })
     }
 }
@@ -174,6 +179,7 @@ pub async fn run(mut args: WifiArgs, client: PassClient) -> Result<()> {
         password: args.password,
         security,
         note: args.note,
+        extra_fields: vec![],
     };
 
     let folder_id = args

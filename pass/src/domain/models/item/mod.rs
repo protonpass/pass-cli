@@ -18,8 +18,10 @@
  */
 
 mod attachment;
+mod extra_field;
 mod field;
 pub use attachment::*;
+pub use extra_field::*;
 
 // The item domain models - including the proto wire format (`serialize`, `deserialize`,
 // `perform_update`) - come from the upstream `proton-pass-types` crate (proton-pass-common repo).
