@@ -46,6 +46,7 @@ pub fn create_client_config_with_base_dir(base_dir: PathBuf) -> Result<ClientCon
         product_name: "Pass".to_string(),
         product_version: env!("CARGO_PKG_VERSION").to_string(),
         locale: Some(detect_locale()),
+        extra_headers: crate::env_config::extra_headers_from_env(),
     };
 
     Ok(config)

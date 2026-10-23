@@ -130,6 +130,7 @@ pub async fn get_client(
         product_name: "Pass".to_string(),
         product_version: env!("CARGO_PKG_VERSION").to_string(),
         locale: Some(detect_locale()),
+        extra_headers: crate::env_config::extra_headers_from_env(),
     };
 
     let result = pass::auth::client_builder::create_client(

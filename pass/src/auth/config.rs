@@ -35,6 +35,13 @@ pub struct ClientConfig {
     /// Consumer's version, used in the User-Agent.
     pub product_version: String,
     pub locale: Option<String>,
+    pub extra_headers: Vec<ExtraHeader>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExtraHeader {
+    pub name: String,
+    pub value: String,
 }
 
 impl ClientConfig {
@@ -54,6 +61,7 @@ impl ClientConfig {
             product_name,
             product_version,
             locale: None,
+            extra_headers: Vec::new(),
         }
     }
 
@@ -79,6 +87,11 @@ impl ClientConfig {
 
     pub fn with_locale(mut self, locale: String) -> Self {
         self.locale = Some(locale);
+        self
+    }
+
+    pub fn with_extra_headers(mut self, extra_headers: Vec<ExtraHeader>) -> Self {
+        self.extra_headers = extra_headers;
         self
     }
 }

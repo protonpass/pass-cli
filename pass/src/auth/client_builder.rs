@@ -59,6 +59,10 @@ fn generate_headers(config: &ClientConfig) -> ClientHeaders {
         builder = builder.with_locale(locale);
     }
 
+    for header in &config.extra_headers {
+        builder = builder.with_extra_header(&header.name, &header.value);
+    }
+
     builder.build()
 }
 
