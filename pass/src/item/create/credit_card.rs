@@ -18,6 +18,7 @@
  */
 
 use super::ItemCreatedEvent;
+use super::custom::{CustomFieldPayload, into_extra_fields};
 use crate::domain::{CardType, CreditCardItem, FolderId, ItemContent, ItemId, ItemType, ShareId};
 use crate::permission::PermissionAction;
 use crate::{PassClient, PassClientContext};
@@ -34,6 +35,8 @@ pub struct CreditCardItemCreatePayload {
     pub expiration_date: Option<String>,
     pub pin: Option<String>,
     pub note: Option<String>,
+    #[sdk_export(default)]
+    pub extra_fields: Vec<CustomFieldPayload>,
 }
 
 /// Sanitizes a card number by removing all non-digit characters.
@@ -140,6 +143,8 @@ impl<C: PassClientContext> PassClient<C> {
             .map(sanitize_card_number)
             .unwrap_or_default();
 
+        let extra_fields = into_extra_fields(payload.extra_fields)?;
+
         let req = self
             .create_item_request(
                 share_id,
@@ -153,6 +158,7 @@ impl<C: PassClientContext> PassClient<C> {
                     expiration_date: expiration_date.to_string(),
                     pin: payload.pin.unwrap_or_default(),
                 }),
+                extra_fields,
                 folder_id,
             )
             .await
@@ -365,6 +371,7 @@ mod tests {
                     expiration_date: Some(EXPIRATION_DATE.to_string()),
                     pin: Some(PIN.to_string()),
                     note: Some(NOTE.to_string()),
+                    extra_fields: vec![],
                 },
                 None,
             )
@@ -464,6 +471,7 @@ mod tests {
                     expiration_date: None,
                     pin: None,
                     note: None,
+                    extra_fields: vec![],
                 },
                 None,
             )
@@ -538,6 +546,7 @@ mod tests {
                     expiration_date: Some("2025/12".to_string()), // Wrong separator
                     pin: None,
                     note: None,
+                    extra_fields: vec![],
                 },
                 None,
             )
@@ -606,6 +615,7 @@ mod tests {
                     expiration_date: None,
                     pin: None,
                     note: None,
+                    extra_fields: vec![],
                 },
                 None,
             )
@@ -702,6 +712,7 @@ mod tests {
                     expiration_date: None,
                     pin: None,
                     note: None,
+                    extra_fields: vec![],
                 },
                 None,
             )

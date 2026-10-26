@@ -18,6 +18,7 @@
  */
 
 use super::ItemCreatedEvent;
+use super::custom::{CustomFieldPayload, into_extra_fields};
 use crate::domain::{FolderId, ItemContent, ItemId, ItemType, ShareId, WifiItem, WifiSecurity};
 use crate::permission::PermissionAction;
 use crate::{PassClient, PassClientContext};
@@ -32,6 +33,8 @@ pub struct WifiItemCreatePayload {
     pub password: Option<String>,
     pub security: Option<WifiSecurity>,
     pub note: Option<String>,
+    #[sdk_export(default)]
+    pub extra_fields: Vec<CustomFieldPayload>,
 }
 
 /// Validates SSID (network name).
@@ -67,6 +70,8 @@ impl<C: PassClientContext> PassClient<C> {
         let ssid = payload.ssid.as_deref().unwrap_or("");
         validate_ssid(ssid).context("Invalid SSID")?;
 
+        let extra_fields = into_extra_fields(payload.extra_fields)?;
+
         let req = self
             .create_item_request(
                 share_id,
@@ -78,6 +83,7 @@ impl<C: PassClientContext> PassClient<C> {
                     security: payload.security.unwrap_or_default(),
                     sections: vec![],
                 }),
+                extra_fields,
                 folder_id,
             )
             .await
@@ -183,6 +189,7 @@ mod tests {
                     password: Some(PASSWORD.to_string()),
                     security: Some(WifiSecurity::WPA2),
                     note: Some(NOTE.to_string()),
+                    extra_fields: vec![],
                 },
                 None,
             )
@@ -273,6 +280,7 @@ mod tests {
                     password: None, // Open network
                     security: None,
                     note: None,
+                    extra_fields: vec![],
                 },
                 None,
             )
@@ -363,6 +371,7 @@ mod tests {
                     password: Some(PASSWORD.to_string()),
                     security: Some(WifiSecurity::WPA3),
                     note: None,
+                    extra_fields: vec![],
                 },
                 None,
             )
@@ -420,6 +429,7 @@ mod tests {
                     password: None,
                     security: None,
                     note: None,
+                    extra_fields: vec![],
                 },
                 None,
             )
@@ -458,6 +468,7 @@ mod tests {
                     password: None,
                     security: None,
                     note: None,
+                    extra_fields: vec![],
                 },
                 None,
             )
@@ -519,6 +530,7 @@ mod tests {
                     password: Some("password".to_string()),
                     security: Some(WifiSecurity::WPA2),
                     note: None,
+                    extra_fields: vec![],
                 },
                 None,
             )

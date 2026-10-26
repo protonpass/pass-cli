@@ -18,6 +18,7 @@
  */
 
 use crate::commands::item::agent_monitor::{ensure_reason_if_agent, send_reason_if_agent};
+use crate::commands::item::create::extra_fields::{ExtraFieldTemplate, into_payloads};
 use crate::commands::{item::common::ShareQuery, settings_helper};
 use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result, bail};
@@ -30,14 +31,19 @@ use std::io::{self, Read};
 pub struct NoteTemplate {
     pub title: String,
     pub note: Option<String>,
+    #[serde(default)]
+    pub extra_fields: Vec<ExtraFieldTemplate>,
 }
 
-impl From<NoteTemplate> for NoteItemCreatePayload {
-    fn from(value: NoteTemplate) -> Self {
-        Self {
+impl TryFrom<NoteTemplate> for NoteItemCreatePayload {
+    type Error = anyhow::Error;
+
+    fn try_from(value: NoteTemplate) -> Result<Self> {
+        Ok(Self {
             title: value.title,
             note: value.note,
-        }
+            extra_fields: into_payloads(value.extra_fields)?,
+        })
     }
 }
 
@@ -134,6 +140,7 @@ pub async fn run(mut args: NoteArgs, client: PassClient) -> Result<()> {
     let template = NoteTemplate {
         title,
         note: args.note,
+        extra_fields: vec![],
     };
 
     let folder_id = args
@@ -150,10 +157,11 @@ async fn create_note_from_template(
     folder_id: Option<pass::domain::FolderId>,
     client: PassClient,
 ) -> Result<()> {
+    let payload = NoteItemCreatePayload::try_from(template)?;
     ensure_reason_if_agent(&client)?;
     let share_id = share_query.share_id(&client).await?;
     let res = client
-        .create_note(&share_id, template.into(), folder_id.as_ref())
+        .create_note(&share_id, payload, folder_id.as_ref())
         .await
         .context("Error creating note item")?;
     send_reason_if_agent(&client, EventAction::ItemCreate, &share_id, Some(&res)).await?;

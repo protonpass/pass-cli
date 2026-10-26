@@ -80,6 +80,44 @@ Create new items in a vault.
 pass-cli item create <ITEM_TYPE> [OPTIONS]
 ```
 
+#### Custom fields in templates
+
+Every item template (`login`, `note`, `credit-card`, `wifi`, `identity` and `custom`) accepts an `extra_fields` array to create custom fields together with the item. `--get-template` outputs it as an empty array. Each entry has these keys:
+
+- `kind` - Field type: `text`, `hidden` or `totp`
+- `title` - Field name shown in Proton Pass
+- `value` - Field value (optional, defaults to an empty string)
+
+Values of `totp` fields must be a valid `otpauth://totp/...` URI or a base32 secret, otherwise the item is not created. Empty values are accepted for every type, so you can create a field and fill it in later. In `identity` and `custom` templates, `extra_fields` are created outside of any section.
+
+Example login template:
+
+```json
+{
+  "title": "Self-hosted service",
+  "username": "admin",
+  "email": null,
+  "password": "s3cr3t-p4ssw0rd",
+  "totp_uri": null,
+  "urls": ["https://service.example.com"],
+  "extra_fields": [
+    { "kind": "hidden", "title": "Recovery key", "value": "" },
+    { "kind": "text", "title": "Account ID", "value": "12345" },
+    { "kind": "totp", "title": "Admin 2FA", "value": "otpauth://totp/Service:admin?secret=JBSWY3DPEHPK3PXP&issuer=Service" }
+  ]
+}
+```
+
+```bash
+# Create a login with an empty hidden field to fill in later
+echo '{"title":"Self-hosted service","username":"admin","password":"s3cr3t","urls":[],"extra_fields":[{"kind":"hidden","title":"Recovery key","value":""}]}' | \
+  pass-cli item create login --vault-name "Personal" --from-template -
+
+# Create a note with a hidden field
+echo '{"title":"Server notes","note":"Rack 4","extra_fields":[{"kind":"hidden","title":"BMC password","value":"hunter2"}]}' | \
+  pass-cli item create note --vault-name "Personal" --from-template -
+```
+
 #### create login
 
 Create a new login item.
@@ -654,7 +692,7 @@ pass-cli item show --vault-name "MyVault" --item-title "MyItem"
 Update an item's fields.
 
 ```bash
-pass-cli item update (--share-id SHARE_ID | --vault-name VAULT_NAME) (--item-id ITEM_ID | --item-title ITEM_TITLE) --field FIELD_NAME=FIELD_VALUE [--field FIELD_NAME=FIELD_VALUE]...
+pass-cli item update (--share-id SHARE_ID | --vault-name VAULT_NAME) (--item-id ITEM_ID | --item-title ITEM_TITLE) --field FIELD_NAME=FIELD_VALUE [--field FIELD_NAME=FIELD_VALUE]... [--field-type TYPE]
 ```
 
 **Description:**
@@ -668,6 +706,7 @@ The `update` command allows you to modify fields of an existing item. You can up
 - `--item-id ITEM_ID` - ID of the item to update
 - `--item-title ITEM_TITLE` - Title of the item to update
 - `--field FIELD_NAME=FIELD_VALUE` - Field to update in format `field_name=field_value`. Can be specified multiple times to update multiple fields.
+- `--field-type TYPE` - Type of the custom fields that `--field` creates when the item has no field with that name: `text` (default), `hidden` or `totp`. It applies to every new field created by the command. Existing fields keep their current type. `totp` values must be a valid `otpauth://totp/...` URI or a base32 secret.
 
 **Mutually exclusive options:**
 
@@ -685,7 +724,7 @@ Identity extra detail fields (extra personal, address, contact, and work details
 
 !!! info "Types of fields"
 
-    Item update does not allow to change time or TOTP fields. Please use a different Proton Pass client to update those fields
+    Item update does not allow to change time or TOTP fields. Please use a different Proton Pass client to update those fields. New TOTP fields can be created with `--field-type totp`
 
 **Examples:**
 
@@ -742,6 +781,26 @@ pass-cli item update \
   --field "api_key=sk_live_abc123" \
   --field "environment=production" \
   --field "notes=Updated on 2024-01-15"
+```
+
+### Create hidden or TOTP custom fields
+
+New custom fields are created as visible text fields unless you pass `--field-type`:
+
+```bash
+# Create an empty hidden field to fill in later
+pass-cli item update \
+  --vault-name "Personal" \
+  --item-title "Self-hosted service" \
+  --field "Recovery key=" \
+  --field-type hidden
+
+# Create a TOTP field
+pass-cli item update \
+  --vault-name "Personal" \
+  --item-title "Self-hosted service" \
+  --field "Admin 2FA=otpauth://totp/Service:admin?secret=JBSWY3DPEHPK3PXP&issuer=Service" \
+  --field-type totp
 ```
 
 ### Update a field in a specific section

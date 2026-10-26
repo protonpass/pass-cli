@@ -18,6 +18,7 @@
  */
 
 use super::ItemCreatedEvent;
+use super::custom::{CustomFieldPayload, into_extra_fields};
 use crate::domain::{FolderId, ItemContent, ItemId, ItemType, LoginItem, ShareId};
 use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
@@ -32,6 +33,8 @@ pub struct LoginItemCreatePayload {
     pub password: Option<String>,
     pub urls: Vec<String>,
     pub totp_uri: Option<String>,
+    #[sdk_export(default)]
+    pub extra_fields: Vec<CustomFieldPayload>,
 }
 
 #[sdk_export]
@@ -44,6 +47,8 @@ impl<C: PassClientContext> PassClient<C> {
         payload: LoginItemCreatePayload,
         folder_id: Option<&FolderId>,
     ) -> Result<ItemId> {
+        let extra_fields = into_extra_fields(payload.extra_fields)?;
+
         let req = self
             .create_item_request(
                 share_id,
@@ -58,6 +63,7 @@ impl<C: PassClientContext> PassClient<C> {
                     passkeys: vec![],
                     autofill_urls: vec![],
                 }),
+                extra_fields,
                 folder_id,
             )
             .await
@@ -79,9 +85,10 @@ mod tests {
     use super::*;
     use crate::test_tools::*;
 
-    use crate::domain::ItemData;
     use crate::domain::crypto::EncryptionTag;
+    use crate::domain::{ItemData, ItemExtraFieldContent};
     use crate::item::create::common::{CreateItemRequest, CreateItemResponse};
+    use crate::item::create::custom::CustomFieldContentPayload;
     use crate::item::list::ItemRevision;
 
     #[muon_test::test]
@@ -92,6 +99,7 @@ mod tests {
         const ITEM_USERNAME: &str = "MyUsername";
         const ITEM_PASSWORD: &str = "MyPassword";
         const ITEM_WEBSITE: &str = "http://example.local";
+        const ITEM_TOTP: &str = "otpauth://totp/test?secret=JBSWY3DPEHPK3PXP";
         const SHARE_ID: &str = "MyShareID";
         const ITEM_ID: &str = "MyItemID";
 
@@ -133,6 +141,20 @@ mod tests {
                     password: Some(ITEM_PASSWORD.to_string()),
                     urls: vec![ITEM_WEBSITE.to_string()],
                     totp_uri: None,
+                    extra_fields: vec![
+                        CustomFieldPayload {
+                            field_name: "Recovery key".to_string(),
+                            content: CustomFieldContentPayload::Hidden("".to_string()),
+                        },
+                        CustomFieldPayload {
+                            field_name: "Notes".to_string(),
+                            content: CustomFieldContentPayload::Text("some text".to_string()),
+                        },
+                        CustomFieldPayload {
+                            field_name: "2FA".to_string(),
+                            content: CustomFieldContentPayload::Totp(ITEM_TOTP.to_string()),
+                        },
+                    ],
                 },
                 None,
             )
@@ -177,5 +199,54 @@ mod tests {
         assert_eq!(ITEM_PASSWORD, login_item.password);
         assert_eq!(1, login_item.urls.len());
         assert_eq!(ITEM_WEBSITE, login_item.urls[0]);
+
+        assert_eq!(3, parsed_item_content.extra_fields.len());
+        assert_eq!("Recovery key", parsed_item_content.extra_fields[0].name);
+        assert_eq!(
+            ItemExtraFieldContent::Hidden("".to_string()),
+            parsed_item_content.extra_fields[0].content
+        );
+        assert_eq!("Notes", parsed_item_content.extra_fields[1].name);
+        assert_eq!(
+            ItemExtraFieldContent::Text("some text".to_string()),
+            parsed_item_content.extra_fields[1].content
+        );
+        assert_eq!("2FA", parsed_item_content.extra_fields[2].name);
+        assert_eq!(
+            ItemExtraFieldContent::Totp(ITEM_TOTP.to_string()),
+            parsed_item_content.extra_fields[2].content
+        );
+    }
+
+    #[muon_test::test]
+    async fn test_create_login_rejects_invalid_totp_extra_field(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
+        const SHARE_ID: &str = "MyShareID";
+
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
+        setup_share_keys(&api, SHARE_ID);
+        setup_vault_share(&api, SHARE_ID);
+
+        let err = client
+            .create_login(
+                &share_id!(SHARE_ID),
+                LoginItemCreatePayload {
+                    title: "MyItem".to_string(),
+                    email: None,
+                    username: None,
+                    password: None,
+                    urls: vec![],
+                    totp_uri: None,
+                    extra_fields: vec![CustomFieldPayload {
+                        field_name: "2FA".to_string(),
+                        content: CustomFieldContentPayload::Totp("otpauth://...".to_string()),
+                    }],
+                },
+                None,
+            )
+            .await
+            .expect_err("Should reject an invalid TOTP extra field");
+
+        assert!(format!("{err:#}").contains("Invalid TOTP value for field '2FA'"));
     }
 }

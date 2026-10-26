@@ -53,10 +53,7 @@ pub fn prepare_type(item: &mut Item) -> TokenStream {
         _ => unreachable!("only called for structs and enums"),
     };
 
-    let derives_serde = attrs.iter().any(|attr| {
-        attr.path().is_ident("derive") && attr.to_token_stream().to_string().contains("Serialize")
-    });
-    let serde = (!derives_serde).then(|| {
+    let serde = (!derives_serde(attrs)).then(|| {
         quote! { #[cfg_attr(wasm_runtime, derive(::serde::Serialize, ::serde::Deserialize))] }
     });
 
@@ -75,6 +72,23 @@ pub fn prepare_type(item: &mut Item) -> TokenStream {
     quote! {
         #[cfg_attr(wasm_runtime, derive(::tsify::Tsify))]
         #serde
+    }
+}
+
+/// Whether the type derives serde itself, rather than only under wasm.
+pub fn derives_serde(attrs: &[Attribute]) -> bool {
+    attrs.iter().any(|attr| {
+        attr.path().is_ident("derive") && attr.to_token_stream().to_string().contains("Serialize")
+    })
+}
+
+/// Lets JS callers omit the field. Types that derive serde themselves get it
+/// on every target, so their serde representation stays the same everywhere.
+pub fn default_field_attr(derives_serde: bool) -> Attribute {
+    if derives_serde {
+        parse_quote! { #[serde(default)] }
+    } else {
+        parse_quote! { #[cfg_attr(wasm_runtime, serde(default))] }
     }
 }
 

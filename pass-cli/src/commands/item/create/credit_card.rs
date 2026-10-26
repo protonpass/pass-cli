@@ -18,6 +18,7 @@
  */
 
 use crate::commands::item::agent_monitor::{ensure_reason_if_agent, send_reason_if_agent};
+use crate::commands::item::create::extra_fields::{ExtraFieldTemplate, into_payloads};
 use crate::commands::{item::common::ShareQuery, settings_helper};
 use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result, bail};
@@ -36,11 +37,13 @@ pub struct CreditCardTemplate {
     pub expiration_date: Option<String>,
     pub pin: Option<String>,
     pub note: Option<String>,
+    #[serde(default)]
+    pub extra_fields: Vec<ExtraFieldTemplate>,
 }
 
 impl CreditCardTemplate {
-    fn into_payload(self) -> CreditCardItemCreatePayload {
-        CreditCardItemCreatePayload {
+    fn into_payload(self) -> Result<CreditCardItemCreatePayload> {
+        Ok(CreditCardItemCreatePayload {
             title: self.title,
             cardholder_name: self.cardholder_name,
             number: self.number,
@@ -48,7 +51,8 @@ impl CreditCardTemplate {
             expiration_date: self.expiration_date,
             pin: self.pin,
             note: self.note,
-        }
+            extra_fields: into_payloads(self.extra_fields)?,
+        })
     }
 }
 
@@ -170,6 +174,7 @@ pub async fn run(mut args: CreditCardArgs, client: PassClient) -> Result<()> {
         expiration_date: args.expiration_date,
         pin: args.pin,
         note: args.note,
+        extra_fields: vec![],
     };
 
     let folder_id = args
@@ -186,7 +191,7 @@ async fn create_credit_card_from_template(
     folder_id: Option<pass::domain::FolderId>,
     client: PassClient,
 ) -> Result<()> {
-    let payload = template.into_payload();
+    let payload = template.into_payload()?;
     create_credit_card_from_payload(payload, share_query, folder_id, client).await
 }
 

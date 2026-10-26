@@ -18,6 +18,7 @@
  */
 
 use crate::commands::item::agent_monitor::{ensure_reason_if_agent, send_reason_if_agent};
+use crate::commands::item::create::extra_fields::{ExtraFieldTemplate, into_payloads};
 use crate::commands::{item::common::ShareQuery, settings_helper};
 use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result};
@@ -95,6 +96,8 @@ pub struct IdentityTemplate {
     pub work_phone_number: Option<String>,
     #[serde(default)]
     pub work_email: Option<String>,
+    #[serde(default)]
+    pub extra_fields: Vec<ExtraFieldTemplate>,
 }
 
 impl Default for IdentityTemplate {
@@ -134,13 +137,16 @@ impl Default for IdentityTemplate {
             personal_website: Some("".to_string()),
             work_phone_number: Some("".to_string()),
             work_email: Some("".to_string()),
+            extra_fields: vec![],
         }
     }
 }
 
-impl From<IdentityTemplate> for IdentityItemCreatePayload {
-    fn from(value: IdentityTemplate) -> Self {
-        Self {
+impl TryFrom<IdentityTemplate> for IdentityItemCreatePayload {
+    type Error = anyhow::Error;
+
+    fn try_from(value: IdentityTemplate) -> Result<Self> {
+        Ok(Self {
             title: value.title,
             note: value.note,
             full_name: value.full_name,
@@ -175,7 +181,8 @@ impl From<IdentityTemplate> for IdentityItemCreatePayload {
             personal_website: value.personal_website,
             work_phone_number: value.work_phone_number,
             work_email: value.work_email,
-        }
+            extra_fields: into_payloads(value.extra_fields)?,
+        })
     }
 }
 
@@ -254,7 +261,7 @@ async fn create_identity_from_template(
     let template: IdentityTemplate = serde_json::from_str(&template_json)
         .context("Error parsing template JSON. Use --get-template to see the expected format")?;
 
-    let payload = template.into();
+    let payload = IdentityItemCreatePayload::try_from(template)?;
 
     create_identity_from_payload(payload, share_query, folder_id, client).await
 }

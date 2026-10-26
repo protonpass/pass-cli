@@ -19,6 +19,7 @@
 
 mod credit_card;
 mod custom;
+mod extra_fields;
 mod identity;
 mod login;
 mod note;

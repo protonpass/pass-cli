@@ -19,8 +19,8 @@
 
 use super::ItemCreatedEvent;
 use crate::domain::{
-    CustomItem, CustomSection, FolderId, ItemContent, ItemExtraField, ItemExtraFieldContent,
-    ItemId, ItemType, ShareId,
+    CustomItem, CustomSection, ExtraFieldKind, FolderId, ItemContent, ItemExtraField,
+    ItemExtraFieldContent, ItemId, ItemType, ShareId, validate_totp,
 };
 use crate::permission::PermissionAction;
 use crate::{PassClient, PassClientContext};
@@ -33,6 +33,8 @@ pub struct CustomItemCreatePayload {
     pub title: String,
     pub note: Option<String>,
     pub sections: Vec<CustomSectionPayload>,
+    #[sdk_export(default)]
+    pub extra_fields: Vec<CustomFieldPayload>,
 }
 
 #[sdk_export]
@@ -56,6 +58,16 @@ pub enum CustomFieldContentPayload {
     Hidden(String),
     Totp(String),
     Timestamp(i64),
+}
+
+impl CustomFieldContentPayload {
+    pub fn new(kind: ExtraFieldKind, value: String) -> Self {
+        match kind {
+            ExtraFieldKind::Text => Self::Text(value),
+            ExtraFieldKind::Hidden => Self::Hidden(value),
+            ExtraFieldKind::Totp => Self::Totp(value),
+        }
+    }
 }
 
 /// Validates a section name.
@@ -85,7 +97,7 @@ fn trim_value(value: &str) -> String {
 
 impl CustomFieldPayload {
     /// Converts payload to domain model with validation and trimming.
-    fn into_extra_field(self) -> Result<ItemExtraField> {
+    pub(crate) fn into_extra_field(self) -> Result<ItemExtraField> {
         let field_name = validate_field_name(&self.field_name)?;
 
         let content = match self.content {
@@ -96,7 +108,10 @@ impl CustomFieldPayload {
                 ItemExtraFieldContent::Hidden(trim_value(&value))
             }
             CustomFieldContentPayload::Totp(value) => {
-                ItemExtraFieldContent::Totp(trim_value(&value))
+                let value = trim_value(&value);
+                validate_totp(&value)
+                    .with_context(|| format!("Invalid TOTP value for field '{field_name}'"))?;
+                ItemExtraFieldContent::Totp(value)
             }
             CustomFieldContentPayload::Timestamp(ts) => ItemExtraFieldContent::Timestamp(ts),
         };
@@ -106,6 +121,14 @@ impl CustomFieldPayload {
             content,
         })
     }
+}
+
+pub(crate) fn into_extra_fields(fields: Vec<CustomFieldPayload>) -> Result<Vec<ItemExtraField>> {
+    fields
+        .into_iter()
+        .map(|f| f.into_extra_field())
+        .collect::<Result<Vec<_>>>()
+        .context("Error validating extra fields")
 }
 
 impl CustomSectionPayload {
@@ -150,6 +173,7 @@ impl<C: PassClientContext> PassClient<C> {
             .map(|s| s.into_custom_section())
             .collect();
         let sections = sections.context("Error validating custom item sections")?;
+        let extra_fields = into_extra_fields(payload.extra_fields)?;
 
         let req = self
             .create_item_request(
@@ -157,6 +181,7 @@ impl<C: PassClientContext> PassClient<C> {
                 &payload.title,
                 payload.note.as_deref().unwrap_or(""),
                 ItemContent::Custom(CustomItem { sections }),
+                extra_fields,
                 folder_id,
             )
             .await
@@ -223,6 +248,46 @@ mod tests {
     }
 
     // Integration tests using muon test server
+    #[test]
+    fn test_into_extra_field_validates_totp() {
+        let valid = CustomFieldPayload {
+            field_name: "2FA".to_string(),
+            content: CustomFieldContentPayload::Totp(
+                " otpauth://totp/test?secret=JBSWY3DPEHPK3PXP ".to_string(),
+            ),
+        }
+        .into_extra_field()
+        .unwrap();
+        assert_eq!(
+            ItemExtraFieldContent::Totp("otpauth://totp/test?secret=JBSWY3DPEHPK3PXP".to_string()),
+            valid.content
+        );
+
+        let invalid = CustomFieldPayload {
+            field_name: "2FA".to_string(),
+            content: CustomFieldContentPayload::Totp("otpauth://...".to_string()),
+        }
+        .into_extra_field()
+        .unwrap_err();
+        assert!(format!("{invalid:#}").contains("Invalid TOTP value for field '2FA'"));
+    }
+
+    #[test]
+    fn test_content_payload_from_kind() {
+        assert!(matches!(
+            CustomFieldContentPayload::new(ExtraFieldKind::Text, "a".to_string()),
+            CustomFieldContentPayload::Text(v) if v == "a"
+        ));
+        assert!(matches!(
+            CustomFieldContentPayload::new(ExtraFieldKind::Hidden, "b".to_string()),
+            CustomFieldContentPayload::Hidden(v) if v == "b"
+        ));
+        assert!(matches!(
+            CustomFieldContentPayload::new(ExtraFieldKind::Totp, "c".to_string()),
+            CustomFieldContentPayload::Totp(v) if v == "c"
+        ));
+    }
+
     #[muon_test::test]
     async fn test_create_custom_with_all_field_types(server: muon_test::Server) {
         let (raw_client, api) = server.client::<()>();
@@ -275,7 +340,7 @@ mod tests {
                             CustomFieldPayload {
                                 field_name: "TOTP Field".to_string(),
                                 content: CustomFieldContentPayload::Totp(
-                                    "otpauth://totp/test".to_string(),
+                                    "otpauth://totp/test?secret=JBSWY3DPEHPK3PXP".to_string(),
                                 ),
                             },
                             CustomFieldPayload {
@@ -284,6 +349,7 @@ mod tests {
                             },
                         ],
                     }],
+                    extra_fields: vec![],
                 },
                 None,
             )
@@ -383,6 +449,7 @@ mod tests {
                     title: ITEM_TITLE.to_string(),
                     note: None,
                     sections: vec![],
+                    extra_fields: vec![],
                 },
                 None,
             )
@@ -436,6 +503,7 @@ mod tests {
                             content: CustomFieldContentPayload::Text("  value  ".to_string()),
                         }],
                     }],
+                    extra_fields: vec![],
                 },
                 None,
             )
@@ -498,6 +566,7 @@ mod tests {
                         section_name: "   ".to_string(),
                         section_fields: vec![],
                     }],
+                    extra_fields: vec![],
                 },
                 None,
             )
@@ -536,6 +605,7 @@ mod tests {
                             content: CustomFieldContentPayload::Text("value".to_string()),
                         }],
                     }],
+                    extra_fields: vec![],
                 },
                 None,
             )
@@ -605,6 +675,7 @@ mod tests {
                             }],
                         },
                     ],
+                    extra_fields: vec![],
                 },
                 None,
             )

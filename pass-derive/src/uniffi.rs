@@ -32,6 +32,7 @@ use quote::{format_ident, quote};
 use syn::spanned::Spanned;
 use syn::{
     Attribute, FnArg, ImplItemFn, Item, ItemFn, Pat, ReceiverKind, ReturnType, Signature, Type,
+    parse_quote,
 };
 
 /// Adds the uniffi derive an exported struct/enum needs. Foreign field types
@@ -52,6 +53,11 @@ pub fn prepare_type(item: &Item) -> TokenStream {
         Item::Enum(_) => quote! { #[cfg_attr(uniffi_runtime, derive(::uniffi::Enum))] },
         _ => unreachable!("only called for structs and enums"),
     }
+}
+
+/// Lets foreign callers omit the field from the record constructor.
+pub fn default_field_attr() -> Attribute {
+    parse_quote! { #[cfg_attr(uniffi_runtime, uniffi(default))] }
 }
 
 /// Exported wrapper for a free function, placed next to it. The wrapper gets

@@ -18,6 +18,7 @@
  */
 
 use super::ItemCreatedEvent;
+use super::custom::{CustomFieldPayload, into_extra_fields};
 use crate::domain::{FolderId, ItemContent, ItemId, ItemType, NoteItem, ShareId};
 use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
@@ -28,6 +29,8 @@ use pass_derive::sdk_export;
 pub struct NoteItemCreatePayload {
     pub title: String,
     pub note: Option<String>,
+    #[sdk_export(default)]
+    pub extra_fields: Vec<CustomFieldPayload>,
 }
 
 #[sdk_export]
@@ -39,12 +42,15 @@ impl<C: PassClientContext> PassClient<C> {
         payload: NoteItemCreatePayload,
         folder_id: Option<&FolderId>,
     ) -> Result<ItemId> {
+        let extra_fields = into_extra_fields(payload.extra_fields)?;
+
         let req = self
             .create_item_request(
                 share_id,
                 &payload.title,
                 &payload.note.unwrap_or_default(),
                 ItemContent::Note(NoteItem),
+                extra_fields,
                 folder_id,
             )
             .await
@@ -66,9 +72,10 @@ mod tests {
     use super::*;
     use crate::test_tools::*;
 
-    use crate::domain::ItemData;
     use crate::domain::crypto::EncryptionTag;
+    use crate::domain::{ItemData, ItemExtraFieldContent};
     use crate::item::create::common::{CreateItemRequest, CreateItemResponse};
+    use crate::item::create::custom::CustomFieldContentPayload;
     use crate::item::list::ItemRevision;
 
     #[muon_test::test]
@@ -113,6 +120,10 @@ mod tests {
                 NoteItemCreatePayload {
                     title: ITEM_TITLE.to_string(),
                     note: Some(ITEM_NOTE.to_string()),
+                    extra_fields: vec![CustomFieldPayload {
+                        field_name: "Recovery key".to_string(),
+                        content: CustomFieldContentPayload::Hidden("abc".to_string()),
+                    }],
                 },
                 None,
             )
@@ -147,6 +158,12 @@ mod tests {
             .expect("Should be able to deserialize ItemData");
         assert_eq!(ITEM_TITLE, parsed_item_content.title);
         assert_eq!(ITEM_NOTE, parsed_item_content.note);
+        assert_eq!(1, parsed_item_content.extra_fields.len());
+        assert_eq!("Recovery key", parsed_item_content.extra_fields[0].name);
+        assert_eq!(
+            ItemExtraFieldContent::Hidden("abc".to_string()),
+            parsed_item_content.extra_fields[0].content
+        );
 
         match parsed_item_content.content {
             ItemContent::Note(_) => {
@@ -197,6 +214,7 @@ mod tests {
                 NoteItemCreatePayload {
                     title: ITEM_TITLE.to_string(),
                     note: None,
+                    extra_fields: vec![],
                 },
                 None,
             )

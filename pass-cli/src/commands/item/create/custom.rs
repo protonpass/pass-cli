@@ -18,6 +18,7 @@
  */
 
 use crate::commands::item::agent_monitor::{ensure_reason_if_agent, send_reason_if_agent};
+use crate::commands::item::create::extra_fields::{ExtraFieldTemplate, into_payloads};
 use crate::commands::{item::common::ShareQuery, settings_helper};
 use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result, bail};
@@ -35,6 +36,8 @@ pub struct CustomTemplate {
     pub note: Option<String>,
     #[serde(default)]
     pub sections: Vec<SectionTemplate>,
+    #[serde(default)]
+    pub extra_fields: Vec<ExtraFieldTemplate>,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
@@ -81,6 +84,7 @@ impl Default for CustomTemplate {
                     },
                 ],
             }],
+            extra_fields: vec![],
         }
     }
 }
@@ -130,6 +134,7 @@ impl CustomTemplate {
             title: self.title,
             note: self.note,
             sections: sections?,
+            extra_fields: into_payloads(self.extra_fields)?,
         })
     }
 }

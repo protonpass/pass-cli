@@ -205,6 +205,12 @@ pub enum ItemCommands {
             help = "Field to update in format field_name=field_value (can be specified multiple times)"
         )]
         fields: Vec<String>,
+        #[arg(
+            long,
+            value_parser = ["text", "hidden", "totp"],
+            help = "Type of the custom fields created by --field when no field with that name exists (default: text). Existing fields keep their type"
+        )]
+        field_type: Option<String>,
     },
 }
 
@@ -421,6 +427,7 @@ pub async fn run(subcommand: ItemCommands, client: PassClient) -> Result<()> {
             item_id,
             item_title,
             fields,
+            field_type,
         } => {
             // Apply default vault if both are None
             let share_query = match (&share_id, &vault_name) {
@@ -438,7 +445,11 @@ pub async fn run(subcommand: ItemCommands, client: PassClient) -> Result<()> {
                 _ => common::ShareQuery::new(share_id, vault_name)?,
             };
             let item_query = common::ItemQuery::new(item_id, item_title)?;
-            update::run(client, share_query, item_query, fields).await
+            let field_type = field_type
+                .map(|t| t.parse::<pass::domain::ExtraFieldKind>())
+                .transpose()?
+                .unwrap_or_default();
+            update::run(client, share_query, item_query, fields, field_type).await
         }
     }
 }
