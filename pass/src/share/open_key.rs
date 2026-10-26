@@ -274,6 +274,7 @@ mod tests {
             content: None,
             share_role: ShareRole::Owner,
             group_id: None,
+            flags: vec![],
         };
         let opened_share_key = client
             .open_share_key_for_share(&share, share_key)
@@ -384,6 +385,7 @@ mod tests {
             content: None,
             share_role: ShareRole::Owner,
             group_id: Some(group_id!(GROUP_ID)),
+            flags: vec![],
         };
         let opened_share_key = client
             .open_share_key_for_share(&share, share_key)

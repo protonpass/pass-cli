@@ -87,6 +87,44 @@ pub struct ShareContent {
     pub content_format_version: u8,
 }
 
+/// Bitmask flags attached to a share by the API (`Flags` field of the share response).
+/// Mirrors the server-side `ShareFlag` enum; only the flags this client acts upon are modelled.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ShareFlag {
+    /// The share is hidden from listings. Not acted upon by this client.
+    Hidden,
+    /// Sensitive content (the login password) of items in this share must not be displayed.
+    HideSensitiveContent,
+}
+
+impl ShareFlag {
+    fn bit(self) -> u64 {
+        match self {
+            ShareFlag::Hidden => 1 << 0,
+            ShareFlag::HideSensitiveContent => 1 << 1,
+        }
+    }
+
+    /// Parse a u64 bitmask value into a `Vec<ShareFlag>`
+    pub fn parse_flags(flags: u64) -> Vec<ShareFlag> {
+        let mut result = Vec::new();
+
+        if flags & ShareFlag::Hidden.bit() != 0 {
+            result.push(ShareFlag::Hidden);
+        }
+        if flags & ShareFlag::HideSensitiveContent.bit() != 0 {
+            result.push(ShareFlag::HideSensitiveContent);
+        }
+
+        result
+    }
+
+    /// Convert a `Vec<ShareFlag>` back to a u64 bitmask
+    pub fn to_bitmask(flags: &[ShareFlag]) -> u64 {
+        flags.iter().fold(0u64, |acc, flag| acc | flag.bit())
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Share {
     pub id: ShareId,
@@ -97,11 +135,18 @@ pub struct Share {
     pub content: Option<ShareContent>,
     pub share_role: ShareRole,
     pub group_id: Option<GroupId>,
+    pub flags: Vec<ShareFlag>,
 }
 
 impl Share {
     pub fn is_vault_share(&self) -> bool {
         matches!(self.share_type, ShareType::Vault { .. })
+    }
+
+    /// Whether the sensitive content (the login password) of items in this share must be kept
+    /// hidden from the user.
+    pub fn should_hide_sensitive_content(&self) -> bool {
+        self.flags.contains(&ShareFlag::HideSensitiveContent)
     }
 
     pub fn vault_share_guard(&self) -> Result<()> {
@@ -164,5 +209,72 @@ impl Share {
                 self.id
             ))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_flags_individual() {
+        assert_eq!(ShareFlag::parse_flags(0), vec![]);
+        assert_eq!(ShareFlag::parse_flags(1), vec![ShareFlag::Hidden]);
+        assert_eq!(
+            ShareFlag::parse_flags(2),
+            vec![ShareFlag::HideSensitiveContent]
+        );
+    }
+
+    #[test]
+    fn parse_flags_combined_and_unknown_bits() {
+        assert_eq!(
+            ShareFlag::parse_flags(3),
+            vec![ShareFlag::Hidden, ShareFlag::HideSensitiveContent]
+        );
+        // Unknown bits are ignored
+        assert_eq!(
+            ShareFlag::parse_flags(0b0110),
+            vec![ShareFlag::HideSensitiveContent]
+        );
+    }
+
+    #[test]
+    fn to_bitmask_roundtrip() {
+        assert_eq!(ShareFlag::to_bitmask(&[]), 0);
+        assert_eq!(ShareFlag::to_bitmask(&[ShareFlag::Hidden]), 1);
+        assert_eq!(
+            ShareFlag::to_bitmask(&[ShareFlag::Hidden, ShareFlag::HideSensitiveContent]),
+            3
+        );
+    }
+
+    fn share_with_flags(flags: Vec<ShareFlag>) -> Share {
+        Share {
+            id: ShareId::new("share-id".to_string()),
+            address_id: AddressId::new("address-id".to_string()),
+            share_type: ShareType::Vault {
+                vault_id: VaultId::new("vault-id".to_string()),
+            },
+            vault_id: VaultId::new("vault-id".to_string()),
+            permission: Permission::default(),
+            content: None,
+            share_role: ShareRole::Owner,
+            group_id: None,
+            flags,
+        }
+    }
+
+    #[test]
+    fn should_hide_sensitive_content() {
+        assert!(!share_with_flags(vec![]).should_hide_sensitive_content());
+        assert!(!share_with_flags(vec![ShareFlag::Hidden]).should_hide_sensitive_content());
+        assert!(
+            share_with_flags(vec![ShareFlag::HideSensitiveContent]).should_hide_sensitive_content()
+        );
+        assert!(
+            share_with_flags(vec![ShareFlag::Hidden, ShareFlag::HideSensitiveContent])
+                .should_hide_sensitive_content()
+        );
     }
 }

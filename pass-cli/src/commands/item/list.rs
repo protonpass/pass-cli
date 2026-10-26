@@ -17,6 +17,7 @@
  *
  */
 
+use crate::commands::item::common;
 use crate::commands::{OutputFormat, settings_helper};
 use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result, anyhow};
@@ -287,6 +288,7 @@ pub async fn run(
             vault.share_id
         }
     };
+
     let mut items = client
         .list_items(&share_id)
         .await
@@ -305,7 +307,12 @@ pub async fn run(
     }
 
     if show_secrets {
-        // Secrets of every listed item are exposed, so report them all as read (batched in the client).
+        let share = client
+            .get_share(&share_id)
+            .await
+            .context("Error retrieving share")?;
+        common::ensure_share_allows_viewing(&share)?;
+
         let item_ids: Vec<ItemId> = items.iter().map(|item| item.id.clone()).collect();
         client.mark_items_read(&share_id, &item_ids).await;
     }

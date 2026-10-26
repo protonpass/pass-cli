@@ -18,7 +18,7 @@
  */
 
 use crate::commands::item::agent_monitor::send_reason_if_agent_with_name;
-use crate::commands::item::common::{ItemQuery, ShareQuery};
+use crate::commands::item::common::{self, ItemQuery, ShareQuery};
 use crate::commands::item::totp::generate_totp_token;
 use crate::commands::secret_resolver::{ItemReference, TotpOutput};
 use crate::commands::{OutputFormat, settings_helper};
@@ -95,6 +95,7 @@ pub async fn run(
                 .await;
             let share_id = share_query.share_id(&client).await?;
             let item_id = item_query.item_id(&share_id, &client).await?;
+            common::ensure_sensitive_content_visible(&client, &share_id).await?;
             let item = client
                 .view_item(&share_id, &item_id)
                 .await
@@ -121,6 +122,7 @@ pub async fn run(
                 .find_item(item_query)
                 .await
                 .context("Error retrieving item")?;
+            common::ensure_sensitive_content_visible(&client, &item.share_id).await?;
             let full_item = client
                 .view_item(&item.share_id, &item.id)
                 .await

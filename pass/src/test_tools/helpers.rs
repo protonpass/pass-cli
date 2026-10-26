@@ -93,6 +93,7 @@ pub fn setup_vault_share(server: &ProtonAPI, share_id: &str) {
         expiration_time: None,
         create_time: 0,
         group_id: None,
+        flags: 0,
     };
     let share_response_clone = share_response.clone();
     server.handler_with_method(

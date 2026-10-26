@@ -18,8 +18,8 @@
  */
 
 use crate::domain::{
-    AddressId, FolderId, GroupId, ItemId, Permission, Share, ShareContent, ShareId, ShareRole,
-    ShareType, VaultId,
+    AddressId, FolderId, GroupId, ItemId, Permission, Share, ShareContent, ShareFlag, ShareId,
+    ShareRole, ShareType, VaultId,
 };
 use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
@@ -67,6 +67,8 @@ pub struct ShareResponse {
     pub create_time: i64,
     #[serde(rename = "GroupID")]
     pub group_id: Option<String>,
+    #[serde(rename = "Flags", default)]
+    pub flags: u64,
 }
 
 fn share_response_to_share(value: ShareResponse, is_pat: bool) -> Result<Share> {
@@ -96,6 +98,7 @@ fn share_response_to_share(value: ShareResponse, is_pat: bool) -> Result<Share> 
         share_role: ShareRole::from_value(&value.share_role_id, is_owner, value.permission),
         content: share_content,
         group_id: value.group_id.map(GroupId::new),
+        flags: ShareFlag::parse_flags(value.flags),
         share_type: match value.target_type {
             TARGET_TYPE_VAULT => ShareType::Vault {
                 vault_id: VaultId::new(value.target_id),
@@ -258,6 +261,7 @@ mod tests {
                     expiration_time: None,
                     create_time: 0,
                     group_id: None,
+                    flags: 0,
                 }],
             })
         });
@@ -317,6 +321,7 @@ mod tests {
             expiration_time: None,
             create_time: 123456789,
             group_id: None,
+            flags: ShareFlag::to_bitmask(&[ShareFlag::Hidden, ShareFlag::HideSensitiveContent]),
         };
         let share_response_1_clone = share_response_1.clone();
 
@@ -335,6 +340,7 @@ mod tests {
             expiration_time: None,
             create_time: 8765432,
             group_id: None,
+            flags: ShareFlag::to_bitmask(&[ShareFlag::HideSensitiveContent]),
         };
         let share_response_2_clone = share_response_2.clone();
 
@@ -353,6 +359,7 @@ mod tests {
             expiration_time: None,
             create_time: 111222333,
             group_id: None,
+            flags: 0,
         };
         let share_response_3_clone = share_response_3.clone();
 
@@ -381,6 +388,55 @@ mod tests {
         assert_share_matches_response(&shares[0], &share_response_1);
         assert_share_matches_response(&shares[1], &share_response_2);
         assert_share_matches_response(&shares[2], &share_response_3);
+    }
+
+    #[test]
+    fn share_response_flags_default_when_absent() {
+        let json = r#"{
+            "ShareID": "share-id",
+            "AddressID": "address-id",
+            "VaultID": "vault-id",
+            "TargetType": 1,
+            "TargetID": "vault-id",
+            "Owner": true,
+            "Permission": 0,
+            "ShareRoleID": "1",
+            "Content": null,
+            "ContentKeyRotation": null,
+            "ContentFormatVersion": null,
+            "ExpireTime": null,
+            "CreateTime": 0,
+            "GroupID": null
+        }"#;
+        let response: ShareResponse =
+            serde_json::from_str(json).expect("Should deserialize share response without Flags");
+        assert_eq!(0, response.flags);
+    }
+
+    #[test]
+    fn share_response_flags_are_parsed_into_share() {
+        let response = ShareResponse {
+            share_id: "share-id".to_string(),
+            address_id: "address-id".to_string(),
+            vault_id: "vault-id".to_string(),
+            target_type: TargetType::Vault.value(),
+            target_id: "vault-id".to_string(),
+            owner: true,
+            permission: 0,
+            share_role_id: "1".to_string(),
+            content: None,
+            content_key_rotation: None,
+            content_format_version: None,
+            expiration_time: None,
+            create_time: 0,
+            group_id: None,
+            flags: ShareFlag::to_bitmask(&[ShareFlag::HideSensitiveContent]),
+        };
+
+        let share = share_response_to_share(response, false).expect("Should convert share");
+
+        assert_eq!(vec![ShareFlag::HideSensitiveContent], share.flags);
+        assert!(share.should_hide_sensitive_content());
     }
 
     fn assert_share_matches_response(share: &Share, response: &ShareResponse) {
@@ -421,5 +477,7 @@ mod tests {
             Some(_) => assert!(share.content.is_some()),
             None => assert!(share.content.is_none()),
         }
+
+        assert_eq!(ShareFlag::to_bitmask(&share.flags), response.flags);
     }
 }
