@@ -60,7 +60,7 @@ impl Pagination {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SincePagination {
     pub since: Option<String>,
     pub page_size: usize,

@@ -74,6 +74,23 @@ impl Cache {
         }
     }
 
+    pub async fn with_entry<T, V, R>(
+        &self,
+        _key: T,
+        default: impl Fn() -> V,
+        updater: impl FnOnce(&mut V) -> R,
+    ) -> Option<R>
+    where
+        T: 'static + Send + Sync,
+        V: 'static + Send + Sync,
+    {
+        let mut map = self.inner.write().await;
+        let entry = map
+            .entry(TypeId::of::<T>())
+            .or_insert_with(|| Box::new(default()));
+        entry.downcast_mut::<V>().map(updater)
+    }
+
     pub async fn update_if_no_value<T, V, E, F, Fut>(&self, _key: T, callback: F) -> Result<V, E>
     where
         T: 'static + Send + Sync,
