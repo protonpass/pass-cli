@@ -4165,7 +4165,7 @@ dependencies = [
 
 [[package]]
 name = "pass"
-version = "2.5.1"
+version = "2.6.0"
 dependencies = [
  "aes 0.9.3",
  "aes-gcm 0.11.1",
@@ -4212,7 +4212,7 @@ dependencies = [
 
 [[package]]
 name = "pass-cli"
-version = "2.5.1"
+version = "2.6.0"
 dependencies = [
  "anyhow",
  "apple-native-keyring-store",
@@ -4272,7 +4272,7 @@ dependencies = [
 
 [[package]]
 name = "pass-db"
-version = "2.5.1"
+version = "2.6.0"
 dependencies = [
  "anyhow",
  "deadpool",
@@ -4287,7 +4287,7 @@ dependencies = [
 
 [[package]]
 name = "pass-derive"
-version = "2.5.1"
+version = "2.6.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4296,7 +4296,7 @@ dependencies = [
 
 [[package]]
 name = "pass-fs"
-version = "2.5.1"
+version = "2.6.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4306,7 +4306,7 @@ dependencies = [
 
 [[package]]
 name = "pass-mobile-sdk"
-version = "2.5.1"
+version = "2.6.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4320,14 +4320,14 @@ dependencies = [
 
 [[package]]
 name = "pass-uniffi-bindgen"
-version = "2.5.1"
+version = "2.6.0"
 dependencies = [
  "uniffi",
 ]
 
 [[package]]
 name = "pass-web-sdk"
-version = "2.5.1"
+version = "2.6.0"
 dependencies = [
  "anyhow",
  "async-trait",
