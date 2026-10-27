@@ -99,14 +99,16 @@ impl ShareItems {
         self.state = state;
     }
 
-    pub(crate) fn items(&self) -> Vec<ItemWithItemKey> {
+    pub(crate) fn items(&mut self) -> Vec<ItemWithItemKey> {
         let mut items = Vec::new();
         for page in &self.pages {
             match page.deserialize(self.xor_key) {
                 Ok(page_items) => items.extend(page_items),
                 Err(e) => {
-                    warn!("Error deserializing cached items: {e:#}");
-                    return items;
+                    warn!("Error deserializing cached items, resetting cache: {e:#}");
+                    self.pages.clear();
+                    self.state = FillState::default();
+                    return Vec::new();
                 }
             }
         }
@@ -215,7 +217,7 @@ mod tests {
 
     #[test]
     fn share_items_starts_partial_from_first_page() {
-        let cache = ShareItems::new(XOR_KEY);
+        let mut cache = ShareItems::new(XOR_KEY);
         assert_eq!(
             &FillState::Partial(SincePagination::default()),
             cache.state()
@@ -262,6 +264,31 @@ mod tests {
         cache.set_state(complete.clone());
         assert_eq!(&complete, cache.state());
         assert_eq!(ids(&page), ids(&cache.items()));
+    }
+
+    #[test]
+    fn share_items_corrupt_page_resets_cache() {
+        let mut cache = ShareItems::new(XOR_KEY);
+        cache
+            .append(
+                &[item_with_key("a")],
+                FillState::Partial(SincePagination::default()),
+            )
+            .expect("should append");
+        cache
+            .append(
+                &[item_with_key("b")],
+                FillState::Complete(SincePagination {
+                    since: Some("token".to_string()),
+                    page_size: 10,
+                }),
+            )
+            .expect("should append");
+        cache.pages[1] = SerializedItemsWithKey(b"not json".to_vec());
+
+        assert!(cache.items().is_empty());
+        assert_eq!(&FillState::default(), cache.state());
+        assert!(cache.pages.is_empty());
     }
 
     #[test]
