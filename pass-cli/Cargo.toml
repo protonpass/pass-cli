@@ -65,7 +65,7 @@ linux-keyutils-keyring-store = "1.0.0"
 zbus-secret-service-keyring-store = { version = "1.0.0", features = ["crypto-rust"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
-zip = "9"
+zip = "9.1.2"
 windows-native-keyring-store = "1.0.0"
 windows-sys = { version = "0.61", features = ["Win32_System_SystemInformation"] }
 

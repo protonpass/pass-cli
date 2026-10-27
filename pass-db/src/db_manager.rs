@@ -29,6 +29,10 @@ pub fn format_key_for_sqlcipher(key: &[u8]) -> String {
     format!("x'{}'", key_hex)
 }
 
+pub(crate) fn key_pragma_sql(key: &str) -> String {
+    format!("PRAGMA key = \"{}\";", key.replace('"', "\"\""))
+}
+
 pub struct EncryptedSqliteManager {
     path: String,
     encryption_key: Vec<u8>,
@@ -76,9 +80,9 @@ impl Manager for EncryptedSqliteManager {
             }
 
             let conn = rusqlite::Connection::open(&path)?;
-            // Set SQLCipher encryption key immediately after opening
-            // Use pragma_update instead of execute because PRAGMA key returns results
-            conn.pragma_update(None, "key", &key)?;
+            // Set SQLCipher encryption key immediately after opening. This must happen
+            // before any other statement touches the database (see `key_pragma_sql`).
+            conn.execute_batch(&key_pragma_sql(&key))?;
             // Verify the key is correct by querying the database.
             // Errors here (e.g. SQLCipher HMAC failure) should be handled, as a wrong key
             // or corrupted database would otherwise surface as a misleading "out of memory"
@@ -142,5 +146,133 @@ impl DbConnection {
 
         // Use block_in_place to run blocking code without moving to a separate thread
         tokio::task::block_in_place(|| func(conn))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::DatabaseManager;
+
+    fn temp_db_path(name: &str) -> (tempfile::TempDir, std::path::PathBuf) {
+        let dir = tempfile::tempdir().expect("failed to create temp dir");
+        let path = dir.path().join(name);
+        (dir, path)
+    }
+
+    /// Applies `PRAGMA key` the way pass-db did while it depended on rusqlite <= 0.40,
+    /// i.e. through `pragma_update` rendering the key as a quoted string. Any database
+    /// written by a released version of pass-cli has to stay readable through this.
+    fn apply_legacy_key(conn: &rusqlite::Connection, key: &str) -> rusqlite::Result<()> {
+        conn.execute_batch(&format!("PRAGMA key='{}';", key.replace('\'', "''")))
+    }
+
+    #[test]
+    fn key_pragma_uses_a_quoted_string() {
+        assert_eq!(
+            key_pragma_sql("x'0011'"),
+            "PRAGMA key = \"x'0011'\";",
+            "the key must be passed as a quoted string, a bare x'..' literal is a syntax error"
+        );
+    }
+
+    #[test]
+    fn database_created_with_current_key_is_reopenable() {
+        let (_dir, path) = temp_db_path("roundtrip.db");
+        let key = format_key_for_sqlcipher(&[7u8; 32]);
+
+        {
+            let conn = rusqlite::Connection::open(&path).unwrap();
+            conn.execute_batch(&key_pragma_sql(&key)).unwrap();
+            conn.execute_batch("CREATE TABLE t(a INTEGER); INSERT INTO t VALUES (42);")
+                .unwrap();
+        }
+
+        let conn = rusqlite::Connection::open(&path).unwrap();
+        conn.execute_batch(&key_pragma_sql(&key)).unwrap();
+        let value: i64 = conn
+            .query_row("SELECT a FROM t", [], |row| row.get(0))
+            .expect("data written with our own key must remain readable");
+        assert_eq!(value, 42);
+    }
+
+    #[test]
+    fn database_created_with_legacy_key_is_reopenable() {
+        let (_dir, path) = temp_db_path("legacy.db");
+        let key = format_key_for_sqlcipher(&[9u8; 32]);
+
+        // Write with the pre-0.41 code path, which is what existing users have on disk.
+        {
+            let conn = rusqlite::Connection::open(&path).unwrap();
+            apply_legacy_key(&conn, &key).unwrap();
+            conn.execute_batch("CREATE TABLE t(a INTEGER); INSERT INTO t VALUES (1337);")
+                .unwrap();
+        }
+
+        // Read back with the current code path.
+        let conn = rusqlite::Connection::open(&path).unwrap();
+        conn.execute_batch(&key_pragma_sql(&key)).unwrap();
+        let value: i64 = conn
+            .query_row("SELECT a FROM t", [], |row| row.get(0))
+            .expect("databases created by older versions must stay readable");
+        assert_eq!(value, 1337);
+    }
+
+    #[test]
+    fn existing_database_can_be_opened_without_reading_it_first() {
+        // Regression test: rusqlite >= 0.41 makes `pragma_update` validate the pragma
+        // name by preparing a statement on the connection before emitting the PRAGMA
+        // itself. That prepare hits the still-encrypted database and fails with
+        // SQLITE_NOTADB ("file is not a database"). Opening an already-initialised
+        // database must therefore not execute anything before the key is applied.
+        let (_dir, path) = temp_db_path("validation.db");
+        let key = format_key_for_sqlcipher(&[3u8; 32]);
+
+        {
+            let conn = rusqlite::Connection::open(&path).unwrap();
+            conn.execute_batch(&key_pragma_sql(&key)).unwrap();
+            conn.execute_batch("CREATE TABLE t(a INTEGER);").unwrap();
+        }
+
+        for _ in 0..3 {
+            let conn = rusqlite::Connection::open(&path)
+                .expect("opening an existing database must succeed without touching it");
+            conn.execute_batch(&key_pragma_sql(&key))
+                .expect("applying the key to an existing database must succeed");
+            conn.query_row("SELECT count(*) FROM sqlite_master", [], |_| Ok(()))
+                .expect("decrypted database must be readable");
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn database_manager_can_reopen_a_database_it_created() {
+        // End-to-end regression test: the whole pool machinery (multiple connections,
+        // migrations on an already-initialised database) has to work on reopen too.
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("pass-cli.db").display().to_string();
+        let key = || LocalKey::new(vec![11u8; 32]);
+
+        let db = DatabaseManager::new_with_path(path.clone(), key())
+            .await
+            .expect("initialising a fresh database must succeed");
+        db.get_connection()
+            .await
+            .expect("a fresh database must hand out connections");
+        drop(db);
+
+        let db = DatabaseManager::new_with_path(path, key())
+            .await
+            .expect("reopening an existing database must succeed");
+        let count: i64 = db
+            .get_connection()
+            .await
+            .expect("an existing database must hand out connections")
+            .interact(|conn| -> anyhow::Result<i64> {
+                Ok(conn.query_row("SELECT count(*) FROM migrations", [], |row| row.get(0))?)
+            })
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(count > 0, "migrations should have been recorded");
     }
 }
