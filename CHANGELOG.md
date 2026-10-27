@@ -5,6 +5,17 @@
 ### Other
 -->
 
+## 2.6.0 (2026-10-27)
+
+### Features :tada:
+
+- Improve performance of `pass-cli run` and `pass-cli inject` with many secret references
+- Allow extra fields on `pass-cli item create` via template and `pass-cli item update`
+
+### Other
+
+- Dependency upgrades.
+
 ## 2.5.1 (2026-10-21)
 
 ### Other
