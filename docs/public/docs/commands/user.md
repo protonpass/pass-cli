@@ -36,6 +36,16 @@ pass-cli user info
 pass-cli user info --output json
 ```
 
+### generate-report
+
+Generate a report on usage and security metrics for members of your organization.
+
+```bash
+pass-cli user generate-report [--output FORMAT]
+```
+
+See [user generate-report](generate-report.md) for options and output examples.
+
 ## User information
 
 The `user info` command typically displays:
@@ -77,6 +87,7 @@ If the command fails:
 
 ## Related commands
 
+- **[user generate-report](generate-report.md)** - View organization usage and security metrics
 - **[login](login.md)** - Authenticate to access user information
 - **[info](info.md)** - Session-specific information (different from user info)
 - **[vault](vault.md)** - Manage vaults owned by your user account
