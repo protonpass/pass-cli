@@ -35,7 +35,7 @@ use super::event_processor::SshEventProcessor;
 use super::key_storage::{IdentityConstraints, IdentitySource, KeyStorage};
 use super::{SshIdentity, VaultQuery};
 use crate::helpers::CliPassClient as PassClient;
-use ssh_key::private::KeypairData;
+use ssh_key::private::{EcdsaKeypair, KeypairData};
 use ssh_key::{Algorithm, HashAlg, Signature};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -373,51 +373,7 @@ impl Session for KeyStorage {
                     )
                     .map_err(AgentError::other)?)
                 }
-                KeypairData::Ecdsa(keypair) => {
-                    use ssh_key::EcdsaCurve;
-
-                    let (algorithm, signature_bytes) = match keypair.curve() {
-                        EcdsaCurve::NistP256 => {
-                            use p256::ecdsa::{SigningKey, signature::Signer};
-                            use p256::elliptic_curve::FieldBytes;
-                            let private_bytes = keypair.private_key_bytes();
-                            let key_array = <FieldBytes<p256::NistP256>>::try_from(private_bytes)
-                                .map_err(AgentError::other)?;
-                            let signing_key =
-                                SigningKey::from_bytes(&key_array).map_err(AgentError::other)?;
-                            let sig: p256::ecdsa::Signature = signing_key.sign(&sign_request.data);
-                            ("ecdsa-sha2-nistp256", sig.to_bytes().to_vec())
-                        }
-                        EcdsaCurve::NistP384 => {
-                            use p384::ecdsa::{SigningKey, signature::Signer};
-                            use p384::elliptic_curve::FieldBytes;
-                            let private_bytes = keypair.private_key_bytes();
-                            let key_array = <FieldBytes<p384::NistP384>>::try_from(private_bytes)
-                                .map_err(AgentError::other)?;
-                            let signing_key =
-                                SigningKey::from_bytes(&key_array).map_err(AgentError::other)?;
-                            let sig: p384::ecdsa::Signature = signing_key.sign(&sign_request.data);
-                            ("ecdsa-sha2-nistp384", sig.to_bytes().to_vec())
-                        }
-                        EcdsaCurve::NistP521 => {
-                            use p521::ecdsa::{SigningKey, signature::Signer};
-                            use p521::elliptic_curve::FieldBytes;
-                            let private_bytes = keypair.private_key_bytes();
-                            let key_array = <FieldBytes<p521::NistP521>>::try_from(private_bytes)
-                                .map_err(AgentError::other)?;
-                            let signing_key =
-                                SigningKey::from_bytes(&key_array).map_err(AgentError::other)?;
-                            let sig: p521::ecdsa::Signature = signing_key.sign(&sign_request.data);
-                            ("ecdsa-sha2-nistp521", sig.to_bytes().to_vec())
-                        }
-                    };
-
-                    Ok(Signature::new(
-                        Algorithm::new(algorithm).map_err(AgentError::other)?,
-                        signature_bytes,
-                    )
-                    .map_err(AgentError::other)?)
-                }
+                KeypairData::Ecdsa(keypair) => sign_ecdsa(keypair, &sign_request.data),
                 _ => Err(std::io::Error::other("Signature for key type not implemented").into()),
             }
         } else {
@@ -643,6 +599,11 @@ impl KeyStorage {
     }
 }
 
+fn sign_ecdsa(keypair: &EcdsaKeypair, data: &[u8]) -> Result<Signature, AgentError> {
+    use rsa::signature::Signer;
+    keypair.try_sign(data).map_err(AgentError::other)
+}
+
 #[cfg(test)]
 mod tests {
     use ssh_key::{private::KeypairData, private::PrivateKey as SshPrivateKey};
@@ -736,6 +697,42 @@ hKEN721g/PpYfJsPyXshiefFhXEkcIfwYB0o9FfWmg5YzaLyddb9lf7ckdd6WCnvAC7O3F
             "Fixed construction should succeed: {:?}",
             fixed_result.err()
         );
+    }
+
+    fn assert_ecdsa_signature_is_valid(curve: ssh_key::EcdsaCurve) {
+        use rsa::signature::Verifier;
+        use ssh_key::private::EcdsaKeypair;
+        use ssh_key::public::EcdsaPublicKey;
+
+        let keypair = EcdsaKeypair::random(&mut rand_core::OsRng, curve).unwrap();
+        let public_key = EcdsaPublicKey::from(&keypair);
+        let message = b"proton pass ssh agent ecdsa signing test";
+
+        for _ in 0..32 {
+            let signature = super::sign_ecdsa(&keypair, message).unwrap();
+            assert_eq!(signature.algorithm(), ssh_key::Algorithm::Ecdsa { curve });
+
+            let reparsed =
+                ssh_key::Signature::new(signature.algorithm(), signature.as_bytes().to_vec())
+                    .unwrap();
+            public_key.verify(message, &reparsed).unwrap();
+            assert!(public_key.verify(b"tampered message", &reparsed).is_err());
+        }
+    }
+
+    #[test]
+    fn test_ecdsa_p256_signature_is_ssh_encoded() {
+        assert_ecdsa_signature_is_valid(ssh_key::EcdsaCurve::NistP256);
+    }
+
+    #[test]
+    fn test_ecdsa_p384_signature_is_ssh_encoded() {
+        assert_ecdsa_signature_is_valid(ssh_key::EcdsaCurve::NistP384);
+    }
+
+    #[test]
+    fn test_ecdsa_p521_signature_is_ssh_encoded() {
+        assert_ecdsa_signature_is_valid(ssh_key::EcdsaCurve::NistP521);
     }
 
     mod security {
