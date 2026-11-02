@@ -23,7 +23,7 @@ All items share common properties:
 - **Title**: A descriptive name for the item
 - **Item ID**: An identifier for API operations. Remember that this Item ID is only unique in combination with the Share ID
 - **Vault**: The vault that contains this item
-- **Folder**: The optional folder inside the vault that holds the item. Items without one live at the vault root
+- **Folder**: The optional folder inside the vault that holds the item. Items without one live at the vault root. Change it with `pass-cli item move --to-folder-id`, and clear it with `pass-cli item move --to-share-root`
 - **Type**: The specific type of item (login, note, etc.)
 - **Creation/modification dates**: When the item was created and last updated
 

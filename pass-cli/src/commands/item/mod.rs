@@ -124,7 +124,10 @@ pub enum ItemCommands {
         #[arg(long)]
         output: Option<OutputFormat>,
     },
-    #[command(about = "Move an item to a different vault")]
+    #[command(
+        about = "Move an item to a different vault, or to a folder or the root of its current vault",
+        long_about = "Move an item to a different vault (--to-share-id or --to-vault-name), to a folder in its current vault (--to-folder-id), or to the root of its current vault (--to-share-root)"
+    )]
     Move {
         #[arg(long, help = "Share ID of the source vault")]
         from_share_id: Option<String>,
@@ -138,6 +141,16 @@ pub enum ItemCommands {
         to_share_id: Option<String>,
         #[arg(long, help = "Name of the destination vault")]
         to_vault_name: Option<String>,
+        #[arg(
+            long,
+            help = "ID of the destination folder (must be in the item's current vault)"
+        )]
+        to_folder_id: Option<String>,
+        #[arg(
+            long,
+            help = "Move the item to the root of its current vault, outside any folder"
+        )]
+        to_share_root: bool,
     },
     #[command(about = "Attachment operations")]
     Attachment {
@@ -313,6 +326,8 @@ pub async fn run(subcommand: ItemCommands, client: PassClient) -> Result<()> {
             item_title,
             to_share_id,
             to_vault_name,
+            to_folder_id,
+            to_share_root,
         } => {
             // Apply default vault to "from" vault if both are None
             let (from_share_id, from_vault_name) = if from_share_id.is_none()
@@ -338,6 +353,8 @@ pub async fn run(subcommand: ItemCommands, client: PassClient) -> Result<()> {
                 item_title,
                 to_share_id,
                 to_vault_name,
+                to_folder_id,
+                to_share_root,
             )?;
             r#move::run(client, query).await
         }

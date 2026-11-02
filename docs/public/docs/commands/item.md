@@ -687,6 +687,133 @@ pass-cli item get --share-id "abc123def" --item-id "item456"
 pass-cli item show --vault-name "MyVault" --item-title "MyItem"
 ```
 
+### move
+
+Move an item to another vault, into a folder of its current vault, or to the vault root.
+
+```bash
+pass-cli item move [--from-share-id SHARE_ID | --from-vault-name VAULT_NAME] (--item-id ITEM_ID | --item-title ITEM_TITLE) (--to-share-id SHARE_ID | --to-vault-name VAULT_NAME | --to-folder-id FOLDER_ID | --to-share-root)
+```
+
+**Description:**
+
+The `move` command relocates a single item. Three destination modes are supported:
+
+- Another vault, with `--to-share-id` or `--to-vault-name`
+- A folder inside the current vault, with `--to-folder-id`
+- The root of the current vault, outside any folder, with `--to-share-root`
+
+The source vault comes from `--from-share-id` or `--from-vault-name`, or from the default vault configured with [`settings`](settings.md) when neither is given.
+
+**Options:**
+
+- `--from-share-id SHARE_ID` - Share ID of the source vault (optional if a default vault is set)
+- `--from-vault-name VAULT_NAME` - Name of the source vault (optional if a default vault is set)
+- `--item-id ITEM_ID` - ID of the item to move
+- `--item-title ITEM_TITLE` - Title of the item to move, looked up in the source vault
+- `--to-share-id SHARE_ID` - Share ID of the destination vault
+- `--to-vault-name VAULT_NAME` - Name of the destination vault
+- `--to-folder-id FOLDER_ID` - ID of the destination folder, which must belong to the source vault
+- `--to-share-root` - Move the item to the root of the source vault, outside any folder
+
+**Mutually exclusive options:**
+
+- `--from-share-id` and `--from-vault-name` are mutually exclusive. You can provide one, or neither if a default vault is configured.
+- `--item-id` and `--item-title` are mutually exclusive. You must provide exactly one.
+- Exactly one destination is required. Omitting all of them fails with `Please provide a destination: --to-share-id, --to-vault-name, --to-folder-id or --to-share-root`.
+- `--to-share-id` and `--to-vault-name` are mutually exclusive.
+- `--to-folder-id` and `--to-share-root` are mutually exclusive. Providing both fails with `Please provide either --to-folder-id or --to-share-root, not both`.
+
+**Moves inside a vault and moves across vaults:**
+
+Folder and root moves keep the item in its current vault. The CLI re-encrypts the item key with the destination folder key, or with the vault key when the destination is the vault root, so the item stays readable for everyone who already has access to that vault.
+
+Cross-vault moves create the item in the destination vault and remove it from the source vault. Item IDs are scoped to a vault, so the moved item gets a new ID. The command prints that new ID, which is the value to use in later commands against the destination vault.
+
+Combining `--to-folder-id` or `--to-share-root` with `--to-share-id` or `--to-vault-name` is accepted only when the named vault is the source vault. Naming a different vault fails with `Moving an item to a folder or share root in a different vault is not supported`. To place an item in a folder of another vault, move it to that vault first, then run a second move with `--to-folder-id`.
+
+If the folder ID does not exist in the source vault, the command fails while looking the folder up. Folder IDs are returned by [`folder create`](folder.md#create) and listed by [`folder list`](folder.md#list).
+
+**Output:**
+
+The command prints one item ID on success: the existing ID for folder and root moves, the new ID for cross-vault moves.
+
+**Examples:**
+
+```bash
+# Move an item into a folder of the default vault
+pass-cli item move \
+  --item-title "GitHub Account" \
+  --to-folder-id "folder_id_here"
+
+# Move an item into a folder, naming the source vault explicitly
+pass-cli item move \
+  --from-vault-name "Personal" \
+  --item-title "GitHub Account" \
+  --to-folder-id "folder_id_here"
+
+# Same move using IDs
+pass-cli item move \
+  --from-share-id "abc123def" \
+  --item-id "item456" \
+  --to-folder-id "folder_id_here"
+
+# Move an item out of a folder, back to the vault root
+pass-cli item move \
+  --from-share-id "abc123def" \
+  --item-id "item456" \
+  --to-share-root
+
+# Move an item to another vault by name
+pass-cli item move \
+  --from-vault-name "Personal" \
+  --item-title "GitHub Account" \
+  --to-vault-name "Shared Accounts"
+
+# Move an item to another vault by share ID and capture the new item ID
+NEW_ITEM_ID=$(pass-cli item move \
+  --from-share-id "abc123def" \
+  --item-id "item456" \
+  --to-share-id "ghi789jkl")
+
+# Across vaults and then into a folder, in two steps
+ITEM_IN_SHARED=$(pass-cli item move \
+  --from-share-id "abc123def" \
+  --item-id "item456" \
+  --to-share-id "ghi789jkl")
+pass-cli item move \
+  --from-share-id "ghi789jkl" \
+  --item-id "$ITEM_IN_SHARED" \
+  --to-folder-id "shared_folder_id"
+
+# Naming the source vault again is allowed when the destination is its root
+pass-cli item move \
+  --from-vault-name "Personal" \
+  --item-title "GitHub Account" \
+  --to-vault-name "Personal" \
+  --to-share-root
+```
+
+**Find a folder ID and move an item into it:**
+
+```bash
+FOLDER_ID=$(pass-cli folder list --vault-name "Personal" --output json \
+  | jq -r '.[] | select(.content.name == "Banking") | .id')
+
+pass-cli item move \
+  --from-vault-name "Personal" \
+  --item-title "GitHub Account" \
+  --to-folder-id "$FOLDER_ID"
+
+# Confirm the resulting folder assignment
+pass-cli item list --vault-name "Personal" --output json \
+  | jq '.items[] | select(.id == "item456") | {title, folder_id}'
+```
+
+!!! note "Agent sessions"
+
+    `item move` requires `PROTON_PASS_AGENT_REASON` when the session belongs to an agent. A folder or root move is recorded as a single item update against the source vault. A cross-vault move is recorded as a delete in the source vault plus a create in the destination vault. See [`agent`](agent.md).
+
 ### update
 
 Update an item's fields.
@@ -1119,6 +1246,7 @@ pass-cli item list --vault-name "Web Accounts"
 - Include relevant URLs for login items
 - Group related items in the same vault
 - Use `--folder-id` when creating items that belong together, and get the ID from `pass-cli folder list`
+- Relocate existing items with `pass-cli item move --to-folder-id`, and take them out of a folder with `--to-share-root`
 
 ### Security
 
