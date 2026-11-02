@@ -57,3 +57,21 @@ pass-cli item create login \
   --generate-password \
   --folder-id "folder_id_here"
 ```
+
+## Moving items between folders
+
+Relocating an item does not recreate it. [`item move`](../commands/item.md#move) re-encrypts the item key with the key of the destination folder, or with the vault key when the destination is the vault root.
+
+```bash
+# Move an existing item into a folder
+pass-cli item move \
+  --from-vault-name "Personal" \
+  --item-title "Bank Login" \
+  --to-folder-id "folder_id_here"
+
+# Take an item out of its folder, back to the vault root
+pass-cli item move \
+  --from-vault-name "Personal" \
+  --item-title "Bank Login" \
+  --to-share-root
+```

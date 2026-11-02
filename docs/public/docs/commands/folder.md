@@ -233,6 +233,26 @@ pass-cli item create note \
   --folder-id "$FOLDER_ID"
 ```
 
+### Move existing items into a folder
+
+Items that already exist are relocated with [`item move`](item.md#move). Nothing is recreated, and the item keeps its ID.
+
+```bash
+# Move an existing item into a folder of the same vault
+pass-cli item move \
+  --from-vault-name "Team Project" \
+  --item-title "Admin Console" \
+  --to-folder-id "$FOLDER_ID"
+
+# Move it back to the vault root
+pass-cli item move \
+  --from-vault-name "Team Project" \
+  --item-title "Admin Console" \
+  --to-share-root
+```
+
+The source vault is named with `--from-vault-name` or `--from-share-id`, not with `--vault-name`. The destination folder must belong to that same vault.
+
 ### Find a folder ID in a script
 
 ```bash
@@ -254,7 +274,8 @@ echo "Production folder ID: $FOLDER_ID"
 ## Best practices
 
 - Use folders for structure inside a vault, and vaults for permission boundaries, since folders inherit vault permissions
-- Pass `--folder-id` on `item create` instead of creating items at the vault root and moving them afterwards
+- Pass `--folder-id` on `item create` for new items, and use `item move --to-folder-id` for items that already exist
+- Use `item move --to-share-root` to remove an item from its folder without deleting and recreating it
 - Keep the hierarchy shallow. Deep trees are harder to navigate from the CLI
 - Use IDs rather than names in scripts, because names can repeat within a vault
 - Run `folder list` after structural changes to confirm the resulting layout
