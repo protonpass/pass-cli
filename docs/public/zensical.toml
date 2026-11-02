@@ -17,6 +17,7 @@ nav = [
     "commands/session.md",
     "commands/info.md",
     "commands/user.md",
+    "commands/generate-report.md",
     "commands/settings.md",
     "commands/share.md",
     "commands/vault.md",
