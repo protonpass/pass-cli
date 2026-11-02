@@ -45,13 +45,13 @@ pass-cli user generate-report --output json > organization-report.json
 
 ### JSON output
 
-Example with fictional data:
+Example response:
 
 ```json
 {
   "member_reports": [
     {
-      "primary_email": "alex.morgan@example.com",
+      "primary_email": "user@example.com",
       "custom_email_breach_count": {
         "breach_email_count": 2,
         "total_breach_count": 7
