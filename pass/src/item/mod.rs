@@ -18,6 +18,7 @@
  */
 
 mod alias;
+pub mod bulk;
 pub(crate) mod create;
 mod delete;
 mod download_attachment;
