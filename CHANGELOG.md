@@ -5,6 +5,18 @@
 ### Other
 -->
 
+## 2.7.0 (2026-11-03)
+
+### Features :tada:
+
+- Add support for ECDSA P384 keys in the `ssh-agent`
+- Allow more destinations for the `item move` command to be able to move items to folders
+
+### Other
+
+- Add docs for the `user generate-report` command for business organizations
+
+
 ## 2.6.0 (2026-10-27)
 
 ### Features :tada:
