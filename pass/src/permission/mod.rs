@@ -91,13 +91,9 @@ impl<C: PassClientContext> PassClient<C> {
                 self.create_item_guard(share_id).await?;
                 self.create_alias_guard(user_access.plan).await
             }
-            PermissionAction::CreateIdentity { share_id } => {
-                self.create_item_guard(share_id).await?;
-                self.create_paid_item_guard(user_access.plan).await
-            }
+            PermissionAction::CreateIdentity { share_id } => self.create_item_guard(share_id).await,
             PermissionAction::CreateCreditCard { share_id } => {
-                self.create_item_guard(share_id).await?;
-                self.create_paid_item_guard(user_access.plan).await
+                self.create_item_guard(share_id).await
             }
             PermissionAction::CreateWifi { share_id } => {
                 self.create_item_guard(share_id).await?;
