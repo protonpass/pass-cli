@@ -120,18 +120,17 @@ pub async fn get_client(
     let session_file_path = base_dir.join(SESSION_FILE_NAME);
     let storage = Arc::new(FileSystemSessionStorage::new(session_file_path));
 
-    let config = pass::auth::ClientConfig {
-        base_dir: base_dir.clone(),
-        environment: std::env::var(ENVIRONMENT_ENV_VAR).ok(),
-        proxy_config: proxy_config_from_env(),
-        debug_config: debug_config_from_env(),
-        app_header: get_app_header(),
-        post_login_config: pass::auth::PostLoginConfig::default(),
-        product_name: "Pass".to_string(),
-        product_version: env!("CARGO_PKG_VERSION").to_string(),
-        locale: Some(detect_locale()),
-        extra_headers: crate::env_config::extra_headers_from_env(),
-    };
+    let mut config = pass::auth::ClientConfig::first_party(
+        base_dir.clone(),
+        get_app_header(),
+        "Pass".to_string(),
+        env!("CARGO_PKG_VERSION").to_string(),
+    );
+    config.environment = std::env::var(ENVIRONMENT_ENV_VAR).ok();
+    config.proxy_config = proxy_config_from_env();
+    config.debug_config = debug_config_from_env();
+    config.locale = Some(detect_locale());
+    config.extra_headers = crate::env_config::extra_headers_from_env();
 
     let result = pass::auth::client_builder::create_client(
         client_features.key_provider.clone(),

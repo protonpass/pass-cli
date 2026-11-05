@@ -29,7 +29,10 @@ mod utils;
 pub mod web_login;
 
 pub use callbacks::{AuthEventHandler, CredentialProvider};
-pub use config::{ClientConfig, DebugConfig, ExtraHeader, PostLoginConfig, ProxyConfig};
+pub use config::{
+    ClientConfig, DebugConfig, ExtraHeader, PostLoginConfig, ProxyConfig, external_app_header,
+    sanitize_app_name,
+};
 pub use error::AuthError;
 pub use storage::SessionStorage;
 pub use store::{PassSessionStore, SharedPassSessionStore};

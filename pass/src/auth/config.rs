@@ -25,15 +25,10 @@ pub struct ClientConfig {
     pub environment: Option<String>,
     pub proxy_config: ProxyConfig,
     pub debug_config: Option<DebugConfig>,
-    /// Sent as `x-pm-appversion`, in muon's `<platform>-<product>@<version>`
-    /// format (e.g. `cli-pass@1.2.3`). Must be a client/version the backend
-    /// accepts, so it's always up to the consumer to provide it.
-    pub app_header: String,
+    pub(crate) app_header: String,
     pub post_login_config: PostLoginConfig,
-    /// Display name used in the User-Agent (e.g. `Pass`).
-    pub product_name: String,
-    /// Consumer's version, used in the User-Agent.
-    pub product_version: String,
+    pub(crate) product_name: String,
+    pub(crate) product_version: String,
     pub locale: Option<String>,
     pub extra_headers: Vec<ExtraHeader>,
 }
@@ -44,8 +39,49 @@ pub struct ExtraHeader {
     pub value: String,
 }
 
+pub fn sanitize_app_name(name: &str) -> String {
+    name.chars()
+        .filter(char::is_ascii_alphabetic)
+        .map(|c| c.to_ascii_lowercase())
+        .collect()
+}
+
+pub fn external_app_header(app_name: &str) -> anyhow::Result<String> {
+    let sanitized = sanitize_app_name(app_name);
+    if sanitized.is_empty() {
+        anyhow::bail!("app name `{app_name}` must contain at least one ASCII letter");
+    }
+    Ok(format!(
+        "external-pass-{sanitized}@{}",
+        env!("CARGO_PKG_VERSION")
+    ))
+}
+
 impl ClientConfig {
-    pub fn new(
+    pub fn new(base_dir: PathBuf, app_name: &str) -> anyhow::Result<Self> {
+        Ok(Self::build(
+            base_dir,
+            external_app_header(app_name)?,
+            "Pass".to_string(),
+            env!("CARGO_PKG_VERSION").to_string(),
+        ))
+    }
+
+    #[cfg(feature = "first-party")]
+    pub fn first_party(
+        base_dir: PathBuf,
+        app_header: String,
+        product_name: String,
+        product_version: String,
+    ) -> Self {
+        Self::build(base_dir, app_header, product_name, product_version)
+    }
+
+    pub fn app_header(&self) -> &str {
+        &self.app_header
+    }
+
+    fn build(
         base_dir: PathBuf,
         app_header: String,
         product_name: String,
@@ -151,5 +187,41 @@ impl Default for PostLoginConfig {
             create_default_vault: true,
             default_vault_name: "Personal".to_string(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sanitizes_names() {
+        assert_eq!(sanitize_app_name("My App"), "myapp");
+        assert_eq!(sanitize_app_name("MyApP-123"), "myapp");
+        assert_eq!(sanitize_app_name("Café"), "caf");
+    }
+
+    #[test]
+    fn rejects_empty_names() {
+        assert!(external_app_header("").is_err());
+        assert!(external_app_header("123").is_err());
+        assert!(external_app_header("---").is_err());
+    }
+
+    #[test]
+    fn header_format_is_accepted_by_muon() {
+        let header = external_app_header("My App").unwrap();
+        assert_eq!(
+            header,
+            format!("external-pass-myapp@{}", env!("CARGO_PKG_VERSION"))
+        );
+        assert!(muon::App::new(&header).is_ok());
+    }
+
+    #[test]
+    fn new_sets_header() {
+        let config = ClientConfig::new(PathBuf::new(), "Foo").unwrap();
+        assert_eq!(config.app_header(), external_app_header("Foo").unwrap());
+        assert_eq!(config.product_name, "Pass");
     }
 }

@@ -4,7 +4,7 @@ version = "2.7.0"
 edition = "2024"
 
 [dependencies]
-pass = { path = "../pass", features = ["tokio-runtime"] }
+pass = { path = "../pass", features = ["tokio-runtime", "first-party"] }
 pass-db = { path = "../pass-db" }
 pass-fs = { path = "../pass-fs" }
 

@@ -36,18 +36,17 @@ pub fn create_client_config() -> Result<ClientConfig> {
 }
 
 pub fn create_client_config_with_base_dir(base_dir: PathBuf) -> Result<ClientConfig> {
-    let config = ClientConfig {
+    let mut config = ClientConfig::first_party(
         base_dir,
-        environment: std::env::var(ENVIRONMENT_ENV_VAR).ok(),
-        proxy_config: proxy_config_from_env(),
-        debug_config: debug_config_from_env(),
-        app_header: crate::client::get_app_header(),
-        post_login_config: pass::auth::PostLoginConfig::default(),
-        product_name: "Pass".to_string(),
-        product_version: env!("CARGO_PKG_VERSION").to_string(),
-        locale: Some(detect_locale()),
-        extra_headers: crate::env_config::extra_headers_from_env(),
-    };
+        crate::client::get_app_header(),
+        "Pass".to_string(),
+        env!("CARGO_PKG_VERSION").to_string(),
+    );
+    config.environment = std::env::var(ENVIRONMENT_ENV_VAR).ok();
+    config.proxy_config = proxy_config_from_env();
+    config.debug_config = debug_config_from_env();
+    config.locale = Some(detect_locale());
+    config.extra_headers = crate::env_config::extra_headers_from_env();
 
     Ok(config)
 }

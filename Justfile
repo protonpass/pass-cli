@@ -170,7 +170,7 @@ python-sdk *args:
     maturin="maturin"
     command -v maturin >/dev/null || maturin="uvx maturin"
     cd {{ python_sdk_dir }}
-    ${maturin} build --release --out dist {{ if sdk_features == "" { "" } else { "--features " + sdk_features } }} {{ args }}
+    ${maturin} build --release --out dist --features external-app-name{{ if sdk_features == "" { "" } else { "," + sdk_features } }} {{ args }}
     echo "Python wheel ready in {{ python_dist_dir }}"
 
 # Run the Python unit tests (no network) against the wheel in pass-python-sdk/dist (extra args go to pytest)
