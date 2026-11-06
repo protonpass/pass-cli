@@ -21,23 +21,65 @@ use crate::domain::{AccountType, ItemContent, ItemId, PermissionFlag, ShareId, S
 use crate::organization::{OrganizationAliasCreateMode, OrganizationVaultCreateMode};
 use crate::{PassClient, PassClientContext, PassPlan, PlanType};
 use anyhow::{Context, Result, anyhow};
+use proton_pass_types::FolderId;
 
 #[allow(dead_code)]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PermissionAction {
     CreateVault,
-    UpdateVault { share_id: ShareId },
-    DeleteVault { share_id: ShareId },
+    UpdateVault {
+        share_id: ShareId,
+    },
+    DeleteVault {
+        share_id: ShareId,
+    },
 
-    UpdateItem { share_id: ShareId, item_id: ItemId },
-    DeleteItem { share_id: ShareId, item_id: ItemId },
+    UpdateItem {
+        share_id: ShareId,
+        item_id: ItemId,
+    },
+    DeleteItem {
+        share_id: ShareId,
+        item_id: ItemId,
+    },
 
-    CreateItem { share_id: ShareId },
-    CreateAlias { share_id: ShareId },
-    CreateIdentity { share_id: ShareId },
-    CreateCreditCard { share_id: ShareId },
-    CreateCustomItem { share_id: ShareId },
-    CreateWifi { share_id: ShareId },
+    CreateItem {
+        share_id: ShareId,
+    },
+    CreateAlias {
+        share_id: ShareId,
+    },
+    CreateIdentity {
+        share_id: ShareId,
+    },
+    CreateCreditCard {
+        share_id: ShareId,
+    },
+    CreateCustomItem {
+        share_id: ShareId,
+    },
+    CreateWifi {
+        share_id: ShareId,
+    },
+    CreateSshKey {
+        share_id: ShareId,
+    },
+
+    CreateFolder {
+        share_id: ShareId,
+    },
+    UpdateFolder {
+        share_id: ShareId,
+        folder_id: FolderId,
+    },
+    DeleteFolder {
+        share_id: ShareId,
+        folder_id: FolderId,
+    },
+    ShareFolder {
+        share_id: ShareId,
+        folder_id: FolderId,
+    },
 
     // Personal access token restricted operations
     ShareVault,
@@ -97,16 +139,46 @@ impl<C: PassClientContext> PassClient<C> {
             }
             PermissionAction::CreateWifi { share_id } => {
                 self.create_item_guard(share_id).await?;
-                self.create_paid_item_guard(user_access.plan).await
+                self.user_paid_guard(user_access.plan).await
             }
             PermissionAction::CreateCustomItem { share_id } => {
                 self.create_item_guard(share_id).await?;
-                self.create_paid_item_guard(user_access.plan).await
+                self.user_paid_guard(user_access.plan).await
+            }
+            PermissionAction::CreateSshKey { share_id } => {
+                self.create_item_guard(share_id).await?;
+                self.user_paid_guard(user_access.plan).await
             }
             PermissionAction::ShareVault => self.not_personal_access_token_guard(),
             PermissionAction::AcceptInvite => self.not_personal_access_token_guard(),
             PermissionAction::RejectInvite => self.not_personal_access_token_guard(),
             PermissionAction::ListInvites => self.not_personal_access_token_guard(),
+            PermissionAction::CreateFolder { share_id } => {
+                self.create_folder_guard(share_id).await?;
+                self.user_paid_guard(user_access.plan).await
+            }
+            PermissionAction::UpdateFolder {
+                share_id,
+                folder_id,
+            } => {
+                self.update_folder_guard(share_id, folder_id).await?;
+                self.user_paid_guard(user_access.plan).await
+            }
+            PermissionAction::DeleteFolder {
+                share_id,
+                folder_id,
+            } => {
+                self.delete_folder_guard(share_id, folder_id).await?;
+                self.user_paid_guard(user_access.plan).await
+            }
+            PermissionAction::ShareFolder {
+                share_id,
+                folder_id,
+            } => {
+                self.not_personal_access_token_guard()?;
+                self.share_folder_guard(share_id, folder_id).await?;
+                self.user_paid_guard(user_access.plan).await
+            }
         }
     }
 
@@ -241,6 +313,24 @@ impl<C: PassClientContext> PassClient<C> {
         }
     }
 
+    async fn create_folder_guard(&self, share_id: ShareId) -> Result<()> {
+        let share = self
+            .get_share(&share_id)
+            .await
+            .context("Error getting share")?;
+        if share.is_item_share() {
+            return Err(anyhow!("Cannot create a folder with an item share"));
+        }
+
+        let permission = share.permission;
+        if permission.has_flag(PermissionFlag::Admin) || permission.has_flag(PermissionFlag::Create)
+        {
+            Ok(())
+        } else {
+            Err(anyhow!("Cannot create new folder due to permissions"))
+        }
+    }
+
     async fn create_alias_guard(&self, plan: PassPlan) -> Result<()> {
         self.check_organization_alias_creation(plan.plan_type)
             .await?;
@@ -299,6 +389,53 @@ impl<C: PassClientContext> PassClient<C> {
         }
     }
 
+    async fn update_folder_guard(&self, share_id: ShareId, folder_id: FolderId) -> Result<()> {
+        self.generic_folder_guard(share_id, folder_id, "update", Some(PermissionFlag::Update))
+            .await
+    }
+
+    async fn delete_folder_guard(&self, share_id: ShareId, folder_id: FolderId) -> Result<()> {
+        self.generic_folder_guard(share_id, folder_id, "delete", Some(PermissionFlag::Delete))
+            .await
+    }
+
+    async fn share_folder_guard(&self, share_id: ShareId, folder_id: FolderId) -> Result<()> {
+        self.generic_folder_guard(share_id, folder_id, "share", None)
+            .await
+    }
+
+    async fn generic_folder_guard(
+        &self,
+        share_id: ShareId,
+        _folder_id: FolderId,
+        action: &str,
+        permission_flag: Option<PermissionFlag>,
+    ) -> Result<()> {
+        let share = self
+            .get_share(&share_id)
+            .await
+            .context("Error getting share")?;
+
+        if share.is_item_share() {
+            return Err(anyhow!("Cannot {action} a folder with an item share"));
+        }
+
+        let permission = share.permission;
+        if permission.has_flag(PermissionFlag::Admin) {
+            return Ok(());
+        }
+
+        if let Some(permission_flag) = permission_flag {
+            if permission.has_flag(permission_flag) {
+                Ok(())
+            } else {
+                Err(anyhow!("Cannot {action} folder due to permissions"))
+            }
+        } else {
+            Ok(())
+        }
+    }
+
     async fn delete_item_guard(&self, share_id: ShareId, item_id: ItemId) -> Result<()> {
         let share = self
             .get_share(&share_id)
@@ -324,7 +461,7 @@ impl<C: PassClientContext> PassClient<C> {
         }
     }
 
-    async fn create_paid_item_guard(&self, plan: PassPlan) -> Result<()> {
+    async fn user_paid_guard(&self, plan: PassPlan) -> Result<()> {
         match plan.plan_type {
             PlanType::Free => Err(anyhow!(
                 "Your plan does not include creating this type of item"

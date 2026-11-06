@@ -136,6 +136,7 @@ pub async fn get_client(
         client_features.key_provider.clone(),
         storage,
         &config,
+        crate::utils::create_sdk()?,
         TokioOs::default(),
         TokioExecutor,
     )

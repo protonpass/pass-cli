@@ -42,7 +42,6 @@ const POLL_INTERVAL_SECONDS: u64 = 10;
 const MAX_POLL_ATTEMPTS: u32 = 60; // 60 times every 10 seconds -> 10 minutes total
 const MAX_CONSECUTIVE_FAILURES: u32 = 3;
 const FAILURE_RETRY_INTERVAL_SECONDS: u64 = 5;
-const CHILD_CLIENT_ID: &str = "cli-pass";
 
 #[derive(Debug, serde::Deserialize)]
 struct SessionForkResponse {
@@ -85,14 +84,14 @@ impl SessionPayload {
     }
 }
 
-fn get_account_url_for_env(env: &Environment) -> Result<String> {
+fn get_account_url_for_env(env: &Environment, client_id: &str) -> Result<String> {
     match env {
         Environment::Prod(_) => Ok("https://account.proton.me".to_string()),
         Environment::Atlas(_) => Ok("https://account.proton.black".to_string()),
         Environment::Scientist(s) => {
             // get the scientist name from servers
             let servers = s.servers(&AppVersion::Named {
-                name: AppName::from_str("cli-pass").context("Invalid AppName")?,
+                name: AppName::from_str(client_id).context("Invalid AppName")?,
                 version: SemVer::from_str(env!("CARGO_PKG_VERSION")).context("Invalid SemVer")?,
             });
             let host = servers
@@ -246,13 +245,14 @@ async fn poll_session_fork<C: PassClientContext, T: Sleep>(
 
 fn build_web_login_url(
     env: &Environment,
+    client_id: &str,
     user_code: &str,
     encryption_key: &[u8],
 ) -> Result<String> {
-    let account_url = get_account_url_for_env(env)?;
+    let account_url = get_account_url_for_env(env, client_id)?;
 
     let encoded_key = base64::engine::general_purpose::STANDARD.encode(encryption_key);
-    let payload = format!("0:{}:{}:{}", user_code, encoded_key, CHILD_CLIENT_ID);
+    let payload = format!("0:{}:{}:{}", user_code, encoded_key, client_id);
 
     let encoded_payload = urlencoding::encode(&payload);
 
@@ -269,6 +269,7 @@ pub async fn perform_web_login<C: PassClientContext, T: Sleep>(
     store: Arc<RwLock<PassSessionStore>>,
     event_handler: Arc<dyn AuthEventHandler>,
     sdk: &Sdk,
+    client_id: &str,
     time: &T,
 ) -> Result<WebLoginResult> {
     let env = {
@@ -284,7 +285,7 @@ pub async fn perform_web_login<C: PassClientContext, T: Sleep>(
     info!("User Code: {}", fork_response.user_code);
 
     let encryption_key = crate::domain::crypto::generate_encryption_key();
-    let url = build_web_login_url(&env, &fork_response.user_code, &encryption_key)
+    let url = build_web_login_url(&env, client_id, &fork_response.user_code, &encryption_key)
         .context("Error building web login URL")?;
 
     // Notify event handler of URL generation
@@ -300,12 +301,10 @@ pub async fn perform_web_login<C: PassClientContext, T: Sleep>(
     .await
     .context("Error polling for authentication")?;
 
-    event_handler
-        .on_info("Web authentication complete, setting up your account")
-        .await?;
-
     let session_payload = decrypt_payload(&encryption_key, &response.payload)?;
     info!("Payload decrypted correctly");
+
+    event_handler.on_web_auth_succeeded().await?;
 
     let auth = Auth::Internal {
         user_id: response.user_id,

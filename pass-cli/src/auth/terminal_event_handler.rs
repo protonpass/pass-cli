@@ -36,6 +36,11 @@ impl AuthEventHandler for TerminalEventHandler {
         Ok(())
     }
 
+    async fn on_web_auth_succeeded(&self) -> Result<()> {
+        println!("Web authentication succeeded. Pulling your data, this may take a moment...");
+        Ok(())
+    }
+
     async fn on_auth_success(&self, message: &str) -> Result<()> {
         println!("{message}");
         Ok(())

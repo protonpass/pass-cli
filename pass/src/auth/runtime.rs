@@ -23,6 +23,7 @@ use crate::auth::storage::SessionStorage;
 use crate::auth::store::PassSessionStore;
 use crate::domain::LocalKeyProvider;
 use anyhow::Result;
+use muon::common::sdk::Sdk;
 use muon::rt::Sleep;
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -41,5 +42,6 @@ pub trait AuthRuntime: Clone {
         key_provider: Arc<dyn LocalKeyProvider>,
         storage: Arc<dyn SessionStorage>,
         config: &ClientConfig,
+        sdk: &Sdk,
     ) -> impl Future<Output = Result<ClientWithStore<Self::Context>>>;
 }

@@ -26,6 +26,7 @@ pub struct ClientConfig {
     pub proxy_config: ProxyConfig,
     pub debug_config: Option<DebugConfig>,
     pub(crate) app_header: String,
+    pub(crate) child_client_id: String,
     pub post_login_config: PostLoginConfig,
     pub(crate) product_name: String,
     pub(crate) product_version: String,
@@ -46,22 +47,33 @@ pub fn sanitize_app_name(name: &str) -> String {
         .collect()
 }
 
-pub fn external_app_header(app_name: &str) -> anyhow::Result<String> {
+pub fn external_client_id(app_name: &str) -> anyhow::Result<String> {
     let sanitized = sanitize_app_name(app_name);
     if sanitized.is_empty() {
         anyhow::bail!("app name `{app_name}` must contain at least one ASCII letter");
     }
+    Ok(format!("external-pass-{sanitized}"))
+}
+
+pub fn external_app_header(app_name: &str) -> anyhow::Result<String> {
     Ok(format!(
-        "external-pass-{sanitized}@{}",
+        "{}@{}",
+        external_client_id(app_name)?,
         env!("CARGO_PKG_VERSION")
     ))
 }
+
+#[cfg(feature = "first-party")]
+const FIRST_PARTY_CHILD_CLIENT_ID: &str = "cli-pass";
+
+pub(crate) const HOST_LOOKUP_APP_NAME: &str = "external-pass-hostlookup";
 
 impl ClientConfig {
     pub fn new(base_dir: PathBuf, app_name: &str) -> anyhow::Result<Self> {
         Ok(Self::build(
             base_dir,
             external_app_header(app_name)?,
+            external_client_id(app_name)?,
             "Pass".to_string(),
             env!("CARGO_PKG_VERSION").to_string(),
         ))
@@ -74,16 +86,35 @@ impl ClientConfig {
         product_name: String,
         product_version: String,
     ) -> Self {
-        Self::build(base_dir, app_header, product_name, product_version)
+        Self::build(
+            base_dir,
+            app_header,
+            FIRST_PARTY_CHILD_CLIENT_ID.to_string(),
+            product_name,
+            product_version,
+        )
     }
 
     pub fn app_header(&self) -> &str {
         &self.app_header
     }
 
+    pub fn child_client_id(&self) -> &str {
+        &self.child_client_id
+    }
+
+    pub fn sdk(&self) -> anyhow::Result<muon::common::sdk::Sdk> {
+        let (name, version) = self
+            .app_header
+            .split_once('@')
+            .ok_or_else(|| anyhow::anyhow!("app header `{}` has no version", self.app_header))?;
+        muon::common::sdk::Sdk::new(name, version).map_err(|e| anyhow::anyhow!("{e}"))
+    }
+
     fn build(
         base_dir: PathBuf,
         app_header: String,
+        child_client_id: String,
         product_name: String,
         product_version: String,
     ) -> Self {
@@ -93,6 +124,7 @@ impl ClientConfig {
             proxy_config: ProxyConfig::default(),
             debug_config: None,
             app_header,
+            child_client_id,
             post_login_config: PostLoginConfig::default(),
             product_name,
             product_version,
@@ -223,5 +255,58 @@ mod tests {
         let config = ClientConfig::new(PathBuf::new(), "Foo").unwrap();
         assert_eq!(config.app_header(), external_app_header("Foo").unwrap());
         assert_eq!(config.product_name, "Pass");
+    }
+
+    #[test]
+    fn sdk_takes_the_name_and_version_of_the_app_header() {
+        let config = ClientConfig::new(PathBuf::new(), "My App").unwrap();
+        let sdk = config.sdk().unwrap();
+        assert_eq!(sdk.name(), "external-pass-myapp");
+        assert_eq!(sdk.version(), env!("CARGO_PKG_VERSION"));
+    }
+
+    #[cfg(feature = "first-party")]
+    #[test]
+    fn app_header_without_version_has_no_sdk() {
+        let config = ClientConfig::first_party(
+            PathBuf::new(),
+            "android-pass".to_string(),
+            "Pass".to_string(),
+            "1.0.0".to_string(),
+        );
+        assert!(config.sdk().is_err());
+    }
+
+    #[test]
+    fn external_clients_log_in_with_their_own_client_id() {
+        let config = ClientConfig::new(PathBuf::new(), "My App").unwrap();
+        assert_eq!(config.child_client_id(), "external-pass-myapp");
+    }
+
+    #[cfg(feature = "first-party")]
+    #[test]
+    fn first_party_keeps_the_cli_client_id() {
+        let config = ClientConfig::first_party(
+            PathBuf::new(),
+            "cli-pass@1.0.0".to_string(),
+            "Pass".to_string(),
+            "1.0.0".to_string(),
+        );
+        assert_eq!(config.child_client_id(), "cli-pass");
+    }
+
+    #[test]
+    fn host_lookup_app_name_resolves_to_the_pass_api() {
+        use muon::app::{AppName, AppVersion, SemVer};
+        use muon::env::{Env, Environment};
+        use std::str::FromStr;
+
+        let version = AppVersion::Named {
+            name: AppName::from_str(HOST_LOOKUP_APP_NAME).unwrap(),
+            version: SemVer::from_str("1.0.0").unwrap(),
+        };
+        let servers = Environment::new_atlas().servers(&version);
+        let host = format!("{}", servers[0].host().name());
+        assert_eq!(host, "pass-api.proton.black");
     }
 }

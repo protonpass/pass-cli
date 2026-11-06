@@ -17,6 +17,7 @@
  *
  */
 
+use crate::auth::config::HOST_LOOKUP_APP_NAME;
 use crate::auth::storage::SessionStorage;
 use crate::domain::crypto::EncryptionTag;
 use crate::domain::{AccountType, LocalKeyProvider};
@@ -113,7 +114,7 @@ impl From<Environment> for SerializedEnv {
                 // AtlasScientist wraps a Scientist(String). Access via pattern.
                 // We need the inner name - use the servers() call to extract host info
                 let servers = s.servers(&AppVersion::Named {
-                    name: AppName::from_str("cli-pass").expect("Invalid AppName"),
+                    name: AppName::from_str(HOST_LOOKUP_APP_NAME).expect("Invalid AppName"),
                     version: SemVer::from_str(env!("CARGO_PKG_VERSION")).expect("Invalid SemVer"),
                 });
                 debug!("SerializedEnv Servers: {servers:?}");
@@ -130,7 +131,7 @@ impl From<Environment> for SerializedEnv {
             }
             Environment::Custom(env) => {
                 let servers = env.servers(&AppVersion::Named {
-                    name: AppName::from_str("cli-pass").expect("Invalid AppName"),
+                    name: AppName::from_str(HOST_LOOKUP_APP_NAME).expect("Invalid AppName"),
                     version: SemVer::from_str(env!("CARGO_PKG_VERSION")).expect("Invalid SemVer"),
                 });
                 let server = servers.first().cloned().expect("should have one server");

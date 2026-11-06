@@ -24,7 +24,7 @@
 //! turns them into target-specific code behind that target's cfg (set by
 //! `pass`'s build script from its cargo features):
 //! - [`wasm`] (`wasm_runtime`): wasm-bindgen exports, for `pass-web-sdk`.
-//! - [`uniffi`] (`uniffi_runtime`): uniffi exports, for `pass-mobile-sdk`.
+//! - [`uniffi`] (`uniffi_runtime`): uniffi exports, for `pass-sdk-common` (mobile and Python).
 //!
 //! Supported items:
 //! - **structs/enums**: get the derives the target needs, keeping the type's

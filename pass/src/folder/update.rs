@@ -19,6 +19,7 @@
 
 use crate::common::CodeResponse;
 use crate::domain::{FolderData, FolderId, ShareId, crypto};
+use crate::permission::PermissionAction;
 use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use muon::PUT;
@@ -49,6 +50,11 @@ impl<C: PassClientContext> PassClient<C> {
         folder_id: &FolderId,
         new_name: String,
     ) -> Result<()> {
+        self.action_guard(PermissionAction::DeleteFolder {
+            share_id: share_id.clone(),
+            folder_id: folder_id.clone(),
+        })
+        .await?;
         // Get the folder revision
         let folder_rev = self
             .get_folder_data(share_id, folder_id)

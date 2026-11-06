@@ -22,6 +22,7 @@ use crate::auth::config::ClientConfig;
 use crate::auth::storage::SessionStorage;
 use crate::domain::LocalKeyProvider;
 use futures::task::{FutureObj, Spawn, SpawnError};
+use muon::common::sdk::Sdk;
 use muon::rt::{
     InstantFactory, Monotonic, MuonInstant, MuonSystemTime, SinceUnixEpoch as _, Sleep,
     SystemTimeFactory,
@@ -123,11 +124,13 @@ impl AuthRuntime for WasmRuntime {
         key_provider: Arc<dyn LocalKeyProvider>,
         storage: Arc<dyn SessionStorage>,
         config: &ClientConfig,
+        sdk: &Sdk,
     ) -> anyhow::Result<ClientWithStore<Self::Context>> {
         super::client_builder::create_client(
             key_provider,
             storage,
             config,
+            sdk.clone(),
             self.time.clone(),
             self.executor.clone(),
         )
