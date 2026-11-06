@@ -4305,6 +4305,20 @@ dependencies = [
 name = "pass-mobile-sdk"
 version = "2.7.0"
 dependencies = [
+ "pass-sdk-common",
+]
+
+[[package]]
+name = "pass-python-sdk"
+version = "2.7.0"
+dependencies = [
+ "pass-sdk-common",
+]
+
+[[package]]
+name = "pass-sdk-common"
+version = "2.7.0"
+dependencies = [
  "anyhow",
  "async-trait",
  "pass",

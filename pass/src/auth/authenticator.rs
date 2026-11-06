@@ -24,7 +24,7 @@ use crate::auth::storage::SessionStorage;
 use crate::auth::store::PassSessionStore;
 use crate::auth::{extra_password, personal_access_token, post_login, web_login};
 use crate::domain::{AccountType, LocalKeyProvider};
-use crate::{FirstTimeSetupKey, PassClient};
+use crate::{ClientFeatures, FirstTimeSetupKey, PassClient};
 use anyhow::{Context as _, Result, bail};
 use muon::common::sdk::Sdk;
 use parking_lot::RwLock;
@@ -82,6 +82,7 @@ impl<R: AuthRuntime> Authenticator<R> {
                 self.key_provider.clone(),
                 self.storage.clone(),
                 &self.config,
+                &self.sdk,
             )
             .await
     }
@@ -89,7 +90,7 @@ impl<R: AuthRuntime> Authenticator<R> {
     pub async fn login_web(
         &self,
         client: muon::Client<R::Context>,
-        client_features: Arc<dyn crate::domain::ClientFeatures>,
+        client_features: Arc<dyn ClientFeatures>,
         store: Arc<RwLock<PassSessionStore>>,
     ) -> Result<(PassClient<R::Context>, Vec<u8>)> {
         let session = client.get_session(()).await;
@@ -117,6 +118,7 @@ impl<R: AuthRuntime> Authenticator<R> {
             store.clone(),
             self.event_handler.clone(),
             &self.sdk,
+            self.config.child_client_id(),
             self.runtime.time(),
         )
         .await
@@ -163,7 +165,7 @@ impl<R: AuthRuntime> Authenticator<R> {
     pub async fn login_personal_access_token(
         &self,
         client: muon::Client<R::Context>,
-        client_features: Arc<dyn crate::domain::ClientFeatures>,
+        client_features: Arc<dyn ClientFeatures>,
         store: Arc<RwLock<PassSessionStore>>,
         token: Option<String>,
     ) -> Result<(PassClient<R::Context>, Zeroizing<Vec<u8>>)> {

@@ -19,6 +19,7 @@
 
 use crate::common::CodeResponse;
 use crate::domain::{FolderId, ShareId};
+use crate::permission::PermissionAction;
 use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result};
 use muon::DELETE;
@@ -34,6 +35,11 @@ struct DeleteFolderPayload {
 impl<C: PassClientContext> PassClient<C> {
     #[sdk_export]
     pub async fn delete_folder(&self, share_id: &ShareId, folder_id: &FolderId) -> Result<()> {
+        self.action_guard(PermissionAction::DeleteFolder {
+            share_id: share_id.clone(),
+            folder_id: folder_id.clone(),
+        })
+        .await?;
         let payload = DeleteFolderPayload {
             folder_ids: vec![folder_id.to_string()],
         };

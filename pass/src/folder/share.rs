@@ -33,7 +33,11 @@ impl<C: PassClientContext> PassClient<C> {
         email: &str,
         role: &ShareRole,
     ) -> anyhow::Result<()> {
-        self.action_guard(PermissionAction::ShareVault).await?;
+        self.action_guard(PermissionAction::ShareFolder {
+            share_id: share_id.clone(),
+            folder_id: folder_id.clone(),
+        })
+        .await?;
 
         let request = self
             .create_invites_request(share_id, email, role, None, Some(folder_id.clone()))

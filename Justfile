@@ -166,7 +166,7 @@ ios-sdk slices="all": (_bindings "swift")
 python-sdk *args:
     #!/usr/bin/env bash
     set -euo pipefail
-    rm -rf {{ python_dist_dir }}
+    rm -rf {{ python_dist_dir }} {{ target_dir }}/maturin/uniffi
     maturin="maturin"
     command -v maturin >/dev/null || maturin="uvx maturin"
     cd {{ python_sdk_dir }}

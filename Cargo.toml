@@ -1,7 +1,5 @@
 [workspace]
 members = ["pass", "pass-*"]
-# Python package only (maturin builds pass-mobile-sdk), it has no Cargo.toml
-exclude = ["pass-python-sdk"]
 default-members = [
     "pass-cli",
     "pass-db",

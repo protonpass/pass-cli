@@ -20,9 +20,11 @@
 use crate::common::CodeResponse;
 use crate::constants::ITEM_CONTENT_CONTENT_FORMAT_VERSION;
 use crate::domain::{ItemData, ItemId, ItemType, ShareId, TelemetryEvent, crypto};
+use crate::permission::PermissionAction;
 use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use muon::PUT;
+use pass_derive::sdk_export;
 use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
@@ -54,13 +56,21 @@ struct UpdateItemRequest {
     content_format_version: u32,
 }
 
+#[sdk_export]
 impl<C: PassClientContext> PassClient<C> {
+    #[sdk_export]
     pub async fn update_item(
         &self,
         share_id: &ShareId,
         item_id: &ItemId,
         new_content: ItemData,
     ) -> Result<()> {
+        self.action_guard(PermissionAction::UpdateItem {
+            share_id: share_id.clone(),
+            item_id: item_id.clone(),
+        })
+        .await?;
+
         let item_revision = self
             .fetch_item_revision(share_id, item_id)
             .await

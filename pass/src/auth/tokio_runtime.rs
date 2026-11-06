@@ -23,6 +23,7 @@ use crate::auth::storage::SessionStorage;
 use crate::domain::LocalKeyProvider;
 use async_compat::Compat;
 use futures::TryFutureExt;
+use muon::common::sdk::Sdk;
 use muon::rt::{
     InstantFactory, Monotonic, MuonInstant, MuonSystemTime, OperatingSystem, Resolve,
     SinceUnixEpoch as _, Sleep, Spawner, SystemTimeFactory, TcpConnect,
@@ -172,11 +173,13 @@ where
         key_provider: Arc<dyn LocalKeyProvider>,
         storage: Arc<dyn SessionStorage>,
         config: &ClientConfig,
+        sdk: &Sdk,
     ) -> anyhow::Result<ClientWithStore<Self::Context>> {
         super::client_builder::create_client(
             key_provider,
             storage,
             config,
+            sdk.clone(),
             self.os.clone(),
             self.executor.clone(),
         )

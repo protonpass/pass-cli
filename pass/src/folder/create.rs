@@ -19,6 +19,7 @@
 
 use crate::domain::{FolderData, FolderId, ShareId, crypto};
 use crate::folder::list::FolderResponse;
+use crate::permission::PermissionAction;
 use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use muon::POST;
@@ -58,6 +59,10 @@ impl<C: PassClientContext> PassClient<C> {
         share_id: &ShareId,
         payload: CreateFolderPayload,
     ) -> Result<FolderId> {
+        self.action_guard(PermissionAction::CreateFolder {
+            share_id: share_id.clone(),
+        })
+        .await?;
         // Generate a new 32-byte folder key
         let folder_key = crypto::generate_encryption_key();
 

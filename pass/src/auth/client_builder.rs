@@ -29,6 +29,7 @@ use crate::domain::headers::{ClientHeaders, HeaderBuilder};
 use anyhow::{Context as _, anyhow};
 use futures::task::Spawn;
 use muon::app::App;
+use muon::common::sdk::Sdk;
 use muon::env::Environment;
 use parking_lot::RwLock;
 use rand::rng;
@@ -150,6 +151,7 @@ pub async fn create_client<Os, Ex>(
     key_provider: Arc<dyn LocalKeyProvider>,
     storage: Arc<dyn SessionStorage>,
     config: &ClientConfig,
+    sdk: Sdk,
     os: Os,
     executor: Ex,
 ) -> anyhow::Result<(PassAuthClient<Os>, Arc<RwLock<PassSessionStore>>)>
@@ -158,8 +160,12 @@ where
     Ex: Spawner,
     for<'a> <Os::Time as Sleep>::Sleep<'a>: Send + Sync,
 {
+    let headers = generate_headers(config);
+    trace!("Generated headers: {headers:?}");
+
     let app = App::new(&config.app_header)
-        .with_context(|| format!("invalid app header `{}`", config.app_header))?;
+        .with_context(|| format!("invalid app header `{}`", config.app_header))?
+        .with_user_agent(&headers.user_agent);
 
     let store_executor: Arc<dyn Spawn + Send + Sync> = Arc::new(executor.clone());
     let (store, current_env) =
@@ -168,9 +174,6 @@ where
     let shared_store = SharedPassSessionStore::new(store);
     let store_ref = shared_store.inner.clone();
     let cookie_store = PassCookieStore::new(store_ref.clone());
-
-    let headers = generate_headers(config);
-    trace!("Generated headers: {headers:?}");
 
     let mut transport_builder = muon::Client::builder_with_transport::<Hyper>(app, current_env)
         .with_operating_system(os, ChaCha20Rng::from_rng(&mut rng()));
@@ -191,9 +194,14 @@ where
 
     let mut builder = transport_builder
         .with_persistence(shared_store)
-        .with_cookie_store(cookie_store);
+        .with_cookie_store(cookie_store)
+        .register_sdk(sdk);
 
-    for (name, value) in headers.to_http_headers() {
+    for (name, value) in headers
+        .to_http_headers()
+        .into_iter()
+        .filter(|(name, _)| !name.eq_ignore_ascii_case("user-agent"))
+    {
         builder = builder.with_default_headers((name, value));
     }
 
@@ -226,6 +234,7 @@ pub async fn create_client<Sleeper>(
     key_provider: Arc<dyn LocalKeyProvider>,
     storage: Arc<dyn SessionStorage>,
     config: &ClientConfig,
+    sdk: Sdk,
     sleeper: Sleeper,
     executor: Arc<dyn Spawn + Send + Sync>,
 ) -> anyhow::Result<(PassAuthClient<Sleeper>, Arc<RwLock<PassSessionStore>>)>
@@ -252,7 +261,8 @@ where
     let mut builder = muon::Client::builder_with_transport::<Reqwest>(app, current_env)
         .with_operating_system(sleeper, ChaCha20Rng::from_rng(&mut rng()))
         .with_persistence(shared_store)
-        .with_cookie_store(cookie_store);
+        .with_cookie_store(cookie_store)
+        .register_sdk(sdk);
 
     for (name, value) in headers.to_http_headers() {
         builder = builder.with_default_headers((name, value));

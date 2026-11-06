@@ -23,6 +23,7 @@ use anyhow::Result;
 pub trait AuthEventHandler: Send + Sync {
     async fn on_web_login_url_generated(&self, url: &str) -> Result<()>;
     async fn on_poll_progress(&self, attempt: u32, max_attempts: u32) -> Result<()>;
+    async fn on_web_auth_succeeded(&self) -> Result<()>;
     async fn on_auth_success(&self, message: &str) -> Result<()>;
     async fn on_extra_password_required(&self) -> Result<()>;
     async fn on_info(&self, message: &str) -> Result<()>;
