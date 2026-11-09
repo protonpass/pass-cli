@@ -409,6 +409,13 @@ mod tests {
         (client, api)
     }
 
+    fn replenish_share_handlers(api: &ProtonAPI) {
+        for _ in 0..PAGED_HANDLER_COPIES * 4 {
+            setup_vault_share(api, PAGED_SHARE_ID);
+            setup_share_keys(api, PAGED_SHARE_ID);
+        }
+    }
+
     fn item_page_requests(requests: &VecDeque<RecordedRequest<Vec<u8>>>) -> usize {
         let path = format!("/pass/v1/share/{PAGED_SHARE_ID}/item");
         requests.iter().filter(|r| r.uri().path() == path).count()
@@ -769,6 +776,87 @@ mod tests {
             .await
             .expect("Should be able to search items")
             .expect("Item should be found");
+        assert_eq!(2, item_page_requests(&recorder.read()));
+    }
+
+    #[muon_test::test]
+    async fn test_clear_cache_for_share_resets_to_first_page(server: muon_test::Server) {
+        let (client, api) = paged_client(server).await;
+        let paged = setup_paged_items_endpoint(&api, no_flag(), no_flag());
+        replenish_share_handlers(&api);
+        let share_id = share_id!(PAGED_SHARE_ID);
+        let other_share_id = share_id!("OtherShareID");
+
+        let recorder = api.new_recorder();
+        client
+            .find_item_in_share(&share_id, |i| i.content.title == paged.first_title)
+            .await
+            .expect("Should be able to search items")
+            .expect("Item should be found");
+        assert_eq!(1, item_page_requests(&recorder.read()));
+
+        client.clear_cache_for_share(&other_share_id).await;
+        client
+            .find_item_in_share(&share_id, |i| i.content.title == paged.first_title)
+            .await
+            .expect("Should be able to search items")
+            .expect("Item should be found");
+        assert_eq!(1, item_page_requests(&recorder.read()));
+
+        client.clear_cache_for_share(&share_id).await;
+        client
+            .find_item_in_share(&share_id, |i| i.content.title == paged.first_title)
+            .await
+            .expect("Should be able to search items")
+            .expect("Item should be found");
+        assert_eq!(2, item_page_requests(&recorder.read()));
+    }
+
+    #[muon_test::test]
+    async fn test_disable_cache_always_hits_server_until_enabled(server: muon_test::Server) {
+        let (client, api) = paged_client(server).await;
+        let paged = setup_paged_items_endpoint(&api, no_flag(), no_flag());
+        replenish_share_handlers(&api);
+        let share_id = share_id!(PAGED_SHARE_ID);
+        let recorder = api.new_recorder();
+
+        client.disable_cache().await;
+        for expected in 1..=2 {
+            client
+                .find_item_in_share(&share_id, |i| i.content.title == paged.first_title)
+                .await
+                .expect("Should be able to search items")
+                .expect("Item should be found");
+            assert_eq!(expected, item_page_requests(&recorder.read()));
+        }
+
+        client.enable_cache().await;
+        for _ in 0..2 {
+            client
+                .find_item_in_share(&share_id, |i| i.content.title == paged.first_title)
+                .await
+                .expect("Should be able to search items")
+                .expect("Item should be found");
+        }
+        assert_eq!(3, item_page_requests(&recorder.read()));
+    }
+
+    #[muon_test::test]
+    async fn test_clear_cache_resets_to_first_page(server: muon_test::Server) {
+        let (client, api) = paged_client(server).await;
+        let paged = setup_paged_items_endpoint(&api, no_flag(), no_flag());
+        replenish_share_handlers(&api);
+        let share_id = share_id!(PAGED_SHARE_ID);
+        let recorder = api.new_recorder();
+
+        for _ in 0..2 {
+            client
+                .find_item_in_share(&share_id, |i| i.content.title == paged.first_title)
+                .await
+                .expect("Should be able to search items")
+                .expect("Item should be found");
+            client.clear_cache().await;
+        }
         assert_eq!(2, item_page_requests(&recorder.read()));
     }
 }

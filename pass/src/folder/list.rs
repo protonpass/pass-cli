@@ -226,6 +226,17 @@ impl<C: PassClientContext> PassClient<C> {
         share_id: &ShareId,
         folder_id: &FolderId,
     ) -> Result<Folder> {
+        let folder_rev = self.fetch_folder_revision(share_id, folder_id).await?;
+        self.open_folder(&folder_rev, share_id, &HashMap::new())
+            .await
+            .context("Error opening folder")
+    }
+
+    pub(crate) async fn fetch_folder_revision(
+        &self,
+        share_id: &ShareId,
+        folder_id: &FolderId,
+    ) -> Result<FolderResponse> {
         let req = GET!("/pass/v1/share/{share_id}/folder/{folder_id}");
         let res = self
             .send(req)
@@ -233,10 +244,7 @@ impl<C: PassClientContext> PassClient<C> {
             .context("Error sending get folder request")?;
 
         let response: GetFolderResponse = assert_response!(res);
-
-        self.open_folder(&response.folder, share_id)
-            .await
-            .context("Error opening folder")
+        Ok(response.folder)
     }
 
     pub(crate) async fn get_folder_data(
@@ -263,14 +271,7 @@ impl<C: PassClientContext> PassClient<C> {
 
         // Not in list/cache, fetch individual folder
         trace!("Fetching individual folder {} from API", folder_id);
-        let req = GET!("/pass/v1/share/{share_id}/folder/{folder_id}");
-        let res = self
-            .send(req)
-            .await
-            .context("Error sending get folder request")?;
-
-        let response: GetFolderResponse = assert_response!(res);
-        let folder_rev = response.folder;
+        let folder_rev = self.fetch_folder_revision(share_id, folder_id).await?;
 
         // Add the fetched folder to cache
         self.cache
@@ -346,7 +347,7 @@ impl<C: PassClientContext> PassClient<C> {
 
         for folder_id in sorted_ids {
             if let Some(rev) = revision_map.get(&folder_id) {
-                match self.open_folder(rev, share_id).await {
+                match self.open_folder(rev, share_id, &revision_map).await {
                     Ok(folder) => {
                         opened_folders.push(folder);
                     }
@@ -360,14 +361,14 @@ impl<C: PassClientContext> PassClient<C> {
         Ok(opened_folders)
     }
 
-    async fn open_folder(&self, folder_rev: &FolderResponse, share_id: &ShareId) -> Result<Folder> {
-        // Open the folder key
+    async fn open_folder(
+        &self,
+        folder_rev: &FolderResponse,
+        share_id: &ShareId,
+        known_revisions: &HashMap<String, FolderResponse>,
+    ) -> Result<Folder> {
         let folder_key = self
-            .get_opened_folder_key(
-                share_id,
-                &FolderId::new(folder_rev.folder_id.clone()),
-                folder_rev.key_rotation,
-            )
+            .get_opened_folder_key_for_revision(share_id, folder_rev, known_revisions)
             .await
             .context("Error opening folder key")?;
 
