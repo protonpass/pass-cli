@@ -61,6 +61,17 @@ impl ItemRevisionsCacheKey {
 type ItemRevisionsForShareItemCache = HashMap<ItemRevisionsCacheKey, Vec<ItemRevision>>;
 
 impl<C: PassClientContext> PassClient<C> {
+    pub(crate) async fn clear_item_revisions_cache(&self, share_id: &ShareId) {
+        self.cache
+            .update(
+                ItemRevisionsCacheType,
+                |cache: &mut ItemRevisionsForShareItemCache| {
+                    cache.retain(|key, _| &key.share_id != share_id);
+                },
+            )
+            .await;
+    }
+
     pub(crate) async fn get_item_revisions(
         &self,
         share_id: &ShareId,

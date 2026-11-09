@@ -22,6 +22,7 @@ use crate::folder::list::FolderResponse;
 use crate::{PassClient, PassClientContext};
 use anyhow::{Context, Result, anyhow};
 use pass_derive::sdk_export;
+use std::collections::{HashMap, HashSet};
 
 #[sdk_export]
 impl<C: PassClientContext> PassClient<C> {
@@ -70,23 +71,11 @@ impl<C: PassClientContext> PassClient<C> {
         folder_id: &FolderId,
         key_rotation: u8,
     ) -> Result<DecryptedFolderKey> {
-        // Try to get from storage first
-        if let Ok(data_storage) = self.client_features.get_data_storage().await {
-            let folder_key_storage = data_storage.get_folder_key_storage().await;
-
-            if let Ok(Some(cached_keys)) = folder_key_storage
-                .get_folder_keys(share_id, folder_id)
-                .await
-                && let Some(cached_key) = cached_keys
-                    .into_iter()
-                    .find(|k| k.key_rotation == key_rotation)
-            {
-                trace!(
-                    "Using cached decrypted folder key from database for folder {} rotation {}",
-                    folder_id, key_rotation
-                );
-                return Ok(cached_key);
-            }
+        if let Some(cached_key) = self
+            .get_stored_folder_key(share_id, folder_id, key_rotation)
+            .await
+        {
+            return Ok(cached_key);
         }
 
         trace!(
@@ -99,16 +88,66 @@ impl<C: PassClientContext> PassClient<C> {
             .await
             .context("Error getting folder revision")?;
 
+        self.open_and_store_folder_key(share_id, &folder_rev, &HashMap::new())
+            .await
+    }
+
+    pub(crate) async fn get_opened_folder_key_for_revision(
+        &self,
+        share_id: &ShareId,
+        folder_rev: &FolderResponse,
+        known_revisions: &HashMap<String, FolderResponse>,
+    ) -> Result<DecryptedFolderKey> {
+        let folder_id = FolderId::new(folder_rev.folder_id.clone());
+        if let Some(cached_key) = self
+            .get_stored_folder_key(share_id, &folder_id, folder_rev.key_rotation)
+            .await
+        {
+            return Ok(cached_key);
+        }
+
+        self.open_and_store_folder_key(share_id, folder_rev, known_revisions)
+            .await
+    }
+
+    async fn get_stored_folder_key(
+        &self,
+        share_id: &ShareId,
+        folder_id: &FolderId,
+        key_rotation: u8,
+    ) -> Option<DecryptedFolderKey> {
+        let data_storage = self.client_features.get_data_storage().await.ok()?;
+        let folder_key_storage = data_storage.get_folder_key_storage().await;
+        let cached_key = folder_key_storage
+            .get_folder_keys(share_id, folder_id)
+            .await
+            .ok()
+            .flatten()?
+            .into_iter()
+            .find(|k| k.key_rotation == key_rotation)?;
+        trace!(
+            "Using cached decrypted folder key from database for folder {} rotation {}",
+            folder_id, key_rotation
+        );
+        Some(cached_key)
+    }
+
+    async fn open_and_store_folder_key(
+        &self,
+        share_id: &ShareId,
+        folder_rev: &FolderResponse,
+        known_revisions: &HashMap<String, FolderResponse>,
+    ) -> Result<DecryptedFolderKey> {
         let opened_key = self
-            .open_folder_key_from_api(share_id, &folder_rev)
+            .open_folder_key_from_api(share_id, folder_rev, known_revisions)
             .await
             .context("Error opening folder key from API")?;
 
-        // Store in storage for future use (best effort, don't fail on error)
         if let Ok(data_storage) = self.client_features.get_data_storage().await {
             let folder_key_storage = data_storage.get_folder_key_storage().await;
+            let folder_id = FolderId::new(folder_rev.folder_id.clone());
             let res = folder_key_storage
-                .store_folder_keys(share_id, folder_id, vec![opened_key.clone()])
+                .store_folder_keys(share_id, &folder_id, vec![opened_key.clone()])
                 .await;
             if let Err(e) = res {
                 warn!("Error storing folder key: {e:#}");
@@ -118,13 +157,70 @@ impl<C: PassClientContext> PassClient<C> {
         Ok(opened_key)
     }
 
+    async fn resolve_folder_path(
+        &self,
+        share_id: &ShareId,
+        folder_rev: &FolderResponse,
+        known_revisions: &HashMap<String, FolderResponse>,
+        share_root_folder_id: Option<&FolderId>,
+    ) -> Result<Vec<FolderResponse>> {
+        let mut revisions = known_revisions.clone();
+        revisions.insert(folder_rev.folder_id.clone(), folder_rev.clone());
+        let mut listed = false;
+        let mut visited = HashSet::new();
+        let mut path = Vec::new();
+        let mut current_id = Some(folder_rev.folder_id.clone());
+
+        while let Some(folder_id) = current_id {
+            if !visited.insert(folder_id.clone()) {
+                return Err(anyhow!("Cycle detected in folder hierarchy at {folder_id}"));
+            }
+
+            if !revisions.contains_key(&folder_id) && !listed {
+                listed = true;
+                match self.list_all_folder_revisions(share_id).await {
+                    Ok(all) => {
+                        for rev in all {
+                            revisions.entry(rev.folder_id.clone()).or_insert(rev);
+                        }
+                    }
+                    Err(e) => {
+                        debug!("Error listing folders, falling back to individual get: {e:#}")
+                    }
+                }
+            }
+
+            let rev = match revisions.get(&folder_id) {
+                Some(rev) => rev.clone(),
+                None => {
+                    let rev = self
+                        .fetch_folder_revision(share_id, &FolderId::new(folder_id.clone()))
+                        .await
+                        .with_context(|| format!("Folder {folder_id} not found in share"))?;
+                    revisions.insert(folder_id.clone(), rev.clone());
+                    rev
+                }
+            };
+
+            if share_root_folder_id.is_some_and(|id| id.value() == folder_id) {
+                path.push(rev);
+                break;
+            }
+
+            current_id = rev.parent_folder_id.clone();
+            path.push(rev);
+        }
+
+        path.reverse();
+        Ok(path)
+    }
+
     async fn open_folder_key_from_api(
         &self,
         share_id: &ShareId,
         folder_rev: &FolderResponse,
+        known_revisions: &HashMap<String, FolderResponse>,
     ) -> Result<DecryptedFolderKey> {
-        use std::collections::HashMap;
-
         let share = self
             .get_share(share_id)
             .await
@@ -134,42 +230,14 @@ impl<C: PassClientContext> PassClient<C> {
             _ => None,
         };
 
-        // Fetch all folders for this share at once (paginated internally)
-        let all_revisions = self
-            .list_all_folder_revisions(share_id)
-            .await
-            .context("Error fetching all folder revisions")?;
-
-        // Build a map for quick lookup
-        let revision_map: HashMap<String, &FolderResponse> = all_revisions
-            .iter()
-            .map(|r| (r.folder_id.clone(), r))
-            .collect();
-
-        // Build the path from root to target folder
-        let mut path = Vec::new();
-        let mut current_id = Some(folder_rev.folder_id.clone());
-
-        // Walk backwards from target to root
-        while let Some(folder_id) = current_id {
-            let rev = revision_map
-                .get(&folder_id)
-                .ok_or_else(|| anyhow!("Folder {} not found in share", folder_id))?;
-
-            path.push((*rev).clone());
-
-            if share_root_folder_id
-                .as_ref()
-                .is_some_and(|id| id.value() == folder_id)
-            {
-                break;
-            }
-
-            current_id = rev.parent_folder_id.clone();
-        }
-
-        // Reverse to get path from root to target
-        path.reverse();
+        let path = self
+            .resolve_folder_path(
+                share_id,
+                folder_rev,
+                known_revisions,
+                share_root_folder_id.as_ref(),
+            )
+            .await?;
 
         // Open keys iteratively starting from root
         // This allows us to use cached keys for parents
@@ -448,5 +516,90 @@ mod tests {
             .expect("Should open the nested subfolder key via the folder share");
 
         assert_eq!(child_key_raw, opened.value());
+    }
+
+    #[muon_test::test]
+    async fn test_disabled_cache_recovers_parent_missing_from_list(server: muon_test::Server) {
+        let (raw_client, api) = server.client::<()>();
+        const SHARE_ID: &str = "FOLDER_SHARE_ID";
+        const ROOT_FOLDER_ID: &str = "ROOT_FOLDER_ID";
+        const CHILD_FOLDER_ID: &str = "CHILD_FOLDER_ID";
+
+        let client = make_test_pass_client_with_setup(raw_client, &api, PlanType::Free).await;
+        client.disable_cache().await;
+        for _ in 0..5 {
+            setup_folder_share(&api, SHARE_ID, ROOT_FOLDER_ID, TEST_VAULT_ID);
+        }
+
+        let root_key_raw = crypto::generate_encryption_key();
+        let encrypted_share_key = client.encrypt_for_user_key(root_key_raw.clone()).await;
+        for _ in 0..5 {
+            let encrypted_share_key = encrypted_share_key.clone();
+            api.handler_with_method(
+                Method::GET,
+                format!("/pass/v1/share/{}/key", SHARE_ID),
+                move |_| {
+                    success(crate::share::keys::GetShareKeysResponse {
+                        keys: crate::share::keys::ShareKeyList {
+                            keys: vec![crate::share::keys::ShareKeyResponse {
+                                key_rotation: 1,
+                                key: crate::utils::b64_encode(&encrypted_share_key),
+                                create_time: 123456789,
+                            }],
+                            total: 1,
+                        },
+                    })
+                },
+            );
+        }
+
+        let child_key_raw = crypto::generate_encryption_key();
+        let encrypted_child_key = crypto::encrypt(
+            &child_key_raw,
+            &root_key_raw,
+            crypto::EncryptionTag::FolderKey,
+        )
+        .expect("Error encrypting child folder key");
+        let child_content = crypto::encrypt(
+            &crate::domain::FolderData::new("Child".to_string())
+                .expect("folder data")
+                .serialize()
+                .expect("serialize"),
+            &child_key_raw,
+            crypto::EncryptionTag::FolderContent,
+        )
+        .expect("Error encrypting child content");
+        let mut child = make_folder_response(
+            CHILD_FOLDER_ID,
+            Some(ROOT_FOLDER_ID),
+            1,
+            &encrypted_child_key,
+        );
+        child.content = crate::utils::b64_encode(&child_content);
+
+        for _ in 0..5 {
+            setup_folders(&api, SHARE_ID, vec![child.clone()]);
+        }
+        let root =
+            make_folder_response(ROOT_FOLDER_ID, None, 1, &crypto::generate_encryption_key());
+        api.handler_with_method(
+            Method::GET,
+            format!("/pass/v1/share/{}/folder/{}", SHARE_ID, ROOT_FOLDER_ID),
+            move |_| {
+                success(serde_json::json!({
+                    "Folder": serde_json::to_value(&root).expect("serialize folder"),
+                }))
+            },
+        );
+
+        let name = client
+            .get_folder_name(
+                &share_id!(SHARE_ID),
+                &FolderId::new(CHILD_FOLDER_ID.to_string()),
+            )
+            .await
+            .expect("Should open the child folder with its parent fetched individually");
+
+        assert_eq!("Child", name);
     }
 }

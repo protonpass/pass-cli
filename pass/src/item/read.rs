@@ -90,22 +90,19 @@ impl<C: PassClientContext> PassClient<C> {
 
     async fn claim_unreported(&self, share_id: &ShareId, item_ids: &[ItemId]) -> Vec<ItemId> {
         self.cache
-            .ensure_has_value(ItemReadReportedCacheType, ItemReadReported::new)
-            .await;
-        let mut claimed = Vec::new();
-        self.cache
-            .update(
+            .with_entry(
                 ItemReadReportedCacheType,
+                ItemReadReported::new,
                 |reported: &mut ItemReadReported| {
-                    for item_id in item_ids {
-                        if reported.insert((share_id.clone(), item_id.clone())) {
-                            claimed.push(item_id.clone());
-                        }
-                    }
+                    item_ids
+                        .iter()
+                        .filter(|item_id| reported.insert((share_id.clone(), (*item_id).clone())))
+                        .cloned()
+                        .collect()
                 },
             )
-            .await;
-        claimed
+            .await
+            .unwrap_or_default()
     }
 
     async fn unclaim(&self, share_id: &ShareId, item_ids: &[ItemId]) {

@@ -62,13 +62,7 @@ impl ShareKeyCache {
         }
 
         // Slow path: get per-ShareId lock to prevent duplicate fetches
-        let share_lock = {
-            let mut locks = self.locks.lock().await;
-            locks
-                .entry(share_id.clone())
-                .or_insert_with(|| Arc::new(Mutex::new(())))
-                .clone()
-        };
+        let share_lock = self.share_lock(&share_id).await;
 
         let _guard = share_lock.lock().await;
 
@@ -95,6 +89,20 @@ impl ShareKeyCache {
         }
 
         Ok(keys)
+    }
+
+    async fn share_lock(&self, share_id: &ShareId) -> Arc<Mutex<()>> {
+        let mut locks = self.locks.lock().await;
+        locks
+            .entry(share_id.clone())
+            .or_insert_with(|| Arc::new(Mutex::new(())))
+            .clone()
+    }
+
+    async fn invalidate(&self, share_id: &ShareId) {
+        let share_lock = self.share_lock(share_id).await;
+        let _guard = share_lock.lock().await;
+        self.cache.write().await.remove(share_id);
     }
 }
 
@@ -126,18 +134,19 @@ pub struct ShareKeyResponse {
 }
 
 impl<C: PassClientContext> PassClient<C> {
-    pub(crate) async fn get_share_keys(&self, share_id: &ShareId) -> Result<ShareKeys> {
-        // Ensure the ShareKeyCache exists in the client cache
-        self.cache
-            .ensure_has_value(ShareKeyCacheType, ShareKeyCache::new)
-            .await;
+    pub(crate) async fn clear_share_keys_cache(&self, share_id: &ShareId) {
+        let share_key_cache: Option<ShareKeyCache> = self.cache.get(ShareKeyCacheType).await;
+        if let Some(share_key_cache) = share_key_cache {
+            share_key_cache.invalidate(share_id).await;
+        }
+    }
 
-        // Get the ShareKeyCache from the client cache
+    pub(crate) async fn get_share_keys(&self, share_id: &ShareId) -> Result<ShareKeys> {
         let share_key_cache: ShareKeyCache = self
             .cache
-            .get(ShareKeyCacheType)
+            .with_entry(ShareKeyCacheType, ShareKeyCache::new, |c| c.clone())
             .await
-            .context("ShareKeyCache should exist after ensure_has_value")?;
+            .context("ShareKeyCache has an unexpected type")?;
 
         let client = self.clone();
         let share_id_for_fetch = share_id.clone();
@@ -211,5 +220,67 @@ impl<C: PassClientContext> PassClient<C> {
         } else {
             Ok(true)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::share::EncryptedShareKey;
+    use futures::channel::oneshot;
+
+    fn keys(rotation: u8) -> ShareKeys {
+        ShareKeys::new(vec![ShareKey::new(
+            rotation,
+            EncryptedShareKey(vec![rotation]),
+        )])
+    }
+
+    #[tokio::test]
+    async fn invalidate_waits_for_in_flight_fetch() {
+        let cache = ShareKeyCache::new();
+        let share_id = ShareId::new("SHARE".to_string());
+        let (started_tx, started_rx) = oneshot::channel::<()>();
+        let (release_tx, release_rx) = oneshot::channel::<()>();
+
+        let in_flight = tokio::spawn({
+            let cache = cache.clone();
+            let share_id = share_id.clone();
+            async move {
+                cache
+                    .get_or_fetch(&share_id, || async move {
+                        let _ = started_tx.send(());
+                        let _ = release_rx.await;
+                        Ok(keys(1))
+                    })
+                    .await
+            }
+        });
+        started_rx.await.expect("fetch should start");
+
+        let invalidation = tokio::spawn({
+            let cache = cache.clone();
+            let share_id = share_id.clone();
+            async move { cache.invalidate(&share_id).await }
+        });
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        assert!(!invalidation.is_finished());
+
+        release_tx.send(()).expect("fetch should be waiting");
+        assert_eq!(in_flight.await.expect("task").expect("fetch"), keys(1));
+        invalidation.await.expect("task");
+
+        let refreshed = cache
+            .get_or_fetch(&share_id, || async { Ok(keys(2)) })
+            .await
+            .expect("fetch");
+        assert_eq!(refreshed, keys(2));
+        assert_eq!(
+            cache
+                .get_or_fetch(&share_id, || async { Ok(keys(3)) })
+                .await
+                .expect("fetch"),
+            keys(2)
+        );
     }
 }
