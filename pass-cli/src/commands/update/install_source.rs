@@ -41,7 +41,7 @@ impl InstallSource {
                 eprintln!("\nIt looks like pass-cli was installed via Homebrew.");
                 eprintln!("To update, please run:");
                 eprintln!("    brew update");
-                eprintln!("    brew upgrade pass-cli");
+                eprintln!("    brew upgrade proton-pass-cli");
             }
             InstallSource::Chocolatey => {
                 eprintln!("\nIt looks like pass-cli was installed via Chocolatey.");
