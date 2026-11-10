@@ -38,13 +38,13 @@ To update to the latest version:
 
 ```bash
 brew update
-brew upgrade pass-cli
+brew upgrade proton-pass-cli
 ```
 
 !!! warning "Installing via Homebrew"
     When installed via Homebrew (or any package manager):
     
-    - **The `pass-cli update` command will not work**: you must use `brew upgrade pass-cli` instead
+    - **The `pass-cli update` command will not work**: you must use `brew upgrade proton-pass-cli` instead
     - **Track switching is not available**: you cannot switch between stable and beta tracks
     - Updates are managed entirely by Homebrew
 
