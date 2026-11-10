@@ -155,6 +155,7 @@ mod tests {
                     .expect("valid timestamp")
                     .to_zoned(jiff::tz::TimeZone::UTC)
                     .datetime(),
+                last_use_time: None,
                 folder_id: None,
             },
             item_key: OpenedItemKey {

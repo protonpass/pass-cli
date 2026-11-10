@@ -72,6 +72,7 @@ struct ItemSummary {
     flags: Vec<ItemFlag>,
     create_time: jiff::civil::DateTime,
     modify_time: jiff::civil::DateTime,
+    last_use_time: Option<jiff::civil::DateTime>,
     #[serde(skip_serializing_if = "Option::is_none")]
     folder_id: Option<FolderId>,
     title: String,
@@ -88,6 +89,7 @@ impl From<&Item> for ItemSummary {
             flags: item.flags.clone(),
             create_time: item.create_time,
             modify_time: item.modify_time,
+            last_use_time: item.last_use_time,
             folder_id: item.folder_id.clone(),
             title: item.content.title.clone(),
             item_type: ItemType::from(&item.content.content),
@@ -362,8 +364,11 @@ pub async fn run(
                     None => String::new(),
                 };
                 println!(
-                    "- [{}]: {}{} (state={:?})",
-                    item.id, item.content.title, suffix, item.state
+                    "- [{}]: {}{} ({})",
+                    item.id,
+                    item.content.title,
+                    suffix,
+                    human_item_details(&item)
                 );
             }
 
@@ -372,6 +377,13 @@ pub async fn run(
     }
 
     Ok(())
+}
+
+fn human_item_details(item: &Item) -> String {
+    match item.last_use_time {
+        Some(last_use_time) => format!("state={:?}, last_used={}", item.state, last_use_time),
+        None => format!("state={:?}", item.state),
+    }
 }
 
 pub async fn display_folder_tree(client: &PassClient, share_id: &ShareId) {
@@ -453,6 +465,7 @@ mod tests {
             flags: vec![],
             create_time: jiff::civil::DateTime::constant(2026, 1, 1, 0, 0, 0, 0),
             modify_time: jiff::civil::DateTime::constant(2026, 1, 1, 0, 0, 0, 0),
+            last_use_time: None,
             folder_id: None,
             alias_email: None,
         }
@@ -494,5 +507,28 @@ mod tests {
         assert!(!json.contains("\"extra_fields\""));
         assert!(json.contains("\"title\""));
         assert!(json.contains("\"item_type\""));
+    }
+
+    #[test]
+    fn summary_includes_last_use_time() {
+        let mut item = make_item(ItemContent::Note(NoteItem));
+        let json = serde_json::to_value(ItemSummary::from(&item)).unwrap();
+        assert_eq!(json["last_use_time"], serde_json::Value::Null);
+
+        item.last_use_time = Some(jiff::civil::DateTime::constant(2026, 2, 3, 4, 5, 6, 0));
+        let json = serde_json::to_value(ItemSummary::from(&item)).unwrap();
+        assert_eq!(json["last_use_time"], "2026-02-03T04:05:06");
+    }
+
+    #[test]
+    fn human_item_details_with_and_without_last_use_time() {
+        let mut item = make_item(ItemContent::Note(NoteItem));
+        assert_eq!(human_item_details(&item), "state=Active");
+
+        item.last_use_time = Some(jiff::civil::DateTime::constant(2026, 2, 3, 4, 5, 6, 0));
+        assert_eq!(
+            human_item_details(&item),
+            "state=Active, last_used=2026-02-03T04:05:06"
+        );
     }
 }

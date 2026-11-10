@@ -26,7 +26,7 @@ use crate::helpers::CliPassClient as PassClient;
 use crate::telemetry::event::CommandEvent;
 use anyhow::{Context, Result, anyhow, bail};
 use pass::FindItemQuery;
-use pass::domain::{EventAction, Field};
+use pass::domain::{EventAction, Field, Item};
 
 pub enum ViewItemQuery {
     Ids {
@@ -165,6 +165,7 @@ pub async fn run(
                 println!("- ID: {}", item.item.id);
                 println!("- ShareID: {}", item.item.share_id);
                 println!("- Item ID: {}", item.item.id);
+                println!("- Last used: {}", format_last_use_time(&item.item));
                 if !item.item.content.note.is_empty() {
                     println!("- Note: {}", item.item.content.note);
                 }
@@ -192,6 +193,12 @@ pub async fn run(
     }
 
     Ok(())
+}
+
+fn format_last_use_time(item: &Item) -> String {
+    item.last_use_time
+        .map(|t| t.to_string())
+        .unwrap_or_else(|| "Never".to_string())
 }
 
 fn human_readable_size(bytes: u64) -> String {
