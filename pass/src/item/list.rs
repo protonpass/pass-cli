@@ -72,6 +72,8 @@ pub(crate) struct ItemRevision {
     pub create_time: u64,
     #[serde(rename = "ModifyTime")]
     pub modify_time: u64,
+    #[serde(rename = "LastUseTime", default)]
+    pub last_use_time: Option<u64>,
     #[serde(rename = "FolderID")]
     pub folder_id: Option<String>,
 }
@@ -858,5 +860,37 @@ mod tests {
             client.clear_cache().await;
         }
         assert_eq!(2, item_page_requests(&recorder.read()));
+    }
+
+    fn revision_json(last_use_time: Option<serde_json::Value>) -> serde_json::Value {
+        let mut json = serde_json::json!({
+            "ItemID": "item",
+            "Revision": 1,
+            "ContentFormatVersion": 1,
+            "KeyRotation": 1,
+            "Content": "",
+            "ItemKey": null,
+            "State": 1,
+            "Flags": 0,
+            "AliasEmail": null,
+            "CreateTime": 1630330532,
+            "ModifyTime": 1630330532,
+            "FolderID": null,
+        });
+        if let Some(value) = last_use_time {
+            json["LastUseTime"] = value;
+        }
+        json
+    }
+
+    #[test]
+    fn item_revision_parses_last_use_time() {
+        let parse = |v| serde_json::from_value::<ItemRevision>(revision_json(v)).unwrap();
+        assert_eq!(
+            parse(Some(serde_json::json!(1630330533))).last_use_time,
+            Some(1630330533)
+        );
+        assert_eq!(parse(Some(serde_json::Value::Null)).last_use_time, None);
+        assert_eq!(parse(None).last_use_time, None);
     }
 }

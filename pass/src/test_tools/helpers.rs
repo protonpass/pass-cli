@@ -155,6 +155,7 @@ pub struct ItemRevisionBuilder {
     alias_email: Option<Option<String>>,
     create_time: Option<u64>,
     modify_time: Option<u64>,
+    last_use_time: Option<u64>,
     folder_id: Option<String>,
 }
 
@@ -172,6 +173,7 @@ impl ItemRevisionBuilder {
             alias_email: None,
             create_time: None,
             modify_time: None,
+            last_use_time: None,
             folder_id: None,
         }
     }
@@ -212,6 +214,10 @@ impl ItemRevisionBuilder {
         self.modify_time = Some(value);
         self
     }
+    pub fn with_last_use_time(mut self, value: u64) -> Self {
+        self.last_use_time = Some(value);
+        self
+    }
     pub fn with_folder_id(mut self, value: Option<String>) -> Self {
         self.folder_id = value;
         self
@@ -230,6 +236,7 @@ impl ItemRevisionBuilder {
             alias_email: self.alias_email.unwrap_or(None),
             create_time: self.create_time.unwrap_or(1234567890),
             modify_time: self.modify_time.unwrap_or(1234567890),
+            last_use_time: self.last_use_time,
             folder_id: self.folder_id,
         }
     }

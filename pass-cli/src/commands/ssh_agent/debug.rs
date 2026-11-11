@@ -359,6 +359,7 @@ mod tests {
             flags: vec![],
             create_time: jiff::civil::DateTime::default(),
             modify_time: jiff::civil::DateTime::default(),
+            last_use_time: None,
             folder_id: None,
             alias_email: None,
         }
