@@ -13,7 +13,7 @@ pass-cli session remove-lock
 
 ## Description
 
-The `session` command lets you add a lock code-based lock to your active session. When the session is locked, all operations that require the Proton Pass API are blocked until you unlock it with the correct lock code. This is useful when you want to keep your session authenticated but prevent anyone with access to your terminal from running commands. The lock is enforced server-side: even if local state is tampered with, the Proton Pass API will reject requests until the session is unlocked. The lock also auto-expires after the configured timeout, at which point the session becomes unusable again without a lock code.
+The `session` command lets you add a lock code-based lock to your active session. When the session is locked, all operations that require the Proton Pass API are blocked until you unlock it with the correct lock code. This is useful when you want to keep your session authenticated but prevent anyone with access to your terminal from running commands. The lock is enforced server-side: even if local state is tampered with, the Proton Pass API will reject requests until the session is unlocked. Once a lock exists, the session locks automatically after the configured period of inactivity and stays locked until you unlock it with the lock code.
 
 The session lock is only available for standard user sessions. PAT sessions and agent sessions cannot have a session lock, and they have a lifetime of 2 hours.
 
@@ -31,7 +31,7 @@ You will be prompted to enter a lock code. The lock code is not stored anywhere,
 
 **Options:**
 
-- `--idle-timeout SECONDS` Time in seconds before the session auto-unlocks. Must be between 30 and 900. Default: `300` (5 minutes).
+- `--idle-timeout SECONDS` Seconds of inactivity after which the session locks. Must be between 30 and 900. Default: `300` (5 minutes).
  
 **Examples:**
 
@@ -56,7 +56,7 @@ Lock the current session immediately, without waiting for the idle timeout to el
 pass-cli session lock
 ```
 
-This requires a lock to already exist (created with `create-lock`). If the session has no lock, the command fails and asks you to create one first. After locking, all operations that require the Proton Pass API are blocked until you unlock the session with the correct lock code.
+This requires a lock to already exist (created with `create-lock`). If the session has no lock, the command fails and asks you to create one first. If the session is already locked, the command does nothing. After locking, all operations that require the Proton Pass API are blocked until you unlock the session with the correct lock code.
 
 **Examples:**
 
@@ -75,7 +75,7 @@ Unlock a locked session using the lock code set at lock time.
 pass-cli session unlock
 ```
 
-You will be prompted for the lock code. On success, the session is restored to normal operation. This command fails if the session is not currently locked.
+You will be prompted for the lock code. On success, the session is restored to normal operation. The CLI checks with the Proton Pass API before asking for the code: it fails if the session has no lock, and does nothing if the session has a lock but is not currently locked. Each wrong lock code counts as a failed attempt, and too many failed attempts log the session out.
 
 **Examples:**
 
@@ -95,7 +95,7 @@ Remove the session lock entirely, so no lock code is required going forward.
 pass-cli session remove-lock
 ```
 
-You will be prompted for the current lock code to confirm the removal. After this, the lock is deleted from the server and the session operates normally without any lock code requirement.
+You will be prompted for the current lock code to confirm the removal. The command fails without asking for a code if the session has no lock. After this, the lock is deleted from the server and the session operates normally without any lock code requirement.
 
 **Examples:**
 
@@ -116,7 +116,7 @@ The output includes a `Session has lock` field that shows whether the current se
 ## Security considerations
 
 - **lock code strength** Choose a lock code that is not trivially guessable. There is no minimum length enforced by the CLI, but a longer lock code is harder to brute-force.
-- **Auto-unlock timeout** Keep `--idle-timeout` short on shared or unattended systems. The default of 300 seconds is a reasonable balance for interactive use.
+- **Idle timeout** Keep `--idle-timeout` short on shared or unattended systems. The default of 300 seconds is a reasonable balance for interactive use.
 - **Session vs. logout** Locking a session is not a substitute for `logout`. A locked session is still authenticated; it is just gated by the lock code. Use `logout` when you want to fully terminate the session.
-- **Lock code not stored** The lock code is never written to disk or the keyring. If you forget it, you cannot unlock or remove the lock until it auto-expires. You will need to log out and log in again.
+- **Lock code not stored** The lock code is never written to disk or the keyring. If you forget it, the lock cannot be unlocked or removed and it never expires on its own. The only way out is `pass-cli logout --force` followed by logging in again.
 - **ssh-agent** The `ssh-agent` commands will not refresh the keys automatically nor create items directly from ssh if the session has a lock.

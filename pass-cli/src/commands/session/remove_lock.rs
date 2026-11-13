@@ -25,8 +25,11 @@ use pass::auth::store::PassSessionStore;
 use std::sync::Arc;
 
 pub async fn run(client: PassClient, store: Arc<RwLock<PassSessionStore>>) -> Result<()> {
-    if store.read().get_session_lock_after_seconds().is_none() {
-        bail!("Session is not locked");
+    if !super::sync_session_lock_state(&client, &store)
+        .await?
+        .has_lock()
+    {
+        bail!("Session has no lock");
     }
 
     let pin = ask_for_input("Enter lock code: ", true).context("Error reading lock code")?;

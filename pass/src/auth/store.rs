@@ -170,6 +170,13 @@ const fn default_lock_after_seconds() -> Option<u32> {
     None
 }
 
+#[derive(Debug, Default)]
+struct SessionLockCache {
+    after_seconds: Option<u32>,
+    version: u64,
+    persisted_version: u64,
+}
+
 #[derive(Clone)]
 pub struct PassSessionStore {
     pub env: Environment,
@@ -177,7 +184,7 @@ pub struct PassSessionStore {
     pub storage: Arc<dyn SessionStorage>,
     pub key_provider: Arc<dyn LocalKeyProvider>,
     pub account_type: AccountType,
-    pub session_lock_after_seconds: Option<u32>,
+    session_lock: Arc<RwLock<SessionLockCache>>,
     pub cookies: Arc<RwLock<Vec<StoredCookie>>>,
     executor: Arc<dyn futures::task::Spawn + Send + Sync>,
     persist_generation: Arc<AtomicU64>,
@@ -192,7 +199,7 @@ impl std::fmt::Debug for PassSessionStore {
             .field("account_type", &self.account_type)
             .field(
                 "session_lock_after_seconds",
-                &self.session_lock_after_seconds,
+                &self.session_lock.read().after_seconds,
             )
             .field("cookies", &self.cookies.read().len())
             .finish()
@@ -321,7 +328,7 @@ impl PassSessionStore {
             storage,
             key_provider,
             account_type: AccountType::User, // Default to User for new stores
-            session_lock_after_seconds: None,
+            session_lock: Arc::new(RwLock::new(SessionLockCache::default())),
             cookies: Arc::new(RwLock::new(Vec::new())),
             executor,
             persist_generation: Arc::new(AtomicU64::new(0)),
@@ -338,15 +345,13 @@ impl PassSessionStore {
         self.account_type
     }
 
-    pub async fn get_from_local(
-        storage: Arc<dyn SessionStorage>,
-        key_provider: Arc<dyn LocalKeyProvider>,
-        executor: Arc<dyn Spawn + Send + Sync>,
-    ) -> Result<Option<PassSessionStore>, GetStoreError> {
-        // Try to load encrypted data from storage
+    async fn load_serialized(
+        storage: &Arc<dyn SessionStorage>,
+        key_provider: &Arc<dyn LocalKeyProvider>,
+    ) -> Result<Option<SerializedStore>, GetStoreError> {
         let contents = match storage.load().await {
             Ok(Some(data)) => data,
-            Ok(None) => return Ok(None), // No session stored
+            Ok(None) => return Ok(None),
             Err(e) => {
                 return Err(GetStoreError::Other(anyhow!(
                     "Error loading from storage: {e}"
@@ -354,7 +359,6 @@ impl PassSessionStore {
             }
         };
 
-        // Decrypt the session data
         let local_key = match key_provider.get_key().await {
             Ok(k) => k,
             Err(e) => {
@@ -377,13 +381,21 @@ impl PassSessionStore {
             }
         };
 
-        let deserialized: SerializedStore = match serde_json::from_slice(&decrypted) {
-            Ok(s) => s,
-            Err(e) => {
-                return Err(GetStoreError::Other(anyhow!(
-                    "Error deserializing json: {e}"
-                )));
-            }
+        match serde_json::from_slice(&decrypted) {
+            Ok(s) => Ok(Some(s)),
+            Err(e) => Err(GetStoreError::Other(anyhow!(
+                "Error deserializing json: {e}"
+            ))),
+        }
+    }
+
+    pub async fn get_from_local(
+        storage: Arc<dyn SessionStorage>,
+        key_provider: Arc<dyn LocalKeyProvider>,
+        executor: Arc<dyn Spawn + Send + Sync>,
+    ) -> Result<Option<PassSessionStore>, GetStoreError> {
+        let Some(deserialized) = Self::load_serialized(&storage, &key_provider).await? else {
+            return Ok(None);
         };
 
         Ok(Some(PassSessionStore {
@@ -392,7 +404,10 @@ impl PassSessionStore {
             storage,
             key_provider,
             account_type: deserialized.account_type,
-            session_lock_after_seconds: deserialized.session_lock_after_seconds,
+            session_lock: Arc::new(RwLock::new(SessionLockCache {
+                after_seconds: deserialized.session_lock_after_seconds,
+                ..SessionLockCache::default()
+            })),
             cookies: Arc::new(RwLock::new(deserialized.cookies)),
             executor,
             persist_generation: Arc::new(AtomicU64::new(0)),
@@ -401,14 +416,39 @@ impl PassSessionStore {
         }))
     }
 
+    async fn session_lock_to_persist(&self) -> (Option<u32>, Option<u64>) {
+        let (after_seconds, version, pending) = {
+            let cache = self.session_lock.read();
+            (
+                cache.after_seconds,
+                cache.version,
+                cache.version != cache.persisted_version,
+            )
+        };
+        if pending {
+            return (after_seconds, Some(version));
+        }
+        match Self::load_serialized(&self.storage, &self.key_provider).await {
+            Ok(Some(existing)) => {
+                let mut cache = self.session_lock.write();
+                if cache.version == version {
+                    cache.after_seconds = existing.session_lock_after_seconds;
+                }
+                (existing.session_lock_after_seconds, None)
+            }
+            _ => (after_seconds, None),
+        }
+    }
+
     pub async fn serialize(&self) -> anyhow::Result<()> {
+        let (session_lock_after_seconds, written_version) = self.session_lock_to_persist().await;
         let serialized = {
             let auth = self.auth.lock();
             SerializedStore {
                 env: SerializedEnv::from(self.env.clone()),
                 auth: auth.clone(),
                 account_type: self.account_type,
-                session_lock_after_seconds: self.session_lock_after_seconds,
+                session_lock_after_seconds,
                 cookies: self.cookies.read().clone(),
             }
         };
@@ -440,6 +480,11 @@ impl PassSessionStore {
             .await
             .context("Error saving session to storage")?;
 
+        if let Some(version) = written_version {
+            let mut cache = self.session_lock.write();
+            cache.persisted_version = cache.persisted_version.max(version);
+        }
+
         debug!("[STORE] Stored session");
 
         Ok(())
@@ -455,11 +500,15 @@ impl PassSessionStore {
     }
 
     pub fn get_session_lock_after_seconds(&self) -> Option<u32> {
-        self.session_lock_after_seconds
+        self.session_lock.read().after_seconds
     }
 
     pub fn set_session_lock_after_seconds(&mut self, lock_time: Option<u32>) {
-        self.session_lock_after_seconds = lock_time;
+        {
+            let mut cache = self.session_lock.write();
+            cache.after_seconds = lock_time;
+            cache.version += 1;
+        }
         self.schedule_persist();
     }
 }
@@ -687,6 +736,133 @@ mod tests {
 
         let guard = muon_store.read(&()).await.unwrap();
         assert_eq!(guard.auth().uid(), Some("uid-2"));
+    }
+
+    fn load(
+        storage: Arc<MemoryStorage>,
+        key_provider: Arc<dyn LocalKeyProvider>,
+    ) -> SerializedStore {
+        let data = storage
+            .contents
+            .lock()
+            .clone()
+            .expect("session must be written");
+        let key = futures::executor::block_on(key_provider.get_key()).unwrap();
+        let decrypted =
+            crate::domain::crypto::decrypt(&data, key.as_ref(), EncryptionTag::Unknown).unwrap();
+        serde_json::from_slice(&decrypted).unwrap()
+    }
+
+    fn store_with(
+        storage: Arc<MemoryStorage>,
+        key_provider: Arc<dyn LocalKeyProvider>,
+    ) -> PassSessionStore {
+        PassSessionStore::new(
+            Environment::new_prod(),
+            storage,
+            key_provider,
+            Arc::new(IdleExecutor),
+        )
+    }
+
+    #[tokio::test]
+    async fn stale_store_does_not_clear_lock_written_by_another_process() {
+        let storage = Arc::new(MemoryStorage::default());
+        let key_provider = key_provider();
+        let stale = store_with(storage.clone(), key_provider.clone());
+
+        let mut locker = store_with(storage.clone(), key_provider.clone());
+        locker.set_session_lock_after_seconds(Some(600));
+        locker.persist_now().await.unwrap();
+
+        *stale.auth.lock() = Some(Auth::external("user", "uid-refreshed"));
+        stale.persist_now().await.unwrap();
+
+        let written = load(storage, key_provider);
+        assert_eq!(written.session_lock_after_seconds, Some(600));
+        assert_eq!(
+            written
+                .auth
+                .as_ref()
+                .and_then(|a| a.uid().map(str::to_owned)),
+            Some("uid-refreshed".to_owned())
+        );
+    }
+
+    #[tokio::test]
+    async fn stale_store_does_not_restore_lock_removed_by_another_process() {
+        let storage = Arc::new(MemoryStorage::default());
+        let key_provider = key_provider();
+
+        let mut locker = store_with(storage.clone(), key_provider.clone());
+        locker.set_session_lock_after_seconds(Some(600));
+        locker.persist_now().await.unwrap();
+
+        let stale = match PassSessionStore::get_from_local(
+            storage.clone(),
+            key_provider.clone(),
+            Arc::new(IdleExecutor),
+        )
+        .await
+        {
+            Ok(Some(store)) => store,
+            _ => panic!("session must load"),
+        };
+        assert_eq!(stale.get_session_lock_after_seconds(), Some(600));
+
+        let mut remover = store_with(storage.clone(), key_provider.clone());
+        remover.set_session_lock_after_seconds(None);
+        remover.persist_now().await.unwrap();
+
+        stale.persist_now().await.unwrap();
+
+        assert_eq!(load(storage, key_provider).session_lock_after_seconds, None);
+    }
+
+    #[tokio::test]
+    async fn store_that_changed_the_lock_writes_its_own_value() {
+        let storage = Arc::new(MemoryStorage::default());
+        let key_provider = key_provider();
+
+        let mut first = store_with(storage.clone(), key_provider.clone());
+        first.set_session_lock_after_seconds(Some(600));
+        first.persist_now().await.unwrap();
+
+        first.set_session_lock_after_seconds(None);
+        first.persist_now().await.unwrap();
+
+        assert_eq!(load(storage, key_provider).session_lock_after_seconds, None);
+    }
+
+    #[tokio::test]
+    async fn store_stops_owning_lock_once_written() {
+        let storage = Arc::new(MemoryStorage::default());
+        let key_provider = key_provider();
+
+        let mut daemon = store_with(storage.clone(), key_provider.clone());
+        daemon.set_session_lock_after_seconds(Some(300));
+        daemon.persist_now().await.unwrap();
+
+        let mut other = store_with(storage.clone(), key_provider.clone());
+        other.set_session_lock_after_seconds(None);
+        other.persist_now().await.unwrap();
+
+        *daemon.auth.lock() = Some(Auth::external("user", "uid-refreshed"));
+        daemon.persist_now().await.unwrap();
+
+        assert_eq!(load(storage, key_provider).session_lock_after_seconds, None);
+        assert_eq!(daemon.get_session_lock_after_seconds(), None);
+    }
+
+    #[tokio::test]
+    async fn clones_share_the_lock_value() {
+        let storage = Arc::new(MemoryStorage::default());
+        let mut store = store_with(storage.clone(), key_provider());
+        let earlier_clone = store.clone();
+
+        store.set_session_lock_after_seconds(Some(600));
+
+        assert_eq!(earlier_clone.get_session_lock_after_seconds(), Some(600));
     }
 
     #[test]

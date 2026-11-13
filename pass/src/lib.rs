@@ -101,6 +101,7 @@ pub use personal_access_token::{
 };
 pub use reports::{BreachCount, ItemsReport, MemberReport, MonitorReport, Report};
 pub use user::access::{PassPlan, PlanType, UserDataSettings, UserInfo};
+pub use user::lock::SessionLockState;
 pub use utils::is_id;
 pub use vault::{CreateVaultArgs, UpdateVaultArgs};
 

@@ -20,6 +20,7 @@
 use crate::helpers::CliPassClient as PassClient;
 use anyhow::{Context, Result, bail};
 use parking_lot::RwLock;
+use pass::SessionLockState;
 use pass::auth::store::PassSessionStore;
 use std::sync::Arc;
 
@@ -27,8 +28,15 @@ pub async fn run(client: PassClient, store: Arc<RwLock<PassSessionStore>>) -> Re
     if client.is_agent_session() {
         bail!("Session lock is not available for agent sessions");
     }
-    if store.read().get_session_lock_after_seconds().is_none() {
-        bail!("Session has no lock. Create one first with `pass-cli session create-lock`");
+    match super::sync_session_lock_state(&client, &store).await? {
+        SessionLockState::NoLock => {
+            bail!("Session has no lock. Create one first with `pass-cli session create-lock`")
+        }
+        SessionLockState::Locked => {
+            println!("Session is already locked");
+            return Ok(());
+        }
+        SessionLockState::Unlocked { .. } => {}
     }
 
     client

@@ -55,7 +55,7 @@ pub async fn run(
 ) -> Result<()> {
     client.emit_telemetry(&CommandEvent::new("info")).await;
 
-    let session_lock_after_seconds = store.read().get_session_lock_after_seconds();
+    let session_lock = crate::commands::session::session_lock_status(&client, &store).await;
 
     // Resolve output format from settings if not provided
     let output = match output {
@@ -97,8 +97,8 @@ pub async fn run(
                 email: Some(info.user.email),
                 personal_access_token_name: None,
                 install_source: install_source_str,
-                session_has_lock: session_lock_after_seconds.is_some(),
-                session_lock_after_seconds,
+                session_has_lock: session_lock.has_lock,
+                session_lock_after_seconds: session_lock.lock_after_seconds,
             }
         }
         AccountType::PersonalAccessToken | AccountType::AgentSession => {
@@ -136,8 +136,8 @@ pub async fn run(
                     "{name_prefix}{personal_access_token_name}"
                 )),
                 install_source: install_source_str,
-                session_has_lock: session_lock_after_seconds.is_some(),
-                session_lock_after_seconds,
+                session_has_lock: session_lock.has_lock,
+                session_lock_after_seconds: session_lock.lock_after_seconds,
             }
         }
     };
@@ -168,11 +168,12 @@ fn print(info: InfoOutput, output: OutputFormat) -> Result<()> {
             if let Some(install_source) = &info.install_source {
                 println!("- Install source: {}", install_source);
             }
-            match info.session_lock_after_seconds {
-                Some(lock_seconds) => println!(
+            match (info.session_has_lock, info.session_lock_after_seconds) {
+                (true, Some(lock_seconds)) => println!(
                     "- Session has lock: yes (locks after {lock_seconds} seconds of inactivity)"
                 ),
-                None => println!("- Session has lock: no"),
+                (true, None) => println!("- Session has lock: yes"),
+                (false, _) => println!("- Session has lock: no"),
             }
         }
         OutputFormat::Json => {

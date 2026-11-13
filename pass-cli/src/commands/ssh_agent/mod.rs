@@ -256,7 +256,9 @@ async fn run_start(
     client: PassClient,
     store: Arc<RwLock<PassSessionStore>>,
 ) -> Result<()> {
-    let session_has_lock = store.read().get_session_lock_after_seconds().is_some();
+    let session_has_lock = crate::commands::session::session_lock_status(&client, &store)
+        .await
+        .has_lock;
 
     if session_has_lock {
         eprintln!(

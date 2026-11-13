@@ -51,7 +51,10 @@ pub async fn run(
     if client.is_pat_account() {
         bail!("Session lock is not available for PAT sessions");
     }
-    if store.read().get_session_lock_after_seconds().is_some() {
+    if super::sync_session_lock_state(&client, &store)
+        .await?
+        .has_lock()
+    {
         bail!("Session already has a lock");
     }
     let pin_first = ask_for_input("Enter lock code: ", true).context("Error reading lock code")?;
