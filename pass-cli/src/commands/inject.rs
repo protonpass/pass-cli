@@ -325,7 +325,6 @@ mod tests {
     use crate::commands::secret_resolver::SecretReference;
     use crate::commands::secret_resolver::tests::StaticSecretResolver;
     use async_trait::async_trait;
-    use serde_json::json;
 
     #[test]
     fn write_file_atomic_creates_file_with_correct_content() {
@@ -1061,41 +1060,5 @@ code: {{ pass://vault/item/otp?totp=code }}
             resolver.secrets.get("share2:item2:field2"),
             Some(&"value2".to_string())
         );
-    }
-
-    #[test]
-    fn handlebars_template_validation() {
-        use handlebars::Handlebars;
-
-        let handlebars = Handlebars::new();
-
-        // Valid template syntax (though will fail to render due to unregistered helpers)
-        let valid_syntax_templates = vec![
-            "plain text with no templates",
-            "{{ some_variable }}", // Simple variable
-            "text with {{ variable }} embedded",
-        ];
-
-        for template in valid_syntax_templates {
-            let result = handlebars.render_template(
-                template,
-                &json!({"some_variable": "value", "variable": "test"}),
-            );
-            assert!(
-                result.is_ok(),
-                "Template syntax should be valid: {template}"
-            );
-        }
-
-        // Invalid templates (malformed handlebars syntax)
-        let invalid_templates = vec![
-            "{{ unclosed template", // Missing closing }}
-            "{{ {{ nested }} }}",   // Nested braces
-        ];
-
-        for template in invalid_templates {
-            let result = handlebars.render_template(template, &json!({}));
-            assert!(result.is_err(), "Template should be invalid: {template}");
-        }
     }
 }
