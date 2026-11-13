@@ -12,8 +12,8 @@ default-members = [
 resolver = "2"
 
 [workspace.dependencies]
-muon = { version = "5.0.1", registry = "proton", features = ["full-base", "unsealed", "other-platform"] }
-muon-test = { version = "5.0.0", registry = "proton" }
+muon = { version = "6.0.1", registry = "proton", features = ["full-base", "unsealed", "other-platform"] }
+muon-test = { version = "6.0.0", registry = "proton" }
 proton-crypto = { version = "0.14.0", registry = "proton", default-features = false, features = ["rustpgp"] }
 proton-crypto-account = { version = "0.20.0", registry = "proton", default-features = false, features = ["rustpgp"] }
 

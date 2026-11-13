@@ -17,8 +17,8 @@
  *
  */
 
-use crate::SharedPassSessionStore;
 use crate::auth::cookie_store::PassCookieStore;
+use crate::auth::store::PassMuonSessionStore;
 use muon::common::GenericContext;
 use muon::cookie_store::SharedCookieStore;
 
@@ -37,11 +37,11 @@ pub type PassCookieHandler<Sleeper> = SharedCookieStore<PassCookieStore, Sleeper
 
 #[cfg(tokio_runtime)]
 pub type Context<Os> =
-    GenericContext<PassConnector<Os>, SharedPassSessionStore, NoInfo, PassCookieHandler<Os>>;
+    GenericContext<PassConnector<Os>, PassMuonSessionStore, NoInfo, PassCookieHandler<Os>>;
 #[cfg(wasm_runtime)]
 pub type Context<Sleeper> = GenericContext<
     PassConnector<Sleeper>,
-    SharedPassSessionStore,
+    PassMuonSessionStore,
     NoInfo,
     PassCookieHandler<Sleeper>,
 >;

@@ -300,6 +300,8 @@ impl Store for SharedPassSessionStore {
     }
 }
 
+pub type PassMuonSessionStore = muon::store::PersistedSessionStore<SharedPassSessionStore>;
+
 /// Error type for loading session store
 pub enum GetStoreError {
     CannotDecrypt(anyhow::Error),
@@ -631,6 +633,60 @@ mod tests {
 
         store.flush().await.unwrap();
         assert!(storage.contents.lock().is_none());
+    }
+
+    #[tokio::test]
+    async fn muon_session_store_writes_through_to_pass_store() {
+        use muon::store::{PersistedSessionStore, SessionRead, SessionStore, SessionWrite};
+
+        let storage = Arc::new(MemoryStorage::default());
+        let shared = SharedPassSessionStore::new(idle_store(storage.clone()));
+        let auth_mirror = shared.inner.read().auth.clone();
+        let muon_store = PersistedSessionStore::new(shared.clone());
+
+        {
+            let mut guard = muon_store.write(&()).await.unwrap();
+            guard
+                .replace(Auth::external("user", "uid-1"))
+                .await
+                .unwrap();
+        }
+        assert_eq!(
+            auth_mirror
+                .lock()
+                .as_ref()
+                .and_then(|a| a.uid().map(str::to_owned)),
+            Some("uid-1".to_owned())
+        );
+        assert_eq!(muon_store.keys().await.len(), 1);
+        {
+            let guard = muon_store.read(&()).await.unwrap();
+            assert_eq!(guard.auth().uid(), Some("uid-1"));
+        }
+
+        let snapshot = shared.inner.read().clone();
+        snapshot.flush().await.unwrap();
+        assert!(storage.contents.lock().is_some());
+
+        {
+            let mut guard = muon_store.write(&()).await.unwrap();
+            assert!(guard.remove().await.is_some());
+        }
+        assert!(auth_mirror.lock().is_none());
+        assert!(muon_store.keys().await.is_empty());
+    }
+
+    #[tokio::test]
+    async fn muon_session_store_loads_existing_session() {
+        use muon::store::{PersistedSessionStore, SessionRead, SessionStore};
+
+        let shared = SharedPassSessionStore::new(idle_store(Arc::new(MemoryStorage::default())));
+        *shared.inner.read().auth.lock() = Some(Auth::external("user", "uid-2"));
+
+        let muon_store = PersistedSessionStore::new(shared);
+
+        let guard = muon_store.read(&()).await.unwrap();
+        assert_eq!(guard.auth().uid(), Some("uid-2"));
     }
 
     #[test]
