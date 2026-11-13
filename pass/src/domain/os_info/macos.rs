@@ -24,7 +24,7 @@ pub fn get_macos_os_info() -> OsInfoResult {
     // sysinfo requires instantiating System to access OS info
     let _sys = System::new();
 
-    let version_str = System::os_version().unwrap_or_else(|| "0.0.0".to_string());
+    let version_str = System::os_version().unwrap_or_else(|_| "0.0.0".to_string());
     let os_version = parse_macos_version(&version_str);
     let platform = Some(System::cpu_arch());
 

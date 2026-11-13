@@ -22,7 +22,7 @@ use sysinfo::System;
 
 pub fn get_windows_os_info() -> OsInfoResult {
     let os_name = "Windows".to_string();
-    let os_version = System::kernel_version().unwrap_or_else(|| "10.0.0".to_string());
+    let os_version = System::kernel_version().unwrap_or_else(|_| "10.0.0".to_string());
     let platform = Some(System::cpu_arch());
 
     Ok(OsInfo::new(os_name, os_version, platform))
