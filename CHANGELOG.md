@@ -19,7 +19,7 @@
 ### Other
 
 - Upgraded dependencies
-- Upgraded netowrk dependency to `muon 5`
+- Upgraded network dependency to `muon 6`
 - Updated code to rust 1.100
 
 ## 2.7.0 (2026-11-03)
