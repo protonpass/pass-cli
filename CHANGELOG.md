@@ -5,6 +5,23 @@
 ### Other
 -->
 
+## 2.7.1 (2026-11-16)
+
+### Features :tada:
+
+- Add last use time for items in `item view` and `item list` commands
+
+### Fixes :bug:
+
+- Fix the `brew upgrade` instructions
+- Improve session lock commands which could sometimes cause the CLI reporting a session as locked when it was not
+
+### Other
+
+- Upgraded dependencies
+- Upgraded netowrk dependency to `muon 5`
+- Updated code to rust 1.100
+
 ## 2.7.0 (2026-11-03)
 
 ### Features :tada:
